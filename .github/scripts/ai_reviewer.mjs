@@ -89,7 +89,7 @@ ${truncatedDiff}
 \`\`\`
 
 Format your response in GitHub Markdown using this structure:
-### 🤖 Antigravity AI Code Review
+### 🤖 AI Code Review
 - **Summary**: Concise overview of changes.
 - **Highlights & Strengths**: What was implemented well.
 - **Security & Potential Issues**: Any security vulnerabilities, edge cases, bugs, or performance bottlenecks.
