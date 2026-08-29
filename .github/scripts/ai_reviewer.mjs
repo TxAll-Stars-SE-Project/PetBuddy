@@ -89,7 +89,7 @@ ${truncatedDiff}
 \`\`\`
 
 Format your response in GitHub Markdown using this structure:
-### 🤖 Antigravity AI Code Review
+### 🤖 AI Code Review
 - **Summary**: Concise overview of changes.
 - **Highlights & Strengths**: What was implemented well.
 - **Security & Potential Issues**: Any security vulnerabilities, edge cases, bugs, or performance bottlenecks.
@@ -98,19 +98,21 @@ Format your response in GitHub Markdown using this structure:
 `;
 
   const requestedModel = process.env.GEMINI_MODEL;
-  const candidateModels = [
+  const candidateModels = Array.from(new Set([
     requestedModel,
     'gemini-3.6-flash',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-2.5-flash',
     'gemini-1.5-pro',
-  ].filter(Boolean);
+  ].filter(Boolean)));
 
   let lastError = null;
 
   for (const model of candidateModels) {
     try {
+      console.log(`🤖 Attempting AI review with model: ${model}...`);
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
       const payload = {
         contents: [
@@ -128,10 +130,12 @@ Format your response in GitHub Markdown using this structure:
       const response = await postRequest(url, {}, payload);
       const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) {
-        return text;
+        console.log(`✅ Successfully generated review using model: ${model}`);
+        const modelBadge = `\n\n---\n*🤖 Reviewed by Antigravity AI using model \`${model}\`*`;
+        return text.trim() + modelBadge;
       }
     } catch (err) {
-      console.warn(`Model ${model} failed: ${err.message}. Trying next candidate...`);
+      console.warn(`⚠️ Model ${model} failed: ${err.message}. Trying next candidate model...`);
       lastError = err;
     }
   }
