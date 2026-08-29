@@ -78,7 +78,7 @@ Run all commands directly from the project root:
 
 ---
 
-## 🌿 Team Git Workflow (Branching & Features)
+## 🌿 Team Git Workflow (Branching, Features & Rebasing)
 
 Follow this workflow when developing a new feature or fix:
 
@@ -95,29 +95,48 @@ Use descriptive prefixes like `feature/`, `fix/`, or `refactor/`:
 git checkout -b feature/user-authentication
 ```
 
-### 3. Develop & Verify Locally
-Make your changes, then verify that the project builds and lints with zero errors before committing:
+### 3. Sync with `main` while working (Rebase)
+If teammates merged new commits into `main` while you are working on your feature branch, keep your branch updated with `rebase`:
+```bash
+# 1. Fetch latest changes from remote
+git fetch origin
+
+# 2. Rebase your current branch on top of origin/main
+git rebase origin/main
+
+# 3. If there are conflicts: resolve them in your editor, then:
+git add .
+git rebase --continue
+```
+> **Why rebase?** Rebase places your feature commits cleanly on top of the latest `main`, keeping a linear, clean commit history without messy merge commits.
+
+### 4. Develop & Verify Locally
+Verify that the project builds and lints cleanly before committing:
 ```bash
 npm run lint
 npm run build
 ```
 
-### 4. Stage and Commit
+### 5. Stage and Commit
 Write clear, conventional commit messages:
 ```bash
 git add .
 git commit -m "feat: add user login API and auth form"
 ```
 
-### 5. Push to GitHub
+### 6. Push to GitHub
 Push your branch to GitHub:
 ```bash
+# First-time push:
 git push -u origin feature/user-authentication
+
+# If you previously pushed and then rebased, update remote with force-with-lease:
+git push --force-with-lease
 ```
 
-### 6. Open a Pull Request (PR)
+### 7. Open a Pull Request (PR)
 1. Go to the repository on GitHub: [https://github.com/tanravikorn/PetBuddy](https://github.com/tanravikorn/PetBuddy).
 2. Click **Compare & pull request**.
-3. Set base to `main` and provide a summary of what you implemented.
-4. Once created, GitHub will automatically run the build checks and the AI reviewer will analyze your code.
-5. After review and approval, merge into `main`!
+3. Set base to `main` and provide a summary of your changes.
+4. GitHub Actions CI will validate the build and the **Antigravity AI Agent** will review the PR.
+5. After approval, merge into `main`!
