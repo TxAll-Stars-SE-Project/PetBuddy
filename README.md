@@ -75,3 +75,49 @@ Run all commands directly from the project root:
 | `npm run dev:backend` | Starts Express backend with live TypeScript reload (`tsx`) | [http://localhost:5000](http://localhost:5000) |
 | `npm run build` | Builds both frontend and backend for production | Generates `dist/` folders |
 | `npm run lint` | Runs ESLint across workspaces | — |
+
+---
+
+## 🌿 Team Git Workflow (Branching & Features)
+
+Follow this workflow when developing a new feature or fix:
+
+### 1. Update your local `main` branch
+Always start from the latest version of `main`:
+```bash
+git checkout main
+git pull origin main
+```
+
+### 2. Create a new branch
+Use descriptive prefixes like `feature/`, `fix/`, or `refactor/`:
+```bash
+git checkout -b feature/user-authentication
+```
+
+### 3. Develop & Verify Locally
+Make your changes, then verify that the project builds and lints with zero errors before committing:
+```bash
+npm run lint
+npm run build
+```
+
+### 4. Stage and Commit
+Write clear, conventional commit messages:
+```bash
+git add .
+git commit -m "feat: add user login API and auth form"
+```
+
+### 5. Push to GitHub
+Push your branch to GitHub:
+```bash
+git push -u origin feature/user-authentication
+```
+
+### 6. Open a Pull Request (PR)
+1. Go to the repository on GitHub: [https://github.com/tanravikorn/PetBuddy](https://github.com/tanravikorn/PetBuddy).
+2. Click **Compare & pull request**.
+3. Set base to `main` and provide a summary of what you implemented.
+4. Once created, GitHub will automatically run the build checks and the AI reviewer will analyze your code.
+5. After review and approval, merge into `main`!
