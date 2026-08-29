@@ -1,6 +1,6 @@
 # 🐾 PetBuddy
 
-A modern, full-stack monorepo web application built with **React 19**, **Vite**, **Express**, **TypeScript**, and an automated **Antigravity AI Code Review Agent** powered by Google Gemini.
+A full-stack monorepo web application built with **React 19**, **Vite**, **Express**, and **TypeScript**.
 
 ---
 
@@ -10,12 +10,6 @@ This project is organized as an **npm Workspaces Monorepo**:
 
 ```
 PetBuddy/
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml                 # Automated CI (linting, typechecks & builds)
-│   │   └── ai-pr-reviewer.yml     # Antigravity AI Code Review Agent
-│   └── scripts/
-│       └── ai_reviewer.mjs        # AI Code Reviewer script (Gemini API)
 ├── backend/                       # Express + TypeScript API Server
 │   ├── src/
 │   │   ├── controllers/           # Route handler controllers
@@ -42,8 +36,7 @@ PetBuddy/
 │   ├── tsconfig.json
 │   └── vite.config.ts             # Vite bundler configuration
 ├── .gitignore                     # Global git ignore configuration
-├── package.json                   # Root workspace configuration
-└── README.md                      # Project documentation
+└── package.json                   # Root workspace configuration
 ```
 
 ---
@@ -55,7 +48,7 @@ PetBuddy/
 - **npm**: `v10.0.0` or later
 
 ### 2. Installation
-Clone the repository and install all dependencies for both frontend and backend in one command:
+Clone the repository and install all dependencies for both frontend and backend with a single command:
 
 ```bash
 git clone git@github.com:tanravikorn/PetBuddy.git
@@ -74,7 +67,7 @@ cp backend/.env.example backend/.env
 
 ## 💻 Available Scripts
 
-Run all commands directly from the project root without navigating into subfolders:
+Run all commands directly from the project root:
 
 | Command | Description | Local URL |
 |---|---|---|
@@ -82,54 +75,3 @@ Run all commands directly from the project root without navigating into subfolde
 | `npm run dev:backend` | Starts Express backend with live TypeScript reload (`tsx`) | [http://localhost:5000](http://localhost:5000) |
 | `npm run build` | Builds both frontend and backend for production | Generates `dist/` folders |
 | `npm run lint` | Runs ESLint across workspaces | — |
-
----
-
-## 🤖 CI/CD & Antigravity AI Code Review Agent
-
-This repository is equipped with automated GitHub Actions pipelines:
-
-### 1. Continuous Integration (`ci.yml`)
-Runs automatically on pushes and Pull Requests to `main`:
-- 📦 Installs dependencies cleanly.
-- 🔍 Runs ESLint checks.
-- 🛡️ Typechecks frontend and backend TypeScript (`tsc`).
-- 🏗️ Validates production bundles for both frontend (`vite build`) and backend.
-
-### 2. AI Code Review Agent (`ai-pr-reviewer.yml`)
-Triggers automatically whenever team members push changes or open a Pull Request:
-- 🧠 Extracts the Git diff and sends it to **Gemini API**.
-- 🔍 Analyzes code quality, potential bugs, edge cases, and security risks.
-- 💡 Provides actionable refactoring suggestions with code snippets.
-- 💬 Automatically posts a structured review comment on the Pull Request.
-
-### Enabling the AI Agent in GitHub:
-1. Go to your GitHub repository **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**.
-2. Under **Repository secrets**, click **New repository secret**.
-3. Name: `GEMINI_API_KEY` (or `ANTIGRAVITY_API_KEY`).
-4. Value: Paste your Google Gemini API key.
-5. *(Optional)* Under **Variables**, add `GEMINI_MODEL` (e.g. `gemini-2.5-flash` or `gemini-2.5-pro`).
-
----
-
-## 🌿 Git & Team Workflow
-
-1. Create a feature branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-2. Make your changes and commit:
-   ```bash
-   git add .
-   git commit -m "feat: describe your change"
-   ```
-3. Push to GitHub and open a Pull Request:
-   ```bash
-   git push -u origin feature/your-feature-name
-   ```
-4. GitHub CI will automatically validate the build and the **Antigravity AI Agent** will review your code!
-
----
-
-## 📄 License
-This project is open-source and available under the standard MIT License.
