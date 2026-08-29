@@ -97,24 +97,46 @@ Format your response in GitHub Markdown using this structure:
 - **Verdict**: ✅ LGTM / ⚠️ Minor Improvements Recommended / 🛑 Changes Requested
 `;
 
-  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-  
-  const payload = {
-    contents: [
-      {
-        parts: [
-          { text: prompt }
-        ]
-      }
-    ],
-    generationConfig: {
-      temperature: 0.2,
-    }
-  };
+  const requestedModel = process.env.GEMINI_MODEL;
+  const candidateModels = [
+    requestedModel,
+    'gemini-3.6-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.5-flash',
+    'gemini-1.5-pro',
+  ].filter(Boolean);
 
-  const response = await postRequest(url, {}, payload);
-  return response?.candidates?.[0]?.content?.parts?.[0]?.text || 'No review generated.';
+  let lastError = null;
+
+  for (const model of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const payload = {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+        }
+      };
+
+      const response = await postRequest(url, {}, payload);
+      const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        return text;
+      }
+    } catch (err) {
+      console.warn(`Model ${model} failed: ${err.message}. Trying next candidate...`);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('No candidate Gemini model succeeded.');
 }
 
 async function postCommentToPR(comment) {
