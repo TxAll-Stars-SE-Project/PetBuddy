@@ -131,7 +131,8 @@ Format your response in GitHub Markdown using this structure:
       const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) {
         console.log(`✅ Successfully generated review using model: ${model}`);
-        return text;
+        const modelBadge = `\n\n---\n*🤖 Reviewed by Antigravity AI using model \`${model}\`*`;
+        return text.trim() + modelBadge;
       }
     } catch (err) {
       console.warn(`⚠️ Model ${model} failed: ${err.message}. Trying next candidate model...`);
