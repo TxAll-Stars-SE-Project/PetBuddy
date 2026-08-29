@@ -97,7 +97,8 @@ Format your response in GitHub Markdown using this structure:
 - **Verdict**: ✅ LGTM / ⚠️ Minor Improvements Recommended / 🛑 Changes Requested
 `;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
   const payload = {
     contents: [

@@ -31,6 +31,7 @@ jobs:
       - name: Run Antigravity AI Review Agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || secrets.ANTIGRAVITY_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
