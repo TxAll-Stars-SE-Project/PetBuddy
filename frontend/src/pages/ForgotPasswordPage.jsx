@@ -1,15 +1,11 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext.jsx";
-import { navigate } from "../router.js";
-import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
-import { isEmail, isTel, isPostal, isThaiId, passwordOk } from "../utils/validators.js";
+import { isEmail } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
-import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
-import RolePills from "../components/ui/RolePills.jsx";
+
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");

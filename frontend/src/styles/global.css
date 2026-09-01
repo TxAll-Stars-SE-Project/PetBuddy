@@ -36,7 +36,15 @@ body{margin:0;background:var(--bg)}
 .field-error{color:var(--error);font-size:12.5px;margin-top:5px}
 .pw-wrap{position:relative}
 .pw-wrap .input{padding-right:42px}
-.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:16px}
+.pw-toggle{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  border:none; background:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  padding:6px; border-radius:8px;
+  color:#6B7280;                 /* ตอนแสดงรหัส: เทาเข้ม */
+}
+.pw-toggle--off{ color:#C4C7CC; } /* ตอนซ่อน: เทาอ่อน — แบบที่ Title อยากได้ */
+.pw-toggle:hover{ background:#F3F4F6; color:#374151; }
 
 /* ---------- ปุ่ม ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 16px;border:none;border-radius:var(--r-btn);background:var(--primary);color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
