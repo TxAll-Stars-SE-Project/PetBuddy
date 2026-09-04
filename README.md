@@ -48,20 +48,32 @@ PetBuddy/
 - **npm**: `v10.0.0` or later
 
 ### 2. Installation
-Clone the repository and install all dependencies for both frontend and backend with a single command:
-
+Clone the repository and install all dependencies:
 ```bash
 git clone git@github.com:tanravikorn/PetBuddy.git
 cd PetBuddy
 npm install
 ```
 
-### 3. Environment Setup
+### 3. Backend & Database Setup (.env & Prisma)
+1. **Copy environment variables template:**
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+   *(Fill in your Supabase `DATABASE_URL` and `DIRECT_URL` in `backend/.env`)*
 
-Configure the backend environment:
-```bash
-cp backend/.env.example backend/.env
-```
+2. **Generate Prisma Client & Types (Required after clone or git pull):**
+   ```bash
+   cd backend
+   npx prisma generate
+   ```
+
+3. **(Optional) If database tables are updated on Supabase:**
+   ```bash
+   cd backend
+   npx prisma db pull
+   npx prisma generate
+   ```
 
 ---
 
