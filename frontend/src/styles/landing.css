@@ -1,0 +1,95 @@
+/* ============================================================================
+   📄 ไฟล์ใหม่: frontend/src/styles/landing.css
+============================================================================ */
+.landing{min-height:100vh;background:var(--bg);color:var(--text)}
+a.btn{text-decoration:none}
+
+/* ---------- Navbar guest ---------- */
+.landing-nav{position:sticky;top:0;z-index:20;background:rgba(255,247,239,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.landing-nav-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
+.landing-nav-actions{display:flex;align-items:center;gap:14px}
+.landing-nav-actions .btn{white-space:nowrap}
+.nav-link{color:var(--link);text-decoration:none;font-weight:500;font-size:14px}
+.nav-link:hover{text-decoration:underline}
+.btn--small{width:auto;padding:8px 18px;font-size:14px}
+
+/* ---------- Hero (ข้อความซ้าย / ภาพขวา) ---------- */
+.hero{padding:64px 20px 56px}
+.hero-inner{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center}
+.hero-copy{text-align:left}
+.hero-badge{display:inline-block;background:#FFF3E8;color:var(--primary);border:1px solid #FED7AA;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;margin-bottom:18px}
+.hero h1{font-size:44px;line-height:1.15;margin:0 0 16px;font-weight:700}
+.hero-highlight{color:var(--primary)}
+.hero-sub{color:var(--muted);font-size:16px;line-height:1.7;max-width:520px;margin:0 0 28px}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+.hero-ctas .btn{width:auto;padding:12px 28px}
+.btn--ghost{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}
+.btn--ghost:hover:not(:disabled){background:rgba(249,115,22,.08)}
+.hero-stats{display:flex;gap:36px;margin-top:40px;flex-wrap:wrap}
+.hero-stats strong{display:block;font-size:22px}
+.hero-stats span{font-size:13px;color:var(--muted)}
+.hero-note{font-size:11px;color:#B9BCC2;margin-top:12px}
+.hero-img{width:100%;max-width:520px;justify-self:center;border-radius:24px}
+
+/* ---------- Meet our top sitters ---------- */
+.sitters{max-width:1080px;margin:0 auto;padding:40px 20px}
+.sitters h2{font-size:28px;margin:0 0 6px}
+.section-sub{color:var(--muted);margin:0 0 28px}
+.sitter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.sitter-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center}
+.sitter-avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#FFF3E8}
+.sitter-card h3{margin:12px 0 2px;font-size:17px}
+.sitter-area{margin:0;color:var(--muted);font-size:13px}
+.stars{color:var(--primary);letter-spacing:2px;font-size:16px;margin:8px 0 4px}
+.sitter-price{color:var(--primary);font-weight:700;font-size:18px;margin-bottom:12px}
+.tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tag{background:#F3F4F6;border-radius:999px;padding:6px 12px;font-size:12.5px;color:#374151}
+.lock-row{display:inline-flex;align-items:center;gap:6px;color:var(--link);font-size:13px;font-weight:500;text-decoration:none;background:#F0FDFA;border:1px dashed #99F6E4;padding:7px 14px;border-radius:999px}
+.lock-row:hover{text-decoration:underline}
+.sitters-more{display:block;text-align:center;margin-top:26px;color:var(--link);font-weight:600;text-decoration:none}
+.sitters-more:hover{text-decoration:underline}
+
+/* ---------- How it works ---------- */
+.how{max-width:1080px;margin:0 auto;padding:48px 20px}
+.how h2{font-size:28px;margin:0 0 6px}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.how-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px}
+.how-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.how-icon{font-size:22px}
+.how-step{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.5px}
+.how-card h3{margin:0 0 6px;font-size:16px}
+.how-card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
+
+/* ---------- Audience ---------- */
+.audience{max-width:1080px;margin:0 auto;padding:24px 20px 48px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.audience-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px}
+.audience-card h3{margin:0 0 12px;font-size:18px}
+.audience-card ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px;line-height:1.9}
+
+/* ---------- CTA banner ---------- */
+.cta-banner{background:var(--primary);color:#fff;text-align:center;padding:48px 20px}
+.cta-banner h2{margin:0 0 8px;font-size:26px}
+.cta-banner p{margin:0 0 20px;opacity:.9}
+.btn--inverse{background:#fff;color:var(--primary);width:auto;padding:12px 28px}
+.btn--inverse:hover:not(:disabled){background:#FFF3E8}
+
+/* ---------- Footer ---------- */
+.landing-footer{padding:28px 20px;text-align:center;color:var(--muted);font-size:13px}
+.landing-footer .logo{justify-content:center;margin-bottom:8px}
+
+/* ---------- Responsive ---------- */
+@media(max-width:900px){
+  .hero-inner{grid-template-columns:1fr;text-align:center}
+  .hero-copy{text-align:center}
+  .hero-ctas{justify-content:center}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-stats{justify-content:center}
+  .hero-img{max-width:420px}
+  .how-grid{grid-template-columns:repeat(2,1fr)}
+  .sitter-grid{grid-template-columns:1fr;max-width:420px;margin:0 auto}
+}
+@media(max-width:560px){
+  .how-grid{grid-template-columns:1fr}
+  .audience{grid-template-columns:1fr}
+  .hero h1{font-size:30px}
+}
