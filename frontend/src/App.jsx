@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { navigate, useHashRoute } from "./router.js";
 import Toast from "./components/Toast.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
@@ -28,9 +29,8 @@ function Router() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!KNOWN_PATHS.includes(path)) navigate(user ? "/" : "/login");
-    else if (path === "/" && !user) navigate("/login");
-    else if ((path === "/login" || path === "/register") && user) navigate("/");
+  if (!KNOWN_PATHS.includes(path)) navigate(user ? "/" : "/login");
+  else if ((path === "/login" || path === "/register") && user) navigate("/");
   }, [path, user]);
 
   let page = null;
@@ -39,8 +39,8 @@ function Router() {
     case "/register":        page = user ? null : <RegisterPage />; break;
     case "/forgot-password": page = <ForgotPasswordPage />; break;
     case "/reset-password":  page = <ResetPasswordPage token={params.get("token")} />; break;
-    case "/":                page = user ? <HomePage /> : null; break;
-    default:                 page = user ? <NotFoundPage /> : null;
+    case "/":                page = user ? <HomePage /> : <LandingPage />; break;
+    default:                 page = user ? <NotFoundPage /> : <LandingPage />;
   }
   return <ErrorBoundary>{page}</ErrorBoundary>;
 }
