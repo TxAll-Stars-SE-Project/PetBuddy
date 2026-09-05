@@ -1,5 +1,5 @@
 import { useAuth } from "../context/AuthContext.jsx";
-import Navbar from "../components/Navbar.jsx";
+import Navbar from "../components/Navbar.jsx"; 
 
 function HomePage() {
   const { user } = useAuth();

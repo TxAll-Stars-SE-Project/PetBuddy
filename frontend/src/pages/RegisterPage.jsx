@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext.jsx";
 import { navigate } from "../router.js";
 import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
@@ -10,6 +9,7 @@ import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 import RolePills from "../components/ui/RolePills.jsx";
+
 function validateRegister(v) {
   const e = {};
   if (!v.username.trim()) e.username = "กรุณากรอกชื่อผู้ใช้";
