@@ -29,7 +29,7 @@ function Router() {
   const { user } = useAuth();
 
   useEffect(() => {
-  if (!KNOWN_PATHS.includes(path)) navigate(user ? "/" : "/login");
+  if (!KNOWN_PATHS.includes(path)) navigate("/");
   else if ((path === "/login" || path === "/register") && user) navigate("/");
   }, [path, user]);
 
