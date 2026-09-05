@@ -27,7 +27,7 @@ function AuthProvider({ children }) {
     localStorage.removeItem("pb_token");
     localStorage.removeItem("pb_user");
     setUser(null);
-    navigate("/login");
+    navigate("/");
     toast("ออกจากระบบแล้ว");
   }, []);
 
