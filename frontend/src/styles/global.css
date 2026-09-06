@@ -4,14 +4,47 @@
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/prompt/700.css');
 
 :root{
-  --primary:#F97316; --primary-hover:#EA580C;   /* ส้ม PetBuddy */
-  --link:#0F766E;                               /* ทีล สำหรับลิงก์ */
-  --bg:#FFF7EF; --surface:#FFFFFF;
-  --text:#1F2937; --muted:#6B7280;
+  /* ===== Brand ===== */
+  --primary:#F97316;            /* ส้มหลัก: ปุ่ม, โลโก้, เน้น */
+  --primary-hover:#EA580C;      /* ส้มเข้มตอน hover */
+  --primary-soft:#FFF3E8;       /* ส้มอ่อน: พื้น badge/hover */
+  --primary-border:#FED7AA;     /* ขอบ badge */
+  --primary-ring:rgba(249,115,22,.15);   /* วง focus input */
+  --primary-ghost-hover:rgba(249,115,22,.08);
+
+  /* ===== Secondary ===== */
+  --link:#0F766E;               /* ทีล: ลิงก์ทุกตัว */
+  --link-soft:#F0FDFA;
+  --link-border:#99F6E4;
+
+  /* ===== Background ===== */
+  --bg:#FFF7EF;                 /* ครีม: พื้นเว็บ */
+  --surface:#FFFFFF;            /* ขาว: การ์ด/navbar/input */
+  --surface-blur:rgba(255,247,239,.92);
+
+  /* ===== Text ===== */
+  --text:#1F2937;
+  --text-secondary:#374151;
+  --muted:#6B7280;
+  --faint:#B9BCC2;
+  --disabled:#C1C1C1;
+  --icon-idle:#C4C7CC;
+
+  /* ===== Border / Chip ===== */
   --border:#E5E7EB;
-  --error:#DC2626; --error-bg:#FEF2F2;
+  --chip:#F3F4F6;
+
+  /* ===== Semantic ===== */
+  --error:#DC2626;  --error-bg:#FEF2F2;
   --success:#16A34A; --success-bg:#F0FDF4;
-  --info:#B45309; --info-bg:#FFFBEB;
+  --info:#B45309;   --info-bg:#FFFBEB;
+
+  /* ===== Shadows ===== */
+  --shadow-card:0 12px 32px rgba(31,41,55,.08);
+  --shadow-pop:0 12px 28px rgba(31,41,55,.12);
+  --shadow-toast:0 10px 24px rgba(22,163,74,.35);
+
+  /* ===== Radius ===== */
   --r-input:10px; --r-btn:12px; --r-card:16px;
 }
 *{box-sizing:border-box}

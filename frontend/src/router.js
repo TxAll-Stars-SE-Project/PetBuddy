@@ -1,13 +1,25 @@
+// src/router.js
 import { useEffect, useState } from "react";
-function navigate(to) { window.location.hash = to; }
+
+export function navigate(to) {
+  window.location.hash = to;
+}
+
 function parseHash() {
   const raw = window.location.hash.replace(/^#/, "") || "/";
   const qIndex = raw.indexOf("?");
-  const path = qIndex === -1 ? raw : raw.slice(0, qIndex);
+  
+  // ตัดเอาเฉพาะ path
+  let path = qIndex === -1 ? raw : raw.slice(0, qIndex);
+  
+  // 👇 บรรทัดนี้สำคัญ: ถ้า path ว่างเปล่า "" ให้เปลี่ยนเป็น "/" ทันที
+  if (!path) path = "/";
+
   const params = new URLSearchParams(qIndex === -1 ? "" : raw.slice(qIndex + 1));
-  return { path: path || "/", params };
+  return { path, params };
 }
-function useHashRoute() {
+
+export function useHashRoute() {
   const [route, setRoute] = useState(parseHash);
   useEffect(() => {
     const onChange = () => setRoute(parseHash());
@@ -16,4 +28,3 @@ function useHashRoute() {
   }, []);
   return route;
 }
-export { navigate, useHashRoute };
