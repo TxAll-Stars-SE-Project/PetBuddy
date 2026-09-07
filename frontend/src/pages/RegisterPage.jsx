@@ -36,10 +36,9 @@ function validateRegister(v) {
   if (!v.postalCode.trim()) e.postalCode = "กรุณากรอกรหัสไปรษณีย์";
   else if (!isPostal(v.postalCode)) e.postalCode = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
 
-  /* ฟิลด์เพิ่มเติมเฉพาะบทบาทพี่เลี้ยง (ตาราง PetSitter) */
   if (v.role === "sitter") {
     if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
-    else if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนไม่ถูกต้อง (Modulo 11)"; 
+    else if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนไม่ถูกต้อง (Modulo 11)";
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
   if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก";
@@ -64,9 +63,8 @@ function RegisterPage() {
     setFormError("");
     const errs = validateRegister(values);
     setErrors(errs);
-    if (Object.keys(errs).length) return; // AC invalid: block ก่อนส่ง
+    if (Object.keys(errs).length) return;
 
-    // 👇 เพิ่มก้อน payload กลับเข้ามาตรงนี้ครับ (ตามที่ AI Reviewer ทัก)
     const payload = {
       username: values.username,
       email: values.email,
@@ -84,30 +82,32 @@ function RegisterPage() {
 
     setStatus("submitting");
     try {
-      const res = await api.post("/auth/register", payload);
-      // contract ส่ง { success: true, userId, user } มา
+      await api.post("/auth/register", payload);
       toast("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
+      // 👇 1. Reset status ตามที่ AI แนะนำ (กันปุ่มค้าง)
+      setStatus("idle"); 
+
       if (err.status === 400 && err.data?.error === "VALIDATION_ERROR") {
-        // backend ส่ง errors รายฟิลด์มา
         setErrors(Object.fromEntries(
           (err.data.errors || []).map((x) => [x.field, x.message])
         ));
       } else if (err.status === 409) {
-        // EMAIL_DUPLICATE / USERNAME_DUPLICATE
         if (err.data?.error === "EMAIL_DUPLICATE") {
           setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" });
         } else if (err.data?.error === "USERNAME_DUPLICATE") {
-          // ถ้า backend ส่ง field มาด้วย ให้ใช้ของ backend
           if (Array.isArray(err.data?.errors)) {
             setErrors(Object.fromEntries(err.data.errors.map((x) => [x.field, x.message])));
           } else {
             setErrors({ username: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" });
           }
+        } else {
+          // 👇 2. Fallback สำหรับ 409 แบบอื่นๆ ที่คาดไม่ถึง
+          setFormError("ข้อมูลนี้ถูกใช้งานแล้วในระบบ");
         }
       } else if (err.status >= 500) {
-        toast("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง", "info");
+        toast("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง", "info");
       } else {
         setFormError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       }
@@ -147,7 +147,6 @@ function RegisterPage() {
               value={values.city} onChange={set("city")} error={errors.city} />
           </div>
 
-          {/* conditional fields: แสดงเมื่อเลือก "พี่เลี้ยงสัตว์" */}
           {values.role === "sitter" && (
             <div className="grid-2">
               <TextInput label="เลขบัตรประชาชน (13 หลัก)" placeholder="1101601805057"
@@ -172,7 +171,6 @@ function RegisterPage() {
           <span className="muted">มีบัญชีแล้ว?</span>
           <a href="#/login">เข้าสู่ระบบ</a>
         </div>
-        <div className="demo-hint">ทดสอบ email ซ้ำ (409): duplicate@petbuddy.com</div>
       </div>
     </div>
   );
