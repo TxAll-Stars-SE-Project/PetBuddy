@@ -19,6 +19,15 @@ export interface ValidationError {
   message: string
 }
 
+export const isThaiIDValid = (id: string): boolean => {
+  if (id.length !== 13 || !/^\d{13}$/.test(id)) return false
+  let sum = 0
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(id.charAt(i), 10) * (13 - i)
+  }
+  return (11 - (sum % 11)) % 10 === parseInt(id.charAt(12), 10)
+}
+
 export const validateRegisterInput = (data: RegisterInput) => {
   const errors: ValidationError[] = []
 
@@ -29,25 +38,25 @@ export const validateRegisterInput = (data: RegisterInput) => {
   const thaiId = (data.thaiId || data.thaiid || '').trim()
 
   if (!username || username.length < 3) {
-    errors.push({ field: 'username', message: 'ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร' })
+    errors.push({ field: 'username', message: 'At least 3 characters' })
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!email || !emailRegex.test(email)) {
-    errors.push({ field: 'email', message: 'รูปแบบอีเมลไม่ถูกต้อง' })
+    errors.push({ field: 'email', message: 'Invalid format' })
   }
 
   if (!password || password.length < 8) {
-    errors.push({ field: 'password', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' })
+    errors.push({ field: 'password', message: 'At least 8 characters' })
   }
 
   if (!role || !['owner', 'sitter'].includes(role)) {
-    errors.push({ field: 'role', message: 'กรุณาเลือกบทบาท (owner หรือ sitter)' })
+    errors.push({ field: 'role', message: 'please select role' })
   }
 
   if (role === 'sitter') {
-    if (!thaiId || !/^\d{13}$/.test(thaiId)) {
-      errors.push({ field: 'thaiId', message: 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก' })
+    if (!thaiId || !isThaiIDValid(thaiId)) {
+      errors.push({ field: 'thaiId', message: 'Invalid format' })
     }
   }
 
