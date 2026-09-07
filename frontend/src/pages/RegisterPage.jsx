@@ -13,6 +13,7 @@ import RolePills from "../components/ui/RolePills.jsx";
 function validateRegister(v) {
   const e = {};
   if (!v.username.trim()) e.username = "กรุณากรอกชื่อผู้ใช้";
+  else if (v.username.length < 3) e.username = "ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร";
   else if (v.username.length > 50) e.username = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร";
 
   if (!v.email.trim()) e.email = "กรุณากรอกอีเมล";
@@ -37,10 +38,11 @@ function validateRegister(v) {
 
   /* ฟิลด์เพิ่มเติมเฉพาะบทบาทพี่เลี้ยง (ตาราง PetSitter) */
   if (v.role === "sitter") {
-    if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+    if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
+    else if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนไม่ถูกต้อง (Modulo 11)"; // 👈 ปรับ
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
-  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก"; // privacy requirement
+  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก";
   return e;
 }
 
@@ -66,24 +68,30 @@ function RegisterPage() {
 
     setStatus("submitting");
     try {
-      /* payload ตรงกับ body ของ POST /auth/register ใน contract เป๊ะ */
-      const payload = {
-        username: values.username, email: values.email, password: values.password,
-        tel: values.tel, province: values.province, city: values.city,
-        postalCode: values.postalCode, role: values.role, consent: values.consent,
-        ...(values.role === "sitter"
-          ? { thaiId: values.thaiId, experience: values.experience }
-          : {}),
-      };
-      await api.post("/auth/register", payload); // AC valid
+      const res = await api.post("/auth/register", payload);
+      // contract ส่ง { success: true, userId, user } มา
       toast("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
-      if (err.status === 400 && Array.isArray(err.data?.errors)) {
-        /* backend ส่ง errors รายฟิลด์มา → map ลงใต้ฟิลด์นั้น ๆ */
-        setErrors(Object.fromEntries(err.data.errors.map((x) => [x.field, x.message])));
+      if (err.status === 400 && err.data?.error === "VALIDATION_ERROR") {
+        // backend ส่ง errors รายฟิลด์มา
+        setErrors(Object.fromEntries(
+          (err.data.errors || []).map((x) => [x.field, x.message])
+        ));
       } else if (err.status === 409) {
-        setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" }); // AC invalid: email ซ้ำ
+        // EMAIL_DUPLICATE / USERNAME_DUPLICATE
+        if (err.data?.error === "EMAIL_DUPLICATE") {
+          setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" });
+        } else if (err.data?.error === "USERNAME_DUPLICATE") {
+          // ถ้า backend ส่ง field มาด้วย ให้ใช้ของ backend
+          if (Array.isArray(err.data?.errors)) {
+            setErrors(Object.fromEntries(err.data.errors.map((x) => [x.field, x.message])));
+          } else {
+            setErrors({ username: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" });
+          }
+        }
+      } else if (err.status >= 500) {
+        toast("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง", "info");
       } else {
         setFormError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       }
