@@ -2,7 +2,7 @@ import { useState } from "react";
 import { navigate } from "../router.js";
 import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
-import { isEmail, isTel, isPostal, isThaiId, passwordOk } from "../utils/validators.js";
+import { isEmail, isTel, isPostal, isThaiId, passwordOk, isUsername } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
 import PasswordInput from "../components/ui/PasswordInput.jsx";
@@ -13,7 +13,7 @@ import RolePills from "../components/ui/RolePills.jsx";
 function validateRegister(v) {
   const e = {};
   if (!v.username.trim()) e.username = "กรุณากรอกชื่อผู้ใช้";
-  else if (v.username.length < 3) e.username = "ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร";
+  else if (!isUsername(v.username)) e.username = "ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร";
   else if (v.username.length > 50) e.username = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร";
 
   if (!v.email.trim()) e.email = "กรุณากรอกอีเมล";
@@ -39,7 +39,7 @@ function validateRegister(v) {
   /* ฟิลด์เพิ่มเติมเฉพาะบทบาทพี่เลี้ยง (ตาราง PetSitter) */
   if (v.role === "sitter") {
     if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
-    else if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนไม่ถูกต้อง (Modulo 11)"; // 👈 ปรับ
+    else if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนไม่ถูกต้อง (Modulo 11)"; 
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
   if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก";
@@ -65,6 +65,22 @@ function RegisterPage() {
     const errs = validateRegister(values);
     setErrors(errs);
     if (Object.keys(errs).length) return; // AC invalid: block ก่อนส่ง
+
+    // 👇 เพิ่มก้อน payload กลับเข้ามาตรงนี้ครับ (ตามที่ AI Reviewer ทัก)
+    const payload = {
+      username: values.username,
+      email: values.email,
+      password: values.password,
+      tel: values.tel,
+      province: values.province,
+      city: values.city,
+      postalCode: values.postalCode,
+      role: values.role,
+      consent: values.consent,
+      ...(values.role === "sitter"
+        ? { thaiId: values.thaiId, experience: values.experience }
+        : {}),
+    };
 
     setStatus("submitting");
     try {
