@@ -4,6 +4,7 @@ import { verifyAuthToken, AuthTokenPayload } from '../utils/jwt.js'
 
 // ขยาย Type ของ Express.Request ให้มีฟิลด์ user เพื่อไม่ให้ TypeScript แจ้งเตือน error
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: AuthTokenPayload
