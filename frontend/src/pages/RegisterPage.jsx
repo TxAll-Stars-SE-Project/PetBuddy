@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
-import { isEmail, isTel, isPostal, passwordOk, isUsername } from "../utils/validators.js";
+import { isEmail, isTel, isPostal, isThaiId, passwordOk, isUsername } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
 import PasswordInput from "../components/ui/PasswordInput.jsx";
@@ -38,6 +38,7 @@ function validateRegister(v) {
 
   if (v.role === "sitter") {
     if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
+    // ใช้ regex 13 หลักพอ เพราะ backend จัดการ Modulo 11 ให้แล้ว
     else if (!/^\d{13}$/.test(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
@@ -87,6 +88,7 @@ export default function RegisterPage() {
       toast("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
+      // 👇 ดึง status และ data จาก Axios error response
       const status = err.response?.status;
       const data = err.response?.data;
       
