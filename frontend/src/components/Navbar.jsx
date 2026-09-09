@@ -1,9 +1,8 @@
-// บนสุด
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import Logo from "./ui/Logo.jsx";
 
-function Navbar() {
+export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   return (
@@ -35,5 +34,3 @@ function Navbar() {
     </header>
   );
 }
-// ท้ายไฟล์
-export default Navbar;

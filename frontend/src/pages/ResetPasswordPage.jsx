@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { navigate } from "../router.js";
-import { toast } from "../utils/toast.js";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { api } from "../services/api.js";
 import { passwordOk } from "../utils/validators.js";
+import { toast } from "../utils/toast.js";
 import Logo from "../components/ui/Logo.jsx";
 import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 
-function ResetPasswordPage({ token }) {
+export default function ResetPasswordPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get("token");
+  
   const [values, setValues] = useState({ password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [expired, setExpired] = useState(false);
@@ -32,14 +36,14 @@ function ResetPasswordPage({ token }) {
       toast("เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
-      if (err.status === 400) setExpired(true); // AC invalid: TOKEN_EXPIRED
+      const status = err.response?.status;
+      if (status === 400) setExpired(true);
       else toast("เกิดข้อผิดพลาด กรุณาลองใหม่", "info");
     } finally {
       setStatus("idle");
     }
   };
 
-  /* ไม่มี token หรือ token หมดอายุ → แสดง error card */
   if (expired || !token) {
     return (
       <div className="auth-page">
@@ -47,7 +51,7 @@ function ResetPasswordPage({ token }) {
           <Logo />
           <h1 className="auth-title">ตั้งรหัสผ่านใหม่</h1>
           <AlertBanner type="error">ลิงก์นี้หมดอายุหรือถูกใช้แล้ว</AlertBanner>
-          <a className="btn btn--aslink" href="#/forgot-password">ขอลิงก์ใหม่</a>
+          <Link className="btn btn--aslink" to="/forgot-password">ขอลิงก์ใหม่</Link>
         </div>
       </div>
     );
@@ -70,5 +74,3 @@ function ResetPasswordPage({ token }) {
     </div>
   );
 }
-
-export default ResetPasswordPage;
