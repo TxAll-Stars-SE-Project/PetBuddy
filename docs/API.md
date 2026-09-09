@@ -118,7 +118,7 @@ Registers a new Pet Owner or Pet Sitter account.
 
 **Request body**
 ```json
-{ "email": "string", "password": "string" }
+{ "email": "string", "password": "string", "rememberMe": "boolean (optional, default false)" }
 ```
 
 **Success — 200**
@@ -128,6 +128,9 @@ Registers a new Pet Owner or Pet Sitter account.
 
 > `role` is not a stored column — it's derived server-side from whether the
 > user has a `petowner` or `petsitter` row.
+>
+> `rememberMe: true` extends the JWT expiry to 30 days instead of the
+> default 1 day (`JWT_EXPIRES_IN_REMEMBER_ME` / `JWT_EXPIRES_IN` env vars).
 
 **Errors**
 | Status | Error code | Condition |
