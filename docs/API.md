@@ -21,16 +21,17 @@ description of existing behavior.
   user with that role. **Auth: Any** means any logged-in user (owner or
   sitter). **Auth: None** means public/unauthenticated access is allowed.
 
-### Standard error shape (assumption)
+### Standard error shape
 
 ```json
-{
-  "error": {
-    "code": "STRING_ERROR_CODE",
-    "message": "Human-readable description"
-  }
-}
+{ "error": "STRING_ERROR_CODE" }
 ```
+
+> Updated from the original `{ "error": { "code", "message" } }` assumption
+> to match `frontend/src/services/api.js`'s existing mock contract (built
+> before the backend), which the shipped auth endpoints (e.g.
+> `POST /auth/login`) now follow. Endpoints not yet implemented should use
+> this same flat shape for consistency.
 
 Common status codes used throughout:
 
@@ -122,13 +123,18 @@ Registers a new Pet Owner or Pet Sitter account.
 
 **Success — 200**
 ```json
-{ "token": "string", "user": { "id": "string", "email": "string", "name": "string", "role": "owner | sitter" } }
+{ "token": "string", "user": { "username": "string", "email": "string", "role": "owner | sitter" } }
 ```
 
+> `role` is not a stored column — it's derived server-side from whether the
+> user has a `petowner` or `petsitter` row.
+
 **Errors**
-| Status | Condition |
-|---|---|
-| 401 | Invalid email or password |
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_FIELDS` | Missing email or password |
+| 401 | `INVALID_CREDENTIALS` | Invalid email or password |
+| 500 | `INTERNAL_SERVER_ERROR` | Unexpected server/database error |
 
 ### `POST /auth/logout`
 
