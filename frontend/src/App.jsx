@@ -1,8 +1,6 @@
-/* src/App.jsx */
-import React, { useEffect } from "react";
-
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
-import { navigate, useHashRoute } from "./router.js";
 import Toast from "./components/Toast.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -13,45 +11,46 @@ import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import "./styles/global.css";
 
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return <NotFoundPage />;
-    return this.props.children;
-  }
+/* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
+function ProtectedRoute({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
-const KNOWN_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
-
-function Router() {
-  const { path, params } = useHashRoute();
+/* Guest Route: ถ้าล็อกอินอยู่แล้ว ห้ามเข้า login/register */
+function GuestRoute({ children }) {
   const { user } = useAuth();
+  if (user) return <Navigate to="/" replace />;
+  return children;
+}
 
-  useEffect(() => {
-  if (!KNOWN_PATHS.includes(path)) navigate("/");
-  else if ((path === "/login" || path === "/register") && user) navigate("/");
-  }, [path, user]);
+// src/App.jsx
+function AppRoutes() {
+  const { user } = useAuth(); // ดึงสถานะ user มาเช็ก
 
-  let page = null;
-  switch (path) {
-    case "/login":           page = user ? null : <LoginPage params={params} />; break;
-    case "/register":        page = user ? null : <RegisterPage />; break;
-    case "/forgot-password": page = <ForgotPasswordPage />; break;
-    case "/reset-password":  page = <ResetPasswordPage token={params.get("token")} />; break;
-    case "/":                page = user ? <HomePage /> : <LandingPage />; break;
-    default:                 page = user ? <NotFoundPage /> : <LandingPage />;
-  }
-  return <ErrorBoundary>{page}</ErrorBoundary>;
+  return (
+    <div className="app-root">
+      <Routes>
+        {/* ถ้ามี user ให้แสดง HomePage ที่ path "/" แต่ถ้าไม่มีให้แสดง LandingPage */}
+        <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
+        
+        <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+        
+        {/* ลบ route /home ทิ้งไป เพราะเราย้ายมาไว้ที่ / แล้ว */}
+        
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <Toast />
+    </div>
+  );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <div className="app-root">
-        <Router />
-        <Toast />
-      </div>
+      <AppRoutes />
     </AuthProvider>
   );
 }

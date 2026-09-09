@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { navigate } from "../router.js";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
-import { isEmail, isTel, isPostal, isThaiId, passwordOk } from "../utils/validators.js";
+import { isEmail, isTel, isPostal, passwordOk, isUsername } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
 import PasswordInput from "../components/ui/PasswordInput.jsx";
@@ -13,6 +13,7 @@ import RolePills from "../components/ui/RolePills.jsx";
 function validateRegister(v) {
   const e = {};
   if (!v.username.trim()) e.username = "กรุณากรอกชื่อผู้ใช้";
+  else if (!isUsername(v.username)) e.username = "ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร";
   else if (v.username.length > 50) e.username = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร";
 
   if (!v.email.trim()) e.email = "กรุณากรอกอีเมล";
@@ -35,16 +36,17 @@ function validateRegister(v) {
   if (!v.postalCode.trim()) e.postalCode = "กรุณากรอกรหัสไปรษณีย์";
   else if (!isPostal(v.postalCode)) e.postalCode = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
 
-  /* ฟิลด์เพิ่มเติมเฉพาะบทบาทพี่เลี้ยง (ตาราง PetSitter) */
   if (v.role === "sitter") {
-    if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+    if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
+    else if (!/^\d{13}$/.test(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
-  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก"; // privacy requirement
+  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก";
   return e;
 }
 
-function RegisterPage() {
+export default function RegisterPage() {
+  const navigate = useNavigate();
   const [values, setValues] = useState({
     role: "owner", username: "", email: "", password: "", confirm: "",
     tel: "", province: "", city: "", postalCode: "",
@@ -62,28 +64,50 @@ function RegisterPage() {
     setFormError("");
     const errs = validateRegister(values);
     setErrors(errs);
-    if (Object.keys(errs).length) return; // AC invalid: block ก่อนส่ง
+    if (Object.keys(errs).length) return;
+
+    const payload = {
+      username: values.username,
+      email: values.email,
+      password: values.password,
+      tel: values.tel,
+      province: values.province,
+      city: values.city,
+      postalCode: values.postalCode,
+      role: values.role,
+      consent: values.consent,
+      ...(values.role === "sitter"
+        ? { thaiId: values.thaiId, experience: values.experience }
+        : {}),
+    };
 
     setStatus("submitting");
     try {
-      /* payload ตรงกับ body ของ POST /auth/register ใน contract เป๊ะ */
-      const payload = {
-        username: values.username, email: values.email, password: values.password,
-        tel: values.tel, province: values.province, city: values.city,
-        postalCode: values.postalCode, role: values.role, consent: values.consent,
-        ...(values.role === "sitter"
-          ? { thaiId: values.thaiId, experience: values.experience }
-          : {}),
-      };
-      await api.post("/auth/register", payload); // AC valid
+      await api.post("/auth/register", payload);
       toast("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
-      if (err.status === 400 && Array.isArray(err.data?.errors)) {
-        /* backend ส่ง errors รายฟิลด์มา → map ลงใต้ฟิลด์นั้น ๆ */
-        setErrors(Object.fromEntries(err.data.errors.map((x) => [x.field, x.message])));
-      } else if (err.status === 409) {
-        setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" }); // AC invalid: email ซ้ำ
+      const status = err.response?.status;
+      const data = err.response?.data;
+      
+      if (status === 400 && data?.error === "VALIDATION_ERROR") {
+        setErrors(Object.fromEntries(
+          (data.errors || []).map((x) => [x.field, x.message])
+        ));
+      } else if (status === 409) {
+        if (data?.error === "EMAIL_DUPLICATE") {
+          setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" });
+        } else if (data?.error === "USERNAME_DUPLICATE") {
+          if (Array.isArray(data?.errors)) {
+            setErrors(Object.fromEntries(data.errors.map((x) => [x.field, x.message])));
+          } else {
+            setErrors({ username: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" });
+          }
+        } else {
+          setFormError("ข้อมูลนี้ถูกใช้งานแล้วในระบบ");
+        }
+      } else if (status >= 500) {
+        toast("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง", "info");
       } else {
         setFormError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       }
@@ -123,7 +147,6 @@ function RegisterPage() {
               value={values.city} onChange={set("city")} error={errors.city} />
           </div>
 
-          {/* conditional fields: แสดงเมื่อเลือก "พี่เลี้ยงสัตว์" */}
           {values.role === "sitter" && (
             <div className="grid-2">
               <TextInput label="เลขบัตรประชาชน (13 หลัก)" placeholder="1101601805057"
@@ -146,11 +169,9 @@ function RegisterPage() {
 
         <div className="auth-links">
           <span className="muted">มีบัญชีแล้ว?</span>
-          <a href="#/login">เข้าสู่ระบบ</a>
+          <Link to="/login">เข้าสู่ระบบ</Link>
         </div>
-        <div className="demo-hint">ทดสอบ email ซ้ำ (409): duplicate@petbuddy.com</div>
       </div>
     </div>
   );
 }
-export default RegisterPage;

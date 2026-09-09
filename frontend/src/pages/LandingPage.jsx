@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Logo from "../components/ui/Logo.jsx";
 import heroPets from "../assets/hero-pets.png";
 import sitterFah from "../assets/sitter-fah.png";
@@ -5,8 +6,6 @@ import sitterNew from "../assets/sitter-new.png";
 import sitterPoom from "../assets/sitter-poom.png";
 import "../styles/landing.css";
 
-
-/* 6 ขั้นตอนทำการ — ดึงจาก Business Flow ในรายงาน Database */
 const HOW_STEPS = [
   { icon: "🔍", title: "Search & Match",         desc: "ค้นหาพี่เลี้ยงโดยกรองตามพื้นที่ ประเภทสัตว์ ช่วงราคา และคะแนนประเมิน" },
   { icon: "📅", title: "Booking Request",        desc: "ส่งคำขอจองโดยระบุวัน เวลา และสัตว์เลี้ยงที่ต้องการฝากดูแล" },
@@ -16,7 +15,6 @@ const HOW_STEPS = [
   { icon: "⭐", title: "Final Payment & Review", desc: "ชำระส่วนที่เหลือเมื่อจบบริการ และรีวิวเพื่อช่วยผู้ใช้งานคนอื่น" },
 ];
 
-/* พี่เลี้ยงเด่น (mock) — การ์ดที่ 3 "ล็อก" เพื่อสื่อ limited access ของ guest */
 const TOP_SITTERS = [
   { img: sitterFah,  name: "พี่ฟ้า",  area: "Bangkok",   price: "฿450/วัน", tags: ["พาเดินเล่น", "รับฝากเลี้ยง"], locked: false },
   { img: sitterNew,  name: "พี่นิว",  area: "Chiang Mai", price: "฿350/วัน", tags: ["พาเดินเล่น", "เยี่ยมบ้าน"],   locked: false },
@@ -26,18 +24,16 @@ const TOP_SITTERS = [
 export default function LandingPage() {
   return (
     <div className="landing">
-      {/* ===== Navbar guest ===== */}
       <header className="landing-nav">
         <div className="landing-nav-inner">
           <Logo />
           <nav className="landing-nav-actions">
-            <a className="btn btn--ghost btn--small" href="#/login">เข้าสู่ระบบ</a>
-            <a className="btn btn--small" href="#/register">สมัครสมาชิก</a>
+            <Link className="btn btn--ghost btn--small" to="/login">เข้าสู่ระบบ</Link>
+            <Link className="btn btn--small" to="/register">สมัครสมาชิก</Link>
           </nav>
         </div>
       </header>
 
-      {/* ===== Hero: ข้อความซ้าย + ภาพขวา (ตามดราฟ) ===== */}
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-copy">
@@ -52,8 +48,8 @@ export default function LandingPage() {
               ค้นหา จอง ชำระเงิน และติดตามการดูแล ครบจบในที่เดียว
             </p>
             <div className="hero-ctas">
-              <a className="btn" href="#/register">สมัครสมาชิกฟรี</a>
-              <a className="btn btn--ghost" href="#/login">เข้าสู่ระบบ</a>
+              <Link className="btn" to="/register">สมัครสมาชิกฟรี</Link>
+              <Link className="btn btn--ghost" to="/login">เข้าสู่ระบบ</Link>
             </div>
             <div className="hero-stats">
               <div><strong>🐾 120+</strong><span>พี่เลี้ยงที่ผ่านการตรวจสอบ</span></div>
@@ -66,7 +62,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== Meet our top sitters (preview + limited access) ===== */}
       <section className="sitters">
         <h2>พบกับพี่เลี้ยงเด่นของเรา</h2>
         <p className="section-sub">ดูตัวอย่างได้ฟรี — ล็อกอินเพื่อเปิดโปรไฟล์และค้นหาพี่เลี้ยงทั้งหมด</p>
@@ -79,7 +74,7 @@ export default function LandingPage() {
               <div className="stars" aria-label="คะแนน 5 ดาว">★★★★★</div>
               <div className="sitter-price">{s.price}</div>
               {s.locked ? (
-                <a className="lock-row" href="#/login">🔒 ล็อกอินเพื่อดูโปรไฟล์เต็ม</a>
+                <Link className="lock-row" to="/login">🔒 ล็อกอินเพื่อดูโปรไฟล์เต็ม</Link>
               ) : (
                 <div className="tags">
                   {s.tags.map((t) => <span className="tag" key={t}>{t}</span>)}
@@ -88,10 +83,9 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-        <a className="sitters-more" href="#/login">เข้าสู่ระบบเพื่อดูพี่เลี้ยงทั้งหมด →</a>
+        <Link className="sitters-more" to="/login">เข้าสู่ระบบเพื่อดูพี่เลี้ยงทั้งหมด →</Link>
       </section>
 
-      {/* ===== How it works ===== */}
       <section className="how">
         <h2>ใช้งานยังไง?</h2>
         <p className="section-sub">6 ขั้นตอนง่าย ๆ ตั้งแต่ค้นหาจนถึงรีวิว</p>
@@ -109,7 +103,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== สำหรับใครบ้าง ===== */}
       <section className="audience">
         <div className="audience-card">
           <h3>🐶 สำหรับเจ้าของสัตว์เลี้ยง</h3>
@@ -131,14 +124,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== CTA banner ===== */}
       <section className="cta-banner">
         <h2>พร้อมเข้าร่วมครอบครัว PetBuddy หรือยัง?</h2>
         <p>สมัครฟรีได้ทั้งเจ้าของสัตว์เลี้ยงและพี่เลี้ยงสัตว์</p>
-        <a className="btn btn--inverse" href="#/register">เริ่มเลย →</a>
+        <Link className="btn btn--inverse" to="/register">เริ่มเลย →</Link>
       </section>
 
-      {/* ===== Footer ===== */}
       <footer className="landing-footer">
         <Logo />
         <p>© 2026 PetBuddy — โครงการรายวิชา Software Engineering</p>

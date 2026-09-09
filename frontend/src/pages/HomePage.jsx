@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext.jsx";
-import Navbar from "../components/Navbar.jsx"; 
+import Navbar from "../components/Navbar.jsx";
 
-function HomePage() {
+export default function HomePage() {
   const { user } = useAuth();
   return (
     <div>
@@ -18,4 +18,3 @@ function HomePage() {
     </div>
   );
 }
-export default HomePage;
