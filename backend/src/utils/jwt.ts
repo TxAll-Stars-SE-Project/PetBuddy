@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import { UserRole } from '../types/user.js'
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1d'
@@ -6,7 +7,7 @@ const JWT_EXPIRES_IN_REMEMBER_ME = process.env.JWT_EXPIRES_IN_REMEMBER_ME ?? '30
 
 export interface AuthTokenPayload {
   userId: number
-  role: 'owner' | 'sitter'
+  role: UserRole
 }
 
 export const signAuthToken = (payload: AuthTokenPayload, rememberMe = false): string =>

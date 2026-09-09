@@ -1,9 +1,11 @@
+import { UserRole } from '../types/user.js'
+
 export interface RegisterInput {
   username?: string
   name?: string
   email?: string
   password?: string
-  role?: 'owner' | 'sitter' | string
+  role?: UserRole | string
   tel?: string
   province?: string
   city?: string

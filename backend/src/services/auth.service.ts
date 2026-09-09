@@ -3,13 +3,14 @@ import prisma from '../utils/prisma.js'
 import { hashPassword } from '../utils/password.js'
 import { AppError } from '../utils/errors.js'
 import { RegisterInput } from '../validators/auth.validator.js'
+import { UserRole } from '../types/user.js'
 
 export const registerUser = async (data: RegisterInput) => {
   const username = (data.username || data.name || '').trim()
   const email = (data.email || '').trim().toLowerCase()
   const thaiId = (data.thaiId || data.thaiid || '').trim()
   const postal = (data.postalCode || data.postal_code || '').trim()
-  const role = data.role as 'owner' | 'sitter'
+  const role = data.role as UserRole
   const password = data.password!
 
   // 1. Hash Password

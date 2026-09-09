@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { verifyAuthToken, AuthTokenPayload } from '../utils/jwt.js'
+import { UserRole } from '../types/user.js'
 
 // ขยาย Type ของ Express.Request ให้มีฟิลด์ user เพื่อไม่ให้ TypeScript แจ้งเตือน error
 declare global {
@@ -26,6 +27,11 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
   const token = authHeader.split(' ')[1]
 
+  if (!token) {
+    res.status(401).json({ error: 'UNAUTHORIZED', message: 'Token missing from authorization header' })
+    return
+  }
+
   try {
     const payload = verifyAuthToken(token)
     req.user = payload
@@ -44,7 +50,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
  * Middleware สำหรับตรวจสอบสิทธิ์ตามบทบาท (Role-based access control)
  * ตัวอย่างการเรียกใช้: authorize('owner') หรือ authorize('owner', 'sitter')
  */
-export const authorize = (...roles: ('owner' | 'sitter')[]) => {
+export const authorize = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'UNAUTHORIZED', message: 'Authentication required' })
