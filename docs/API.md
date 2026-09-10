@@ -141,16 +141,24 @@ Registers a new Pet Owner or Pet Sitter account.
 
 ### `POST /auth/logout`
 
-**Auth:** Any. No request body (token/session taken from `Authorization`
-header). Invalidates the current session/token so the browser back button
-cannot return to authenticated pages using a cached response.
+**Auth:** Any. No request body — the token is taken from the
+`Authorization: Bearer <token>` header. Invalidates the current token by
+inserting it into the `tokenblacklist` table (checked by `requireAuth` on
+future protected routes), until its natural expiry. Only the current token
+is invalidated — other devices/sessions for the same user are unaffected.
 
-**Success — 204** — no content.
+**Success — 200**
+```json
+{ "success": true, "message": "Logged out successfully" }
+```
 
 **Errors**
-| Status | Condition |
-|---|---|
-| 401 | Not authenticated |
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_TOKEN` | No `Authorization` header / token present |
+| 401 | `INVALID_TOKEN` | Token is malformed or expired |
+| 401 | `TOKEN_INVALIDATED` | Token was already logged out / blacklisted |
+| 500 | `INTERNAL_SERVER_ERROR` | Database error while blacklisting the token |
 
 ### `POST /auth/password-reset`
 
@@ -789,6 +797,15 @@ Controls whether the user's profile and pet profiles are public or private.
 ### DailyReport
 ```json
 { "id": "string", "bookingId": "string", "notes": "string", "photoUrls": ["string"], "timestamp": "string" }
+```
+
+### TokenBlacklist
+
+Internal table, not exposed via any API response. Backs `POST
+/auth/logout` and the `requireAuth` middleware's invalidation check.
+
+```json
+{ "id": "number", "token": "string", "expiresat": "string (ISO datetime)" }
 ```
 
 ---
