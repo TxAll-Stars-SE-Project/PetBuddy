@@ -108,3 +108,9 @@ model services {
   servicename String    @db.VarChar(255)
   petsitter   petsitter @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 }
+
+model tokenblacklist {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @db.VarChar(500)
+  expiresat DateTime @db.Timestamp(6)
+}
