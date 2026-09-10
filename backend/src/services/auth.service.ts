@@ -2,8 +2,7 @@ import { Prisma } from '../generated/prisma/client.js'
 import prisma from '../utils/prisma.js'
 import { hashPassword } from '../utils/password.js'
 import { AppError } from '../utils/errors.js'
-import { RegisterInput } from '../validators/auth.validator.js'
-import { UserRole } from '../types/user.js'
+import { RegisterInput, UserRole } from '../types/user.js'
 
 export const registerUser = async (data: RegisterInput) => {
   const username = (data.username || data.name || '').trim()

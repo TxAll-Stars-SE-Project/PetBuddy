@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { validateRegisterInput } from '../../validators/auth.validator.js'
+import { validateLoginInput, validateRegisterInput } from '../../validators/auth.validator.js'
 import * as authService from '../../services/auth.service.js'
 import { AppError } from '../../utils/errors.js'
 import prisma from '../../utils/prisma.js'
@@ -7,14 +7,9 @@ import { comparePassword } from '../../utils/password.js'
 import { signAuthToken } from '../../utils/jwt.js'
 
 export const login = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, rememberMe } = req.body ?? {}
-
-  if (!email || !password) {
-    res.status(400).json({ error: 'MISSING_FIELDS' })
-    return
-  }
-
   try {
+    const { email, password, rememberMe } = validateLoginInput(req.body)
+
     const user = await prisma.uSER.findUnique({
       where: { email },
       include: { petowner: true, petsitter: true },
@@ -47,27 +42,28 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       },
     })
   } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        error: error.errorCode,
+        message: error.message,
+        ...(error.errors ? { errors: error.errors } : {}),
+      })
+      return
+    }
+
     console.error('Error during login:', error)
     res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' })
   }
 }
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 1. ตรวจสอบความถูกต้องของ Input
-    const validationErrors = validateRegisterInput(req.body)
-    if (validationErrors.length > 0) {
-      res.status(400).json({
-        error: 'VALIDATION_ERROR',
-        message: 'Invalid input data',
-        errors: validationErrors,
-      })
-      return
-    }
+    // 1. ตรวจสอบความถูกต้องของ Input (โยน AppError ทันทีหากข้อมูลไม่ถูกต้อง)
+    const validatedInput = validateRegisterInput(req.body)
 
-    const result = await authService.registerUser(req.body)
+    const result = await authService.registerUser(validatedInput)
 
-    // 3. ตอบกลับเมื่อสำเร็จ (201 Created)
+    // 2. ตอบกลับเมื่อสำเร็จ (201 Created)
     res.status(201).json({
       success: true,
       ...result,
