@@ -107,3 +107,57 @@ body{margin:0;background:var(--bg)}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--success);color:#fff;border-radius:999px;padding:10px 22px;font-size:14px;font-weight:500;box-shadow:0 10px 24px rgba(22,163,74,.35);z-index:50;animation:rise .25s ease}
 .toast--info{background:var(--info)}
 @keyframes rise{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ---------- หน้า Profile ---------- */
+.profile-main {  min-height: calc(100vh - 64px);  display: flex;  justify-content: center;  align-items: center;  padding: 40px 20px;  background: #f8f9fa;}
+.profile-card {  width: 100%;  max-width: 600px;  background: #ffffff;  border-radius: 20px;  padding: 40px;  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);}
+.profile-avatar {  width: 90px;  height: 90px;  margin: 0 auto 16px;  display: flex;  align-items: center;  justify-content: center;  border-radius: 50%;  background: #f97316;  font-size: 36px;  font-weight: 700;  color: #ffffff;}
+.profile-card h1 {  margin: 0;  text-align: center;  font-size: 28px;}
+.profile-role {  margin: 8px 0 30px;  text-align: center;  color: #666666;}
+.profile-section {  margin-top: 30px;}
+.profile-section-header {  display: flex;  justify-content: space-between;  align-items: center;  margin-bottom: 15px;}
+.profile-section h2 {  margin: 0;  font-size: 20px;}
+.profile-row {  display: flex;  align-items: flex-start;  justify-content: space-between;  gap: 20px;  min-height: 55px;  padding: 8px 0;  border-bottom: 1px solid #eeeeee;}
+.profile-label {  flex-shrink: 0;  padding-top: 10px;  font-weight: 600;  color: #555555;}
+.profile-field-container {  width: 100%;  max-width: 300px;  text-align: right;}
+.profile-value {  display: block;  padding-top: 10px;  color: #222222;  word-break: break-word;}
+.profile-input {  width: 100%;  padding: 9px 12px;  border: 1px solid #cccccc;  border-radius: 8px;  font-size: 14px;  box-sizing: border-box;  outline: none;}
+.profile-input:focus {  border-color: #888888;}
+.profile-input-error {  border-color: #dd3333;}
+.profile-field-error {  margin-top: 5px;  color: #dd3333;  font-size: 13px;  line-height: 1.4;}
+/* Base button styles */
+.profile-edit-button,
+.profile-save-button,
+.profile-cancel-button,
+.profile-confirm-button,
+.profile-delete-button {  padding: 6px 14px;  border: none;  border-radius: 10px;  font-size: 14px;  font-weight: 600;  cursor: pointer;  transition: opacity 0.2s ease;}
+.profile-edit-button,
+.profile-delete-button,
+.profile-confirm-button {  flex: 1;}
+.profile-save-button,
+.profile-confirm-button {  background-color: #f97316;  color: #ffffff;  min-width: 120px;}
+.profile-cancel-button {  background-color: #e5e7eb;  color: #374151;}
+.profile-edit-button:hover,
+.profile-save-button:hover,
+.profile-delete-button:hover,
+.profile-confirm-button:hover,
+.profile-cancel-button:hover {  opacity: 0.85;}
+.profile-actions {  display: flex;  flex-direction: column;  gap: 12px;  margin-top: 35px;}
+.profile-actions-row {  display: flex;  gap: 12px;  width: 100%;}
+.profile-actions-row button {  flex: 1;}
+
+/* ---------- Delete Account Modal ---------- */
+.delete-modal-overlay {  position: fixed;  inset: 0;  display: flex;  justify-content: center;  align-items: center;  background: rgba(0, 0, 0, 0.45);  z-index: 9999;}
+.delete-modal { width: 90%;  max-width: 450px;  background: #ffffff;  border-radius: 16px;  padding: 30px;  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);}
+.delete-modal h2 {  margin-top: 0;  margin-bottom: 12px;  font-size: 24px;}
+.delete-modal-warning {  color: #d32f2f;  font-weight: 600;}
+.delete-modal p {  line-height: 1.5;}
+.delete-password-input {  width: 100%;  box-sizing: border-box;  padding: 12px 14px;  border: 1px solid #cccccc;  border-radius: 8px;  font-size: 15px;  margin-top: 10px;}
+.delete-password-input:focus {  outline: none;  border-color: #888888;}
+.delete-error {  margin-top: 8px;  color: #d32f2f;  font-size: 14px;}
+.delete-modal-actions {  display: flex;  gap: 12px;  margin-top: 24px;}
+.delete-modal-actions button {  flex: 1;  padding: 11px 16px;  border: none;  border-radius: 8px;  font-size: 14px;  font-weight: 600;  cursor: pointer;  transition: opacity 0.2s ease;}
+.delete-modal-actions .delete-cancel-button {  background: #eeeeee;  color: #333333;}
+.delete-modal-actions .delete-confirm-button {  background: #d32f2f;  color: #ffffff;}
+.delete-modal-actions button:hover {  opacity: 0.85;}
+.delete-modal-actions button:disabled {  opacity: 0.6;  cursor: not-allowed;}

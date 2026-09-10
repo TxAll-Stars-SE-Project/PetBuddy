@@ -10,6 +10,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import "./styles/global.css";
 
 class ErrorBoundary extends React.Component {
@@ -21,7 +22,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const KNOWN_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
+const KNOWN_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/profile"];
 
 function Router() {
   const { path, params } = useHashRoute();
@@ -39,6 +40,7 @@ function Router() {
     case "/register":        page = user ? null : <RegisterPage />; break;
     case "/forgot-password": page = <ForgotPasswordPage />; break;
     case "/reset-password":  page = <ResetPasswordPage token={params.get("token")} />; break;
+    case "/profile":         page = user ? <ProfilePage />: null; break;
     case "/":                page = user ? <HomePage /> : null; break;
     default:                 page = user ? <NotFoundPage /> : null;
   }
