@@ -4,7 +4,7 @@ import * as authService from '../../services/auth.service.js'
 import { AppError } from '../../utils/errors.js'
 import prisma from '../../utils/prisma.js'
 import { comparePassword } from '../../utils/password.js'
-import { signAuthToken, verifyAuthToken } from '../../utils/jwt.js'
+import { signAuthToken } from '../../utils/jwt.js'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
 
 export const login = async (req: Request, res: Response): Promise<void> => {
@@ -88,34 +88,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 }
 
+// Assumes requireAuth ran first: token is already verified and confirmed
+// not blacklisted, with req.token/req.auth populated.
 export const logout = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const header = req.headers.authorization
-  const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined
-
-  if (!token) {
-    res.status(400).json({ error: 'MISSING_TOKEN' })
-    return
-  }
-
-  let payload
   try {
-    payload = verifyAuthToken(token)
-  } catch {
-    res.status(401).json({ error: 'INVALID_TOKEN' })
-    return
-  }
-
-  try {
-    const alreadyBlacklisted = await prisma.tokenblacklist.findUnique({ where: { token } })
-    if (alreadyBlacklisted) {
-      res.status(401).json({ error: 'TOKEN_INVALIDATED' })
-      return
-    }
-
     await prisma.tokenblacklist.create({
       data: {
-        token,
-        expiresat: new Date(payload.exp! * 1000),
+        token: req.token!,
+        expiresat: new Date(req.auth!.exp! * 1000),
       },
     })
 
