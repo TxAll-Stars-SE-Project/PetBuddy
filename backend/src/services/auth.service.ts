@@ -2,6 +2,7 @@ import prisma from '../utils/prisma.js'
 import { hashPassword } from '../utils/password.js'
 import { AppError } from '../utils/errors.js'
 import { RegisterInput, UserRole } from '../types/user.js'
+import { sendWelcomeEmail } from './mail.service.js'
 
 interface NewUserRow {
   userid: number
@@ -39,6 +40,13 @@ export const registerUser = async (data: RegisterInput) => {
     `
 
     const newUser = rows[0]
+
+    // ส่ง Welcome Email เบื้องหลัง (Non-blocking) เพื่อให้การสมัครสมาชิกตอบสนองรวดเร็ว
+    void sendWelcomeEmail({
+      email: newUser.email,
+      username: newUser.username,
+      role,
+    })
 
     return {
       userId: newUser.userid,
