@@ -34,6 +34,57 @@ function ProfilePage() {
   const [originalProfile, setOriginalProfile] = useState(profile);
   const [errors, setErrors] = useState({});
 
+  // GET /api/users/me
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const res = await api.get("/users/me");
+        const data = res.data?.data;
+
+        if (data) {
+          const loadedProfile = {
+            username: data.username || "",
+            email: data.email || "",
+            tel: data.tel || "",
+            address: data.address || "",
+            province: data.province || "",
+            district: data.district || data.city || "",
+            subdistrict: data.subdistrict || "",
+            postalCode: data.postalCode || "",
+            role: data.role || "owner",
+            experience: data.experience || "",
+            thaiId: data.thaiId || "",
+          };
+
+          setProfile(loadedProfile);
+          setOriginalProfile(loadedProfile);
+
+          localStorage.setItem(
+            "pb_user",
+            JSON.stringify({ ...user, ...loadedProfile, pets: data.pets || [] })
+          );
+
+          if (data.pets && Array.isArray(data.pets)) {
+            const mappedPets = data.pets.map((p) => ({
+              petId: p.petId || p.petid || p.id || null,
+              name: p.name || "",
+              species: p.species || "",
+              breed: p.breed || "",
+              age: p.birthDate || "",
+              photo: p.imageUrl || "",
+              notes: p.allergy ? `แพ้: ${p.allergy}` : "",
+            }));
+            setPets(mappedPets);
+          }
+        }
+      } catch (err) {
+        console.error("ดึงข้อมูลโปรไฟล์ไม่สำเร็จ:", err);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
   // Drop down address states
   const [availableDistricts, setAvailableDistricts] = useState([]);
   const [availableSubdistricts, setAvailableSubdistricts] = useState([]);
@@ -115,7 +166,7 @@ function ProfilePage() {
   const [modalMode, setModalMode] = useState("add");
   const [currentPetIndex, setCurrentPetIndex] = useState(null);
   const [activePetForm, setActivePetForm] = useState({
-    name: "", species: "", breed: "", age: "", photo: "", notes: "",
+    petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "",
   });
   const [petError, setPetError] = useState("");
 
@@ -149,7 +200,7 @@ function ProfilePage() {
         thaiId: profile.thaiId
       };
 
-      //await api.put("/users/profile", payload);
+      //await api.put("/users/me", payload);
 
       const updatedUser = { ...user, ...profile, pets };
       localStorage.setItem("pb_user", JSON.stringify(updatedUser));
@@ -179,7 +230,7 @@ function ProfilePage() {
   const openAddPetModal = () => {
     setCurrentPetIndex(null);
     setModalMode("add");
-    setActivePetForm({ name: "", species: "", breed: "", age: "", photo: "", notes: "" });
+    setActivePetForm({ petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "" });
     setPetError("");
     setShowPetModal(true);
   };

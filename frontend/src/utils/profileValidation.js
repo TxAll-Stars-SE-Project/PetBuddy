@@ -25,16 +25,28 @@ export function validateProfile(v) {
     errors.tel = "เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก";
   }
 
-  if (!v.province.trim()) {
-    errors.province = "กรุณากรอกจังหวัด";
-  } else if (v.province.length > 20) {
-    errors.province = "จังหวัดต้องไม่เกิน 20 ตัวอักษร";
+  if (!v.address?.trim()) {
+    errors.address = "กรุณากรอกรายละเอียดที่อยู่ (บ้านเลขที่, ซอย, ถนน)";
+  } else if (v.address.length > 255) {
+    errors.address = "รายละเอียดที่อยู่ต้องไม่เกิน 255 ตัวอักษร";
   }
 
-  if (!v.city.trim()) {
-    errors.city = "กรุณากรอกเมือง/อำเภอ";
-  } else if (v.city.length > 50) {
-    errors.city = "เมือง/อำเภอต้องไม่เกิน 50 ตัวอักษร";
+  if (!v.province.trim()) {
+    errors.province = "กรุณากรอกจังหวัด";
+  } else if (v.province.length > 50) {
+    errors.province = "จังหวัดต้องไม่เกิน 50 ตัวอักษร";
+  }
+
+  if (!v.district?.trim()) {
+    errors.district = "กรุณากรอกเมือง/อำเภอ";
+  } else if (v.district.length > 50) {
+    errors.district = "เมือง/อำเภอต้องไม่เกิน 50 ตัวอักษร";
+  }
+
+  if (!v.subdistrict?.trim()) {
+    errors.subdistrict = "กรุณากรอกตำบล/แขวง";
+  } else if (v.subdistrict.length > 50) {
+    errors.subdistrict = "ตำบล/แขวงต้องไม่เกิน 50 ตัวอักษร";
   }
 
   if (!v.postalCode.trim()) {
