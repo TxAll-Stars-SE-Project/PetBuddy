@@ -25,8 +25,10 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
   const role = toCleanString(body.role)
   const tel = toCleanString(body.tel).replace(/[\s-]/g, '')
   const province = toCleanString(body.province)
-  const city = toCleanString(body.city)
+  const district = toCleanString(body.district || body.city)
+  const subdistrict = toCleanString(body.subdistrict || body.subDistrict || body.tambon)
   const postalCode = toCleanString(body.postalCode || body.postal_code)
+  const address = toCleanString(body.address || body.addressDetail || body.address_detail)
   const thaiId = toCleanString(body.thaiId || body.thaiid)
   const experience = toCleanString(body.experience)
 
@@ -68,25 +70,32 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
   // 6. Province
   if (isEmpty(body.province)) {
     errors.push({ field: 'province', message: 'กรุณากรอกจังหวัด' })
-  } else if (province.length > 50) {
-    errors.push({ field: 'province', message: 'จังหวัดต้องไม่เกิน 50 ตัวอักษร' })
+  } else if (province.length > 100) {
+    errors.push({ field: 'province', message: 'จังหวัดต้องไม่เกิน 100 ตัวอักษร' })
   }
 
-  // 7. City
-  if (isEmpty(body.city)) {
-    errors.push({ field: 'city', message: 'กรุณากรอกเมือง/อำเภอ' })
-  } else if (city.length > 50) {
-    errors.push({ field: 'city', message: 'เมือง/อำเภอต้องไม่เกิน 50 ตัวอักษร' })
+  // 7. District (อำเภอ/เขต)
+  if (isEmpty(district)) {
+    errors.push({ field: 'district', message: 'กรุณากรอกอำเภอ/เขต' })
+  } else if (district.length > 100) {
+    errors.push({ field: 'district', message: 'อำเภอ/เขตต้องไม่เกิน 100 ตัวอักษร' })
   }
 
-  // 8. Postal Code
+  // 8. Subdistrict (ตำบล/แขวง)
+  if (isEmpty(subdistrict)) {
+    errors.push({ field: 'subdistrict', message: 'กรุณากรอกตำบล/แขวง' })
+  } else if (subdistrict.length > 100) {
+    errors.push({ field: 'subdistrict', message: 'ตำบล/แขวงต้องไม่เกิน 100 ตัวอักษร' })
+  }
+
+  // 9. Postal Code
   if (isEmpty(body.postalCode) && isEmpty(body.postal_code)) {
     errors.push({ field: 'postalCode', message: 'กรุณากรอกรหัสไปรษณีย์' })
   } else if (!/^\d{5}$/.test(postalCode)) {
     errors.push({ field: 'postalCode', message: 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก' })
   }
 
-  // 9. Sitter-specific fields
+  // 10. Sitter-specific fields
   if (role === 'sitter') {
     if (isEmpty(body.thaiId) && isEmpty(body.thaiid)) {
       errors.push({ field: 'thaiId', message: 'กรุณากรอกเลขบัตรประชาชน' })
@@ -110,8 +119,10 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
     role,
     tel,
     province,
-    city,
+    district,
+    subdistrict,
     postalCode,
+    address,
     ...(role === 'sitter' ? { thaiId, experience } : {}),
   }
 }
