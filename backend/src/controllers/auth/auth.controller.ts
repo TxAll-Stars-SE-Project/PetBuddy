@@ -60,7 +60,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     // 1. ตรวจสอบความถูกต้องของ Input (โยน AppError ทันทีหากข้อมูลไม่ถูกต้อง)
-    const validatedInput = validateRegisterInput(req.body)
+    const validatedInput = await validateRegisterInput(req.body)
 
     const result = await authService.registerUser(validatedInput)
 

@@ -16,40 +16,34 @@ export const registerUser = async (data: RegisterInput) => {
   // 1. Hash Password
   const hashedPassword = await hashPassword(password)
 
-  // 2. บันทึกลงฐานข้อมูลด้วย Transaction และให้ Prisma ตรวจสอบ Unique Constraints
+  // 2. บันทึกลงฐานข้อมูลด้วย Nested Write เพื่อรองรับ Connection Pooler / PgBouncer อย่างเสถียร
   try {
-    const newUser = await prisma.$transaction(async (tx) => {
-      const user = await tx.uSER.create({
-        data: {
-          username,
-          email,
-          password: hashedPassword,
-          tel: data.tel ? String(data.tel).trim() : null,
-          province: data.province ? String(data.province).trim() : null,
-          district: data.district ? String(data.district).trim() : null,
-          subdistrict: subdistrict || null,
-          postal_code: postal || null,
-          address: data.address ? String(data.address).trim() : null,
-        },
-      })
-
-      if (role === 'sitter') {
-        await tx.petsitter.create({
-          data: {
-            userid: user.userid,
-            thaiid: thaiId,
-            experience: data.experience ? String(data.experience).trim() : null,
-          },
-        })
-      } else {
-        await tx.petowner.create({
-          data: {
-            userid: user.userid,
-          },
-        })
-      }
-
-      return user
+    const newUser = await prisma.uSER.create({
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+        tel: data.tel ? String(data.tel).trim() : null,
+        province: data.province ? String(data.province).trim() : null,
+        district: data.district ? String(data.district).trim() : null,
+        subdistrict: subdistrict || null,
+        postal_code: postal || null,
+        address: data.address ? String(data.address).trim() : null,
+        ...(role === 'sitter'
+          ? {
+              petsitter: {
+                create: {
+                  thaiid: thaiId,
+                  experience: data.experience ? String(data.experience).trim() : null,
+                },
+              },
+            }
+          : {
+              petowner: {
+                create: {},
+              },
+            }),
+      },
     })
 
     return {
@@ -63,11 +57,11 @@ export const registerUser = async (data: RegisterInput) => {
     }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const targetStr = Array.isArray(error.meta?.target)
-        ? error.meta.target.join(' ').toLowerCase()
-        : typeof error.meta?.target === 'string'
-        ? error.meta.target.toLowerCase()
-        : ''
+      const targetStr = [
+        Array.isArray(error.meta?.target) ? error.meta.target.join(' ') : (error.meta?.target || ''),
+        (error.meta as Record<string, unknown> | undefined)?.constraint || '',
+        error.message || '',
+      ].join(' ').toLowerCase()
 
       if (targetStr.includes('email')) {
         throw new AppError(409, 'EMAIL_DUPLICATE', 'Email already registered')
