@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import { navigate } from "../router.js";
 import { api } from "../services/api.js";
+import provincesData from "../assets/thai-address/province.json";
+import districtsData from "../assets/thai-address/district.json";
+import subDistrictsData from "../assets/thai-address/sub_district.json";
 
 import ProfileField from "../components/ProfileField.jsx";
 import DeleteAccountModal from "../components/DeleteAccountModal.jsx";
@@ -17,8 +20,10 @@ function ProfilePage() {
     username: user?.username || "",
     email: user?.email || "",
     tel: user?.tel || "",
+    address: user?.address || "",
     province: user?.province || "",
-    city: user?.city || "",
+    district: user?.district || "",      
+    subdistrict: user?.subdistrict || "", 
     postalCode: user?.postalCode || "",
     role: user?.role || "owner",
     experience: user?.experience || "",
@@ -28,12 +33,82 @@ function ProfilePage() {
   const [originalProfile, setOriginalProfile] = useState(profile);
   const [errors, setErrors] = useState({});
 
-  // Individual Section Edit States
+  // Drop down address states
+  const [availableDistricts, setAvailableDistricts] = useState([]);
+  const [availableSubdistricts, setAvailableSubdistricts] = useState([]);
+  const [availableZipcodes, setAvailableZipcodes] = useState([]);
+
+  useEffect(() => {
+    if (profile.province) {
+      const prov = provincesData.find(p => p.name_th === profile.province);
+      if (prov) {
+        const filteredDistricts = districtsData.filter(d => d.province_id === prov.id);
+        setAvailableDistricts(filteredDistricts);
+        
+        if (profile.district) {
+          const dist = filteredDistricts.find(d => d.name_th === profile.district);
+          if (dist) {
+            const filteredSubdistricts = subDistrictsData.filter(s => s.district_id === dist.id);
+            setAvailableSubdistricts(filteredSubdistricts);
+            
+            if (profile.subdistrict) {
+              const sub = filteredSubdistricts.find(s => s.name_th === profile.subdistrict);
+              if (sub) setAvailableZipcodes(sub.zip_code ? [sub.zip_code] : []);
+            }
+          }
+        }
+      }
+    }
+  }, [profile.province, profile.district, profile.subdistrict]);
+
+  const handleProvinceChange = (e) => {
+    const selectedProvince = e.target.value;
+    handleChange("province", selectedProvince);
+    handleChange("district", ""); 
+    handleChange("subdistrict", "");
+    handleChange("postalCode", ""); 
+
+    const prov = provincesData.find((p) => p.name_th === selectedProvince);
+    setAvailableDistricts(prov ? districtsData.filter(d => d.province_id === prov.id) : []);
+    setAvailableSubdistricts([]);
+    setAvailableZipcodes([]);
+  };
+
+  const handleDistrictChange = (e) => {
+    const selectedDistrict = e.target.value;
+    handleChange("district", selectedDistrict);
+    handleChange("subdistrict", "");
+    handleChange("postalCode", ""); 
+
+    const dist = availableDistricts.find((d) => d.name_th === selectedDistrict);
+    if (dist) {
+      const filteredSubdistricts = subDistrictsData.filter(s => s.district_id === dist.id);
+      setAvailableSubdistricts(filteredSubdistricts);
+      setAvailableZipcodes([]);
+    } else {
+      setAvailableSubdistricts([]);
+      setAvailableZipcodes([]);
+    }
+  };
+
+  const handleSubdistrictChange = (e) => {
+    const selectedSub = e.target.value;
+    handleChange("subdistrict", selectedSub);
+    handleChange("postalCode", ""); 
+
+    const sub = availableSubdistricts.find((s) => s.name_th === selectedSub);
+    if (sub && sub.zip_code) {
+      setAvailableZipcodes([sub.zip_code]);
+      handleChange("postalCode", sub.zip_code);
+    } else {
+      setAvailableZipcodes([]);
+    }
+  };
+
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingSitter, setIsEditingSitter] = useState(false);
 
-  // Pet States
   const [pets, setPets] = useState(user?.pets || []);
   const [showPetModal, setShowPetModal] = useState(false);
   const [modalMode, setModalMode] = useState("add");
@@ -43,31 +118,53 @@ function ProfilePage() {
   });
   const [petError, setPetError] = useState("");
 
-  // Delete account modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleteStatus, setDeleteStatus] = useState("idle");
 
-  // Handlers
   const handleChange = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
-  const handleSaveSection = (sectionType) => {
+  const handleSaveSection = async (sectionType) => {
     const validationErrors = validateProfile(profile);
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
-    const updatedUser = { ...user, ...profile, pets };
-    localStorage.setItem("pb_user", JSON.stringify(updatedUser));
-    setOriginalProfile({ ...profile });
-    setErrors({});
+    try {
+      const payload = {
+        username: profile.username,
+        email: profile.email,
+        tel: profile.tel,
+        province: profile.province,
+        district: profile.district,  
+        subdistrict: profile.subdistrict,
+        postalCode: profile.postalCode,
+        address: profile.address,
+        role: profile.role,        
+        experience: profile.experience,
+        thaiId: profile.thaiId
+      };
 
-    if (sectionType === "account") setIsEditingAccount(false);
-    if (sectionType === "address") setIsEditingAddress(false);
-    if (sectionType === "sitter") setIsEditingSitter(false);
+      await api.put("/users/profile", payload);
+
+      const updatedUser = { ...user, ...profile, pets };
+      localStorage.setItem("pb_user", JSON.stringify(updatedUser));
+      setOriginalProfile({ ...profile });
+      setErrors({});
+
+      if (sectionType === "account") setIsEditingAccount(false);
+      if (sectionType === "address") setIsEditingAddress(false);
+      if (sectionType === "sitter") setIsEditingSitter(false);
+      
+      alert("บันทึกข้อมูลสำเร็จ!");
+
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+    }
   };
 
   const handleCancelSection = (sectionType) => {
@@ -78,7 +175,6 @@ function ProfilePage() {
     if (sectionType === "sitter") setIsEditingSitter(false);
   };
 
-  // Pet Handlers
   const openAddPetModal = () => {
     setCurrentPetIndex(null);
     setModalMode("add");
@@ -127,7 +223,6 @@ function ProfilePage() {
     }
   };
 
-  // Delete Account Handler
   const handleDelete = async () => {
     setDeleteError("");
     if (!deletePassword.trim()) {
@@ -148,7 +243,6 @@ function ProfilePage() {
     }
   };
 
-  // Reusable header component rendering helper
   const renderSectionHeader = (title, isEditing, onEdit, onCancel, onSave) => (
     <div className="profile-section-header">
       <h2>{title}</h2>
@@ -182,7 +276,6 @@ function ProfilePage() {
             {isSitter ? "🐾 พี่เลี้ยงสัตว์" : "🐶 เจ้าของสัตว์เลี้ยง"}
           </p>
 
-          {/* Account Section */}
           <section className="profile-section">
             {renderSectionHeader(
               "ข้อมูลบัญชี",
@@ -196,7 +289,6 @@ function ProfilePage() {
             <ProfileField label="เบอร์โทร" field="tel" type="tel" value={profile.tel} isEditing={isEditingAccount} error={errors.tel} onChange={handleChange} />
           </section>
 
-          {/* Address Section */}
           <section className="profile-section">
             {renderSectionHeader(
               "ข้อมูลที่อยู่",
@@ -205,12 +297,102 @@ function ProfilePage() {
               () => handleCancelSection("address"),
               () => handleSaveSection("address")
             )}
-            <ProfileField label="จังหวัด" field="province" value={profile.province} isEditing={isEditingAddress} error={errors.province} onChange={handleChange} />
-            <ProfileField label="เมือง/อำเภอ" field="city" value={profile.city} isEditing={isEditingAddress} error={errors.city} onChange={handleChange} />
-            <ProfileField label="รหัสไปรษณีย์" field="postalCode" value={profile.postalCode} isEditing={isEditingAddress} error={errors.postalCode} onChange={handleChange} />
+            {!isEditingAddress ? (
+              <>
+                <ProfileField label="รายละเอียดที่อยู่" field="address" value={profile.address} isEditing={false} />
+                <ProfileField label="จังหวัด" field="province" value={profile.province} isEditing={false} />
+                <ProfileField label="เมือง/อำเภอ" field="district" value={profile.district} isEditing={false} />
+                <ProfileField label="ตำบล/แขวง" field="subdistrict" value={profile.subdistrict} isEditing={false} />
+                <ProfileField label="รหัสไปรษณีย์" field="postalCode" value={profile.postalCode} isEditing={false} />
+              </>
+            ) : (
+              <div className="profile-edit-address-grid">
+                <div className="profile-row" style={{ gridColumn: "1 / -1" }}> 
+                  <span className="profile-label">รายละเอียดที่อยู่ (บ้านเลขที่, หมู่, ซอย, ถนน)</span>
+                  <input 
+                    type="text"
+                    className="profile-input" 
+                    value={profile.address} 
+                    onChange={(e) => handleChange("address", e.target.value)} 
+                    placeholder="เช่น 123/45 ซ.สุขุมวิท 1 ถ.สุขุมวิท" 
+                    style={{ width: "100%" }}
+                  />
+                  {errors.address && <span className="profile-error">{errors.address}</span>}
+                </div>
+                <div className="profile-row">
+                  <span className="profile-label">จังหวัด</span>
+                  <input 
+                    className="profile-input" 
+                    list="province-list" 
+                    value={profile.province} 
+                    onChange={handleProvinceChange} 
+                    placeholder="พิมพ์หรือเลือกจังหวัด..." 
+                  />
+                  <datalist id="province-list">
+                    {provincesData.map((prov) => (
+                      <option key={prov.id} value={prov.name_th} />
+                    ))}
+                  </datalist>
+                  {errors.province && <span className="profile-error">{errors.province}</span>}
+                </div>
+
+                <div className="profile-row">
+                  <span className="profile-label">เมือง/อำเภอ</span>
+                  <input 
+                    className="profile-input" 
+                    list="district-list" 
+                    value={profile.district} 
+                    onChange={handleDistrictChange} 
+                    disabled={!profile.province}
+                    placeholder="พิมพ์หรือเลือกอำเภอ..." 
+                  />
+                  <datalist id="district-list">
+                    {(availableDistricts || []).map((dist) => (
+                      <option key={dist.id} value={dist.name_th} />
+                    ))}
+                  </datalist>
+                  {errors.district && <span className="profile-error">{errors.district}</span>}
+                </div>
+
+                <div className="profile-row">
+                  <span className="profile-label">ตำบล/แขวง</span>
+                  <input 
+                    className="profile-input" 
+                    list="sub-list" 
+                    value={profile.subdistrict} 
+                    onChange={handleSubdistrictChange} 
+                    disabled={!profile.district}
+                    placeholder="พิมพ์หรือเลือกตำบล..." 
+                  />
+                  <datalist id="sub-list">
+                    {(availableSubdistricts || []).map((sub) => (
+                      <option key={sub.id} value={sub.name_th} />
+                    ))}
+                  </datalist>
+                  {errors.subdistrict && <span className="profile-error">{errors.subdistrict}</span>}
+                </div>
+
+                <div className="profile-row">
+                  <span className="profile-label">รหัสไปรษณีย์</span>
+                  <input 
+                    className="profile-input" 
+                    list="zip-list" 
+                    value={profile.postalCode} 
+                    onChange={(e) => handleChange("postalCode", e.target.value)} 
+                    disabled={!profile.subdistrict}
+                    placeholder="รหัสไปรษณีย์" 
+                  />
+                  <datalist id="zip-list">
+                    {(availableZipcodes || []).map((zip, idx) => (
+                      <option key={idx} value={zip} />
+                    ))}
+                  </datalist>
+                  {errors.postalCode && <span className="profile-error">{errors.postalCode}</span>}
+                </div>
+              </div>
+            )}
           </section>
 
-          {/* Sitter Section */}
           {isSitter && (
             <section className="profile-section">
               {renderSectionHeader(
@@ -228,7 +410,6 @@ function ProfilePage() {
             </section>
           )}
 
-          {/* Pet Section */}
           {!isSitter && (
             <section className="profile-section" style={{ borderTop: "2px solid #eee", paddingTop: "20px" }}>
               <div className="profile-section-header">
@@ -241,7 +422,20 @@ function ProfilePage() {
                 {pets && pets.length > 0 ? (
                   pets.map((pet, index) => (
                     <div key={index} style={{ background: "#f9f9f9", padding: "10px 14px", borderRadius: "8px", marginBottom: "8px", border: "1px solid #eaeaea", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "15px", fontWeight: "600" }}>🐾 {pet.name}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        {pet.photo ? (
+                          <img 
+                            src={pet.photo} 
+                            alt={pet.name} 
+                            style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover", border: "1px solid #ccc" }} 
+                          />
+                        ) : (
+                          <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#eee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+                            🐾
+                          </div>
+                        )}
+                        <span style={{ fontSize: "15px", fontWeight: "600" }}>{pet.name}</span>
+                      </div>
                       <div style={{ display: "flex", gap: "6px" }}>
                         <button type="button" className="profile-edit-button" style={{ padding: "4px 10px", fontSize: "12px" }} onClick={() => openViewPetModal(index)} title="ดูข้อมูล">🦹‍♂️​</button>
                         <button type="button" className="profile-edit-button" style={{ padding: "4px 10px", fontSize: "12px", background: "#f0ad4e", borderColor: "#eea236", color: "#fff" }} onClick={() => openEditPetModal(index)} title="แก้ไขข้อมูล">🖋️​</button>
@@ -257,7 +451,6 @@ function ProfilePage() {
             </section>
           )}
 
-          {/* General Page Actions */}
           <div className="profile-actions" style={{ marginTop: "20px" }}>
             <div className="profile-actions-row">
               <button type="button" className="profile-delete-button" onClick={() => { setDeletePassword(""); setDeleteError(""); setDeleteStatus("idle"); setShowDeleteModal(true); }}>
