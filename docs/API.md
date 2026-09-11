@@ -142,22 +142,25 @@ Registers a new Pet Owner or Pet Sitter account.
 ### `POST /auth/logout`
 
 **Auth:** Any. No request body — the token is taken from the
-`Authorization: Bearer <token>` header. Invalidates the current token by
-inserting it into the `tokenblacklist` table (checked by `requireAuth` on
-future protected routes), until its natural expiry. Only the current token
-is invalidated — other devices/sessions for the same user are unaffected.
+`Authorization: Bearer <token>` header. Runs behind the `requireAuth`
+middleware (same gate used by other protected routes), which validates the
+token and checks the blacklist before the handler runs. On success,
+inserts the token into the `tokenblacklist` table until its natural
+expiry. Only the current token is invalidated — other devices/sessions for
+the same user are unaffected.
 
 **Success — 200**
 ```json
 { "success": true, "message": "Logged out successfully" }
 ```
 
-**Errors**
+**Errors** (the first three are returned by `requireAuth` before the
+handler runs)
 | Status | Error code | Condition |
 |---|---|---|
-| 400 | `MISSING_TOKEN` | No `Authorization` header / token present |
-| 401 | `INVALID_TOKEN` | Token is malformed or expired |
+| 401 | `MISSING_TOKEN` | No `Authorization` header / token present |
 | 401 | `TOKEN_INVALIDATED` | Token was already logged out / blacklisted |
+| 401 | `TOKEN_EXPIRED` / `INVALID_TOKEN` | Token expired, or is malformed/has a bad signature |
 | 500 | `INTERNAL_SERVER_ERROR` | Database error while blacklisting the token |
 
 ### `POST /auth/password-reset`
