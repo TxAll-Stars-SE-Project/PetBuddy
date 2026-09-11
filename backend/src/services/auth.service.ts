@@ -9,6 +9,7 @@ export const registerUser = async (data: RegisterInput) => {
   const email = (data.email || '').trim().toLowerCase()
   const thaiId = (data.thaiId || data.thaiid || '').trim()
   const postal = (data.postalCode || data.postal_code || '').trim()
+  const subdistrict = (data.subdistrict || data.subDistrict || '').trim()
   const role = data.role as UserRole
   const password = data.password!
 
@@ -25,8 +26,10 @@ export const registerUser = async (data: RegisterInput) => {
           password: hashedPassword,
           tel: data.tel ? String(data.tel).trim() : null,
           province: data.province ? String(data.province).trim() : null,
-          city: data.city ? String(data.city).trim() : null,
+          district: data.district ? String(data.district).trim() : null,
+          subdistrict: subdistrict || null,
           postal_code: postal || null,
+          address: data.address ? String(data.address).trim() : null,
         },
       })
 
