@@ -1,4 +1,4 @@
-import { ValidationError } from './helpers.js'
+import { ValidationError } from "../types/user.js"
 
 export class AppError extends Error {
   constructor(

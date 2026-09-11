@@ -1,6 +1,10 @@
 import { RegisterInput, LoginInput } from '../types/user.js'
 import { AppError } from '../utils/errors.js'
-import { isEmpty, toCleanString, isThaiIDValid, ValidationError } from '../utils/helpers.js'
+import { isEmpty, toCleanString, isThaiIDValid} from '../utils/helpers.js'
+import { validateThaiAddress } from './thaiAddress.validator.js'
+import { validateEmailDomain } from './emailDomain.validator.js'
+import { validateAndNormalizeThaiPhone } from './phone.validator.js'
+import { ValidationError } from '../types/user.js'
 
 export const validateLoginInput = (data: unknown): LoginInput => {
   const body = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
@@ -15,7 +19,7 @@ export const validateLoginInput = (data: unknown): LoginInput => {
   return { email, password, rememberMe }
 }
 
-export const validateRegisterInput = (data: unknown): RegisterInput => {
+export const validateRegisterInput = async (data: unknown): Promise<RegisterInput> => {
   const body = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
   const errors: ValidationError[] = []
 
@@ -23,7 +27,7 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
   const email = toCleanString(body.email).toLowerCase()
   const password = typeof body.password === 'string' ? body.password : ''
   const role = toCleanString(body.role)
-  const tel = toCleanString(body.tel).replace(/[\s-]/g, '')
+  const rawTel = toCleanString(body.tel)
   const province = toCleanString(body.province)
   const district = toCleanString(body.district || body.city)
   const subdistrict = toCleanString(body.subdistrict || body.subDistrict || body.tambon)
@@ -32,6 +36,7 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
   const thaiId = toCleanString(body.thaiId || body.thaiid)
   const experience = toCleanString(body.experience)
 
+  // 1. Username
   if (isEmpty(body.username) && isEmpty(body.name)) {
     errors.push({ field: 'username', message: 'กรุณากรอกชื่อผู้ใช้' })
   } else if (username.length < 3) {
@@ -40,12 +45,17 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
     errors.push({ field: 'username', message: 'ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร' })
   }
 
-  // 2. Email
+  // 2. Email & Domain Check
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (isEmpty(body.email)) {
     errors.push({ field: 'email', message: 'กรุณากรอกอีเมล' })
   } else if (!emailRegex.test(email)) {
     errors.push({ field: 'email', message: 'รูปแบบอีเมลไม่ถูกต้อง' })
+  } else {
+    const domainCheck = await validateEmailDomain(email)
+    if (!domainCheck.isValid && domainCheck.error) {
+      errors.push({ field: 'email', message: domainCheck.error })
+    }
   }
 
   // 3. Password
@@ -60,42 +70,56 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
     errors.push({ field: 'role', message: 'กรุณาเลือกบทบาท (owner หรือ sitter)' })
   }
 
-  // 5. Tel
+  // 5. Tel (Thai Phone validation & normalization)
+  let validatedTel = rawTel.replace(/[\s-]/g, '')
   if (isEmpty(body.tel)) {
     errors.push({ field: 'tel', message: 'กรุณากรอกเบอร์โทร' })
-  } else if (!/^0\d{9}$/.test(tel)) {
-    errors.push({ field: 'tel', message: 'เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก' })
+  } else {
+    const phoneCheck = validateAndNormalizeThaiPhone(rawTel)
+    if (!phoneCheck.isValid && phoneCheck.error) {
+      errors.push({ field: 'tel', message: phoneCheck.error })
+    } else if (phoneCheck.normalized) {
+      validatedTel = phoneCheck.normalized
+    }
   }
 
-  // 6. Province
-  if (isEmpty(body.province)) {
+  // 6. Address validation (Province -> District -> Subdistrict -> Postal Code)
+  let validatedProvince = province
+  let validatedDistrict = district
+  let validatedSubdistrict = subdistrict
+  let validatedPostalCode = postalCode
+
+  let hasAddressEmptyError = false
+  if (isEmpty(province)) {
     errors.push({ field: 'province', message: 'กรุณากรอกจังหวัด' })
-  } else if (province.length > 100) {
-    errors.push({ field: 'province', message: 'จังหวัดต้องไม่เกิน 100 ตัวอักษร' })
+    hasAddressEmptyError = true
   }
-
-  // 7. District (อำเภอ/เขต)
   if (isEmpty(district)) {
     errors.push({ field: 'district', message: 'กรุณากรอกอำเภอ/เขต' })
-  } else if (district.length > 100) {
-    errors.push({ field: 'district', message: 'อำเภอ/เขตต้องไม่เกิน 100 ตัวอักษร' })
+    hasAddressEmptyError = true
   }
-
-  // 8. Subdistrict (ตำบล/แขวง)
   if (isEmpty(subdistrict)) {
     errors.push({ field: 'subdistrict', message: 'กรุณากรอกตำบล/แขวง' })
-  } else if (subdistrict.length > 100) {
-    errors.push({ field: 'subdistrict', message: 'ตำบล/แขวงต้องไม่เกิน 100 ตัวอักษร' })
+    hasAddressEmptyError = true
   }
-
-  // 9. Postal Code
-  if (isEmpty(body.postalCode) && isEmpty(body.postal_code)) {
+  if (isEmpty(postalCode)) {
     errors.push({ field: 'postalCode', message: 'กรุณากรอกรหัสไปรษณีย์' })
-  } else if (!/^\d{5}$/.test(postalCode)) {
-    errors.push({ field: 'postalCode', message: 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก' })
+    hasAddressEmptyError = true
   }
 
-  // 10. Sitter-specific fields
+  if (!hasAddressEmptyError) {
+    const addressCheck = validateThaiAddress(province, district, subdistrict, postalCode)
+    if (!addressCheck.isValid) {
+      errors.push(...addressCheck.errors)
+    } else if (addressCheck.normalized) {
+      validatedProvince = addressCheck.normalized.province
+      validatedDistrict = addressCheck.normalized.district
+      validatedSubdistrict = addressCheck.normalized.subdistrict
+      validatedPostalCode = addressCheck.normalized.postalCode
+    }
+  }
+
+  // 7. Sitter-specific fields
   if (role === 'sitter') {
     if (isEmpty(body.thaiId) && isEmpty(body.thaiid)) {
       errors.push({ field: 'thaiId', message: 'กรุณากรอกเลขบัตรประชาชน' })
@@ -117,11 +141,11 @@ export const validateRegisterInput = (data: unknown): RegisterInput => {
     email,
     password,
     role,
-    tel,
-    province,
-    district,
-    subdistrict,
-    postalCode,
+    tel: validatedTel,
+    province: validatedProvince,
+    district: validatedDistrict,
+    subdistrict: validatedSubdistrict,
+    postalCode: validatedPostalCode,
     address,
     ...(role === 'sitter' ? { thaiId, experience } : {}),
   }
