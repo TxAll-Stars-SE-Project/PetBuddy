@@ -32,13 +32,14 @@ function AppRoutes() {
   return (
     <div className="app-root">
       <Routes>
-        {/* ถ้ามี user ให้แสดง HomePage ที่ path "/" แต่ถ้าไม่มีให้แสดง LandingPage */}
+
         <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
         
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
         
-        {/* ลบ route /home ทิ้งไป เพราะเราย้ายมาไว้ที่ / แล้ว */}
+        <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
