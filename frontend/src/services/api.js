@@ -14,13 +14,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor: จัดการ 401 กลางทาง (session หมดอายุ)
+// Interceptor: จัดการ 401 — แยก "login ผิด" ออกจาก "session หมดอายุจริง"
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const reqUrl = error.config?.url || "";
+
+    // 👇 401 + มี token อยู่ + ไม่ใช่ request login/register = session หมดอายุจริง
+    const hasToken = !!localStorage.getItem("pb_token");
+    const isAuthRequest = reqUrl.includes("/auth/login") || reqUrl.includes("/auth/register");
+
+    if (status === 401 && hasToken && !isAuthRequest) {
       window.dispatchEvent(new Event("pb:session-expired"));
     }
+    // ถ้าเป็น 401 จาก login (email/รหัสผิด) → ไม่ยิง event, ให้ LoginPage จัดการเอง
+
     return Promise.reject(error);
   }
 );
