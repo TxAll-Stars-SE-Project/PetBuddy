@@ -8,9 +8,12 @@ export interface RegisterInput {
   role: UserRole | string
   tel: string
   province: string
-  city: string
+  district: string
+  subdistrict: string
+  subDistrict?: string
   postalCode: string
   postal_code?: string
+  address?: string
   thaiId?: string
   thaiid?: string
   experience?: string
