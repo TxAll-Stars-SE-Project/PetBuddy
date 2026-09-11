@@ -40,3 +40,39 @@ export interface PhoneValidationResult {
   error?: string
 }
 
+export interface PetProfileResponse {
+  name: string
+  species: string | null
+  breed: string | null
+  gender: string | null
+  birthDate: string | null
+  weight: number | null
+  allergy: string | null
+  imageUrl: string | null
+}
+
+export interface BaseProfileResponse {
+  userId: number
+  username: string
+  email: string
+  tel: string | null
+  province: string | null
+  district: string | null
+  subdistrict: string | null
+  postalCode: string | null
+  address: string | null
+}
+
+export interface OwnerProfileResponse extends BaseProfileResponse {
+  role: 'owner'
+  pets: PetProfileResponse[]
+}
+
+export interface SitterProfileResponse extends BaseProfileResponse {
+  role: 'sitter'
+  thaiId: string | null
+  experience: string | null
+}
+
+export type UserProfileResponse = OwnerProfileResponse | SitterProfileResponse
+

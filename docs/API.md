@@ -206,8 +206,81 @@ fixed window (exact TTL not specified in backlog).
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
+| GET | `/users/me` | Any | Get current logged-in user profile (Owner / Sitter) |
 | PATCH | `/account` | Any | Edit account details |
 | POST | `/account/deactivate` | Any | Deactivate (remove) own account |
+
+### `GET /users/me`
+
+Retrieves the profile of the currently logged-in user with role-specific details: pet profiles with images for Pet Owners, or Thai ID and experience for Pet Sitters.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Request body**: None
+
+**Success — 200 (Pet Owner)**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "username": "somchai_dev",
+    "email": "somchai@example.com",
+    "tel": "0812345678",
+    "province": "กรุงเทพมหานคร",
+    "district": "จตุจักร",
+    "subdistrict": "จันทรเกษม",
+    "postalCode": "10900",
+    "address": "123/45 ถนนพหลโยธิน",
+    "role": "owner",
+    "pets": [
+      {
+        "name": "เฉาก๊วย",
+        "species": "สุนัข",
+        "breed": "โกลเด้น รีทริฟเวอร์",
+        "gender": "ผู้",
+        "birthDate": "2022-05-15",
+        "weight": 28.5,
+        "allergy": "แพ้ไก่",
+        "imageUrl": "https://xyz.supabase.co/storage/v1/object/public/petbuddy-images/pets/uuid-dog.jpg"
+      }
+    ]
+  }
+}
+```
+
+**Success — 200 (Pet Sitter)**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 2,
+    "username": "sitter_jane",
+    "email": "jane@example.com",
+    "tel": "0899999999",
+    "province": "นนทบุรี",
+    "district": "เมืองนนทบุรี",
+    "subdistrict": "บางเขน",
+    "postalCode": "11000",
+    "address": "99/88 ซอยงามวงศ์วาน",
+    "role": "sitter",
+    "thaiId": "1234567890123",
+    "experience": "รับดูแลสุนัขและแมว ประสบการณ์ 3 ปี"
+  }
+}
+```
+
+**Errors**
+| Status | Error code | Condition |
+|---|---|---|
+| 401 | `MISSING_TOKEN` / `UNAUTHORIZED` | No token in Authorization header |
+| 401 | `TOKEN_EXPIRED` | JWT token expired |
+| 401 | `INVALID_TOKEN` | Token is invalid or signature mismatch |
+| 404 | `USER_NOT_FOUND` | User account does not exist in database |
+| 500 | `INTERNAL_SERVER_ERR` | Database / internal error |
 
 ### `PATCH /account`
 
