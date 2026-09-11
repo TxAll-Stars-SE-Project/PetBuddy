@@ -21,16 +21,17 @@ description of existing behavior.
   user with that role. **Auth: Any** means any logged-in user (owner or
   sitter). **Auth: None** means public/unauthenticated access is allowed.
 
-### Standard error shape (assumption)
+### Standard error shape
 
 ```json
-{
-  "error": {
-    "code": "STRING_ERROR_CODE",
-    "message": "Human-readable description"
-  }
-}
+{ "error": "STRING_ERROR_CODE" }
 ```
+
+> Updated from the original `{ "error": { "code", "message" } }` assumption
+> to match `frontend/src/services/api.js`'s existing mock contract (built
+> before the backend), which the shipped auth endpoints (e.g.
+> `POST /auth/login`) now follow. Endpoints not yet implemented should use
+> this same flat shape for consistency.
 
 Common status codes used throughout:
 
@@ -117,31 +118,47 @@ Registers a new Pet Owner or Pet Sitter account.
 
 **Request body**
 ```json
-{ "email": "string", "password": "string" }
+{ "email": "string", "password": "string", "rememberMe": "boolean (optional, default false)" }
 ```
 
 **Success — 200**
 ```json
-{ "token": "string", "user": { "id": "string", "email": "string", "name": "string", "role": "owner | sitter" } }
+{ "token": "string", "user": { "username": "string", "email": "string", "role": "owner | sitter" } }
 ```
 
+> `role` is not a stored column — it's derived server-side from whether the
+> user has a `petowner` or `petsitter` row.
+>
+> `rememberMe: true` extends the JWT expiry to 30 days instead of the
+> default 1 day (`JWT_EXPIRES_IN_REMEMBER_ME` / `JWT_EXPIRES_IN` env vars).
+
 **Errors**
-| Status | Condition |
-|---|---|
-| 401 | Invalid email or password |
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_FIELDS` | Missing email or password |
+| 401 | `INVALID_CREDENTIALS` | Invalid email or password |
+| 500 | `INTERNAL_SERVER_ERROR` | Unexpected server/database error |
 
 ### `POST /auth/logout`
 
-**Auth:** Any. No request body (token/session taken from `Authorization`
-header). Invalidates the current session/token so the browser back button
-cannot return to authenticated pages using a cached response.
+**Auth:** Any. No request body — the token is taken from the
+`Authorization: Bearer <token>` header. Invalidates the current token by
+inserting it into the `tokenblacklist` table (checked by `requireAuth` on
+future protected routes), until its natural expiry. Only the current token
+is invalidated — other devices/sessions for the same user are unaffected.
 
-**Success — 204** — no content.
+**Success — 200**
+```json
+{ "success": true, "message": "Logged out successfully" }
+```
 
 **Errors**
-| Status | Condition |
-|---|---|
-| 401 | Not authenticated |
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_TOKEN` | No `Authorization` header / token present |
+| 401 | `INVALID_TOKEN` | Token is malformed or expired |
+| 401 | `TOKEN_INVALIDATED` | Token was already logged out / blacklisted |
+| 500 | `INTERNAL_SERVER_ERROR` | Database error while blacklisting the token |
 
 ### `POST /auth/password-reset`
 
@@ -780,6 +797,15 @@ Controls whether the user's profile and pet profiles are public or private.
 ### DailyReport
 ```json
 { "id": "string", "bookingId": "string", "notes": "string", "photoUrls": ["string"], "timestamp": "string" }
+```
+
+### TokenBlacklist
+
+Internal table, not exposed via any API response. Backs `POST
+/auth/logout` and the `requireAuth` middleware's invalidation check.
+
+```json
+{ "id": "number", "token": "string", "expiresat": "string (ISO datetime)" }
 ```
 
 ---

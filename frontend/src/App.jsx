@@ -1,9 +1,8 @@
-/* src/App.jsx */
-import React, { useEffect } from "react";
-
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
-import { navigate, useHashRoute } from "./router.js";
 import Toast from "./components/Toast.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
@@ -13,47 +12,49 @@ import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import "./styles/global.css";
 
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return <NotFoundPage />;
-    return this.props.children;
-  }
+/* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
+function ProtectedRoute({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
-const KNOWN_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/profile"];
-
-function Router() {
-  const { path, params } = useHashRoute();
+/* Guest Route: ถ้าล็อกอินอยู่แล้ว ห้ามเข้า login/register */
+function GuestRoute({ children }) {
   const { user } = useAuth();
+  if (user) return <Navigate to="/" replace />;
+  return children;
+}
 
-  useEffect(() => {
-    if (!KNOWN_PATHS.includes(path)) navigate(user ? "/" : "/login");
-    else if (path === "/" && !user) navigate("/login");
-    else if ((path === "/login" || path === "/register") && user) navigate("/");
-  }, [path, user]);
+// src/App.jsx
+function AppRoutes() {
+  const { user } = useAuth(); // ดึงสถานะ user มาเช็ก
 
-  let page = null;
-  switch (path) {
-    case "/login":           page = user ? null : <LoginPage params={params} />; break;
-    case "/register":        page = user ? null : <RegisterPage />; break;
-    case "/forgot-password": page = <ForgotPasswordPage />; break;
-    case "/reset-password":  page = <ResetPasswordPage token={params.get("token")} />; break;
-    case "/profile":         page = user ? <ProfilePage />: null; break;
-    case "/":                page = user ? <HomePage /> : null; break;
-    default:                 page = user ? <NotFoundPage /> : null;
-  }
-  return <ErrorBoundary>{page}</ErrorBoundary>;
+  return (
+    <div className="app-root">
+      <Routes>
+
+        <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
+        
+        <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+        
+        <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" replace />} />
+        
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <Toast />
+    </div>
+  );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <div className="app-root">
-        <Router />
-        <Toast />
-      </div>
+      <AppRoutes />
     </AuthProvider>
   );
 }

@@ -1,10 +1,10 @@
-// บนสุด
 import { useState } from "react";
-import { navigate } from "../router.js";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import Logo from "./ui/Logo.jsx";
 
-function Navbar() {
+export default function Navbar() {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   return (
@@ -36,5 +36,3 @@ function Navbar() {
     </header>
   );
 }
-// ท้ายไฟล์
-export default Navbar;

@@ -1,18 +1,24 @@
 import { useState } from "react";
-import { navigate } from "../router.js";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "../utils/toast.js";
 import { api } from "../services/api.js";
-import { isEmail, isTel, isPostal, isThaiId, passwordOk } from "../utils/validators.js";
+import { isEmail, isTel, isPostal, isThaiId, passwordOk, isUsername } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
 import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 import RolePills from "../components/ui/RolePills.jsx";
+import ThaiAddressSelects from "../components/ThaiAddressSelects.jsx";
+
+const Req = ({ children }) => (
+  <>{children} <span className="req">*</span></>
+);
 
 function validateRegister(v) {
   const e = {};
   if (!v.username.trim()) e.username = "กรุณากรอกชื่อผู้ใช้";
+  else if (!isUsername(v.username)) e.username = "ชื่อผู้ใช้ต้องยาวอย่างน้อย 3 ตัวอักษร";
   else if (v.username.length > 50) e.username = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร";
 
   if (!v.email.trim()) e.email = "กรุณากรอกอีเมล";
@@ -26,28 +32,31 @@ function validateRegister(v) {
   if (!v.tel.trim()) e.tel = "กรุณากรอกเบอร์โทร";
   else if (!isTel(v.tel)) e.tel = "เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก";
 
-  if (!v.province.trim()) e.province = "กรุณากรอกจังหวัด";
-  else if (v.province.length > 20) e.province = "จังหวัดต้องไม่เกิน 20 ตัวอักษร";
+  if (!v.province) e.province = "กรุณาเลือกจังหวัด";
 
-  if (!v.city.trim()) e.city = "กรุณากรอกเมือง/อำเภอ";
-  else if (v.city.length > 50) e.city = "เมือง/อำเภอต้องไม่เกิน 50 ตัวอักษร";
+  if (!v.district) e.district = "กรุณาเลือกอำเภอ/เขต";
 
-  if (!v.postalCode.trim()) e.postalCode = "กรุณากรอกรหัสไปรษณีย์";
-  else if (!isPostal(v.postalCode)) e.postalCode = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
+  if (!v.subdistrict) e.subdistrict = "กรุณาเลือกตำบล/แขวง";
+  
+  if (!v.postalCode) e.postalCode = "กรุณาเลือกตำบล/แขวง เพื่อให้ระบบเติมรหัสไปรษณีย์";
 
-  /* ฟิลด์เพิ่มเติมเฉพาะบทบาทพี่เลี้ยง (ตาราง PetSitter) */
+  if (v.address && v.address.length > 200) e.address = "ที่อยู่ต้องไม่เกิน 200 ตัวอักษร";
+
   if (v.role === "sitter") {
-    if (!isThaiId(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
+    if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
+    // ใช้ regex 13 หลักพอ เพราะ backend จัดการ Modulo 11 ให้แล้ว
+    else if (!/^\d{13}$/.test(v.thaiId)) e.thaiId = "เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก";
     if (!v.experience.trim()) e.experience = "กรุณากรอกประสบการณ์";
   }
-  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก"; // privacy requirement
+  if (!v.consent) e.consent = "กรุณายินยอมก่อนสมัครสมาชิก";
   return e;
 }
 
-function RegisterPage() {
+export default function RegisterPage() {
+  const navigate = useNavigate();
   const [values, setValues] = useState({
     role: "owner", username: "", email: "", password: "", confirm: "",
-    tel: "", province: "", city: "", postalCode: "",
+    tel: "", address: "", province: "", city: "", postalCode: "",
     thaiId: "", experience: "", consent: false,
   });
   const [errors, setErrors] = useState({});
@@ -62,28 +71,53 @@ function RegisterPage() {
     setFormError("");
     const errs = validateRegister(values);
     setErrors(errs);
-    if (Object.keys(errs).length) return; // AC invalid: block ก่อนส่ง
+    if (Object.keys(errs).length) return;
+
+    const payload = {
+      username: values.username,
+      email: values.email,
+      password: values.password,
+      tel: values.tel,
+      address: values.address,
+      province: values.province,
+      district: values.district,          
+      subdistrict: values.subdistrict,    
+      postalCode: values.postalCode,
+      role: values.role,
+      consent: values.consent,
+      ...(values.role === "sitter"
+        ? { thaiId: values.thaiId, experience: values.experience }
+        : {}),
+    };
 
     setStatus("submitting");
     try {
-      /* payload ตรงกับ body ของ POST /auth/register ใน contract เป๊ะ */
-      const payload = {
-        username: values.username, email: values.email, password: values.password,
-        tel: values.tel, province: values.province, city: values.city,
-        postalCode: values.postalCode, role: values.role, consent: values.consent,
-        ...(values.role === "sitter"
-          ? { thaiId: values.thaiId, experience: values.experience }
-          : {}),
-      };
-      await api.post("/auth/register", payload); // AC valid
+      await api.post("/auth/register", payload);
       toast("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
-      if (err.status === 400 && Array.isArray(err.data?.errors)) {
-        /* backend ส่ง errors รายฟิลด์มา → map ลงใต้ฟิลด์นั้น ๆ */
-        setErrors(Object.fromEntries(err.data.errors.map((x) => [x.field, x.message])));
-      } else if (err.status === 409) {
-        setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" }); // AC invalid: email ซ้ำ
+      // 👇 ดึง status และ data จาก Axios error response
+      const status = err.response?.status;
+      const data = err.response?.data;
+      
+      if (status === 400 && data?.error === "VALIDATION_ERROR") {
+        setErrors(Object.fromEntries(
+          (data.errors || []).map((x) => [x.field, x.message])
+        ));
+      } else if (status === 409) {
+        if (data?.error === "EMAIL_DUPLICATE") {
+          setErrors({ email: "อีเมลนี้ถูกใช้งานแล้ว" });
+        } else if (data?.error === "USERNAME_DUPLICATE") {
+          if (Array.isArray(data?.errors)) {
+            setErrors(Object.fromEntries(data.errors.map((x) => [x.field, x.message])));
+          } else {
+            setErrors({ username: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว" });
+          }
+        } else {
+          setFormError("ข้อมูลนี้ถูกใช้งานแล้วในระบบ");
+        }
+      } else if (status >= 500) {
+        toast("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง", "info");
       } else {
         setFormError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       }
@@ -98,59 +132,61 @@ function RegisterPage() {
         <Logo />
         <h1 className="auth-title">สร้างบัญชี PetBuddy</h1>
         <p className="auth-sub">เข้าร่วมเป็นครอบครัวคนรักสัตว์</p>
-
+        
         {formError && <AlertBanner type="error">{formError}</AlertBanner>}
 
         <form onSubmit={onSubmit} noValidate>
           <RolePills value={values.role} onChange={(r) => setValues((v) => ({ ...v, role: r }))} />
 
           <div className="grid-2">
-            <TextInput label="ชื่อผู้ใช้" placeholder="เช่น TanINWZA"
-              value={values.username} onChange={set("username")} error={errors.username} />
-            <TextInput label="อีเมล" placeholder="you@example.com"
-              value={values.email} onChange={set("email")} error={errors.email} />
-            <PasswordInput label="รหัสผ่าน" placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
-              value={values.password} onChange={set("password")} error={errors.password} />
-            <PasswordInput label="ยืนยันรหัสผ่าน" placeholder="กรอกรหัสผ่านอีกครั้ง"
-              value={values.confirm} onChange={set("confirm")} error={errors.confirm} />
-            <TextInput label="เบอร์โทร" placeholder="0988888888"
-              value={values.tel} onChange={set("tel")} error={errors.tel} />
-            <TextInput label="รหัสไปรษณีย์" placeholder="10330"
-              value={values.postalCode} onChange={set("postalCode")} error={errors.postalCode} />
-            <TextInput label="จังหวัด" placeholder="Bangkok"
-              value={values.province} onChange={set("province")} error={errors.province} />
-            <TextInput label="เมือง/อำเภอ" placeholder="Pathum Wan"
-              value={values.city} onChange={set("city")} error={errors.city} />
+          <TextInput label={<Req>ชื่อผู้ใช้</Req>} placeholder="เช่น TanINWZA"
+            value={values.username} onChange={set("username")} error={errors.username} />
+          <TextInput label={<Req>อีเมล</Req>} placeholder="you@example.com"
+            value={values.email} onChange={set("email")} error={errors.email} />
+          <PasswordInput label={<Req>รหัสผ่าน</Req>} placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
+            value={values.password} onChange={set("password")} error={errors.password} />
+          <PasswordInput label={<Req>ยืนยันรหัสผ่าน</Req>} placeholder="กรอกรหัสผ่านอีกครั้ง"
+            value={values.confirm} onChange={set("confirm")} error={errors.confirm} />
+          <TextInput label={<Req>เบอร์โทร</Req>} placeholder="0988888888"
+            value={values.tel} onChange={set("tel")} error={errors.tel} />
+          {/* 👇 ช่องนี้ "ไม่มีดาว" เพราะเป็นฟิลด์ทางเลือก */}
+          <TextInput label="ที่อยู่ (บ้านเลขที่ / ถนน)" placeholder="เช่น 99/12 หมู่ 5 ถ.พหลโยธิน"
+            value={values.address} onChange={set("address")} error={errors.address} />
+        </div>
+
+        <ThaiAddressSelects
+          value={values}
+          onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+          errors={errors}
+        />
+
+        {values.role === "sitter" && (
+          <div className="grid-2">
+            <TextInput label={<Req>เลขบัตรประชาชน (13 หลัก)</Req>} placeholder="1101601805057"
+              value={values.thaiId} onChange={set("thaiId")} error={errors.thaiId} />
+            <TextInput label={<Req>ประสบการณ์การดูแลสัตว์</Req>} placeholder="เล่าประสบการณ์ของคุณ"
+              value={values.experience} onChange={set("experience")} error={errors.experience} />
           </div>
+        )}
 
-          {/* conditional fields: แสดงเมื่อเลือก "พี่เลี้ยงสัตว์" */}
-          {values.role === "sitter" && (
-            <div className="grid-2">
-              <TextInput label="เลขบัตรประชาชน (13 หลัก)" placeholder="1101601805057"
-                value={values.thaiId} onChange={set("thaiId")} error={errors.thaiId} />
-              <TextInput label="ประสบการณ์การดูแลสัตว์" placeholder="เล่าประสบการณ์ของคุณ"
-                value={values.experience} onChange={set("experience")} error={errors.experience} />
-            </div>
-          )}
-
-          <div className="field">
-            <label className="checkbox">
-              <input type="checkbox" checked={values.consent} onChange={set("consent")} />
-              <span>ยินยอมให้เก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายความเป็นส่วนตัว</span>
-            </label>
-            {errors.consent && <div className="field-error">{errors.consent}</div>}
-          </div>
-
+        <div className="field">
+          <label className="checkbox">
+            <input type="checkbox" checked={values.consent} onChange={set("consent")} />
+            <span>ยินยอมให้เก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายความเป็นส่วนตัว <span className="req">*</span></span>
+          </label>
+          {errors.consent && <div className="field-error">{errors.consent}</div>}
+        </div>
+        
           <Button type="submit" loading={status === "submitting"}>สมัครสมาชิก</Button>
         </form>
-
+        
         <div className="auth-links">
           <span className="muted">มีบัญชีแล้ว?</span>
-          <a href="#/login">เข้าสู่ระบบ</a>
+          <Link to="/login">เข้าสู่ระบบ</Link>
         </div>
-        <div className="demo-hint">ทดสอบ email ซ้ำ (409): duplicate@petbuddy.com</div>
+
+        
       </div>
     </div>
   );
 }
-export default RegisterPage;

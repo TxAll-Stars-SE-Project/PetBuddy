@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
-import { navigate } from "../router.js";
+import { useNavigate } from "react-router-dom";
 import { api } from "../services/api.js";
 import provincesData from "../assets/thai-address/province.json";
 import districtsData from "../assets/thai-address/district.json";
@@ -13,6 +13,7 @@ import PetModal from "../components/PetModal.jsx";
 import { validateProfile } from "../utils/profileValidation.js";
 
 function ProfilePage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isSitter = user?.role === "sitter";
 
@@ -148,7 +149,7 @@ function ProfilePage() {
         thaiId: profile.thaiId
       };
 
-      await api.put("/users/profile", payload);
+      //await api.put("/users/profile", payload);
 
       const updatedUser = { ...user, ...profile, pets };
       localStorage.setItem("pb_user", JSON.stringify(updatedUser));
