@@ -1,4 +1,8 @@
 export type UserRole = 'owner' | 'sitter'
+export interface ValidationError {
+  field: string
+  message: string
+}
 
 export interface RegisterInput {
   username: string
@@ -24,3 +28,15 @@ export interface LoginInput {
   password: string
   rememberMe?: boolean
 }
+
+export interface EmailDomainValidationResult {
+  isValid: boolean
+  error?: string
+}
+
+export interface PhoneValidationResult {
+  isValid: boolean
+  normalized?: string
+  error?: string
+}
+
