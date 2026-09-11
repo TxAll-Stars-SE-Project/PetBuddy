@@ -9,6 +9,11 @@ import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 import RolePills from "../components/ui/RolePills.jsx";
+import ThaiAddressSelects from "../components/ThaiAddressSelects.jsx";
+
+const Req = ({ children }) => (
+  <>{children} <span className="req">*</span></>
+);
 
 function validateRegister(v) {
   const e = {};
@@ -27,14 +32,15 @@ function validateRegister(v) {
   if (!v.tel.trim()) e.tel = "กรุณากรอกเบอร์โทร";
   else if (!isTel(v.tel)) e.tel = "เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก";
 
-  if (!v.province.trim()) e.province = "กรุณากรอกจังหวัด";
-  else if (v.province.length > 20) e.province = "จังหวัดต้องไม่เกิน 20 ตัวอักษร";
+  if (!v.province) e.province = "กรุณาเลือกจังหวัด";
 
-  if (!v.city.trim()) e.city = "กรุณากรอกเมือง/อำเภอ";
-  else if (v.city.length > 50) e.city = "เมือง/อำเภอต้องไม่เกิน 50 ตัวอักษร";
+  if (!v.district) e.district = "กรุณาเลือกอำเภอ/เขต";
 
-  if (!v.postalCode.trim()) e.postalCode = "กรุณากรอกรหัสไปรษณีย์";
-  else if (!isPostal(v.postalCode)) e.postalCode = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
+  if (!v.subdistrict) e.subdistrict = "กรุณาเลือกตำบล/แขวง";
+  
+  if (!v.postalCode) e.postalCode = "กรุณาเลือกตำบล/แขวง เพื่อให้ระบบเติมรหัสไปรษณีย์";
+
+  if (v.address && v.address.length > 200) e.address = "ที่อยู่ต้องไม่เกิน 200 ตัวอักษร";
 
   if (v.role === "sitter") {
     if (!v.thaiId) e.thaiId = "กรุณากรอกเลขบัตรประชาชน";
@@ -50,7 +56,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [values, setValues] = useState({
     role: "owner", username: "", email: "", password: "", confirm: "",
-    tel: "", province: "", city: "", postalCode: "",
+    tel: "", address: "", province: "", city: "", postalCode: "",
     thaiId: "", experience: "", consent: false,
   });
   const [errors, setErrors] = useState({});
@@ -72,8 +78,10 @@ export default function RegisterPage() {
       email: values.email,
       password: values.password,
       tel: values.tel,
+      address: values.address,
       province: values.province,
-      city: values.city,
+      district: values.district,          
+      subdistrict: values.subdistrict,    
       postalCode: values.postalCode,
       role: values.role,
       consent: values.consent,
@@ -124,55 +132,60 @@ export default function RegisterPage() {
         <Logo />
         <h1 className="auth-title">สร้างบัญชี PetBuddy</h1>
         <p className="auth-sub">เข้าร่วมเป็นครอบครัวคนรักสัตว์</p>
-
+        
         {formError && <AlertBanner type="error">{formError}</AlertBanner>}
 
         <form onSubmit={onSubmit} noValidate>
           <RolePills value={values.role} onChange={(r) => setValues((v) => ({ ...v, role: r }))} />
 
           <div className="grid-2">
-            <TextInput label="ชื่อผู้ใช้" placeholder="เช่น TanINWZA"
-              value={values.username} onChange={set("username")} error={errors.username} />
-            <TextInput label="อีเมล" placeholder="you@example.com"
-              value={values.email} onChange={set("email")} error={errors.email} />
-            <PasswordInput label="รหัสผ่าน" placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
-              value={values.password} onChange={set("password")} error={errors.password} />
-            <PasswordInput label="ยืนยันรหัสผ่าน" placeholder="กรอกรหัสผ่านอีกครั้ง"
-              value={values.confirm} onChange={set("confirm")} error={errors.confirm} />
-            <TextInput label="เบอร์โทร" placeholder="0988888888"
-              value={values.tel} onChange={set("tel")} error={errors.tel} />
-            <TextInput label="รหัสไปรษณีย์" placeholder="10330"
-              value={values.postalCode} onChange={set("postalCode")} error={errors.postalCode} />
-            <TextInput label="จังหวัด" placeholder="Bangkok"
-              value={values.province} onChange={set("province")} error={errors.province} />
-            <TextInput label="เมือง/อำเภอ" placeholder="Pathum Wan"
-              value={values.city} onChange={set("city")} error={errors.city} />
+          <TextInput label={<Req>ชื่อผู้ใช้</Req>} placeholder="เช่น TanINWZA"
+            value={values.username} onChange={set("username")} error={errors.username} />
+          <TextInput label={<Req>อีเมล</Req>} placeholder="you@example.com"
+            value={values.email} onChange={set("email")} error={errors.email} />
+          <PasswordInput label={<Req>รหัสผ่าน</Req>} placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
+            value={values.password} onChange={set("password")} error={errors.password} />
+          <PasswordInput label={<Req>ยืนยันรหัสผ่าน</Req>} placeholder="กรอกรหัสผ่านอีกครั้ง"
+            value={values.confirm} onChange={set("confirm")} error={errors.confirm} />
+          <TextInput label={<Req>เบอร์โทร</Req>} placeholder="0988888888"
+            value={values.tel} onChange={set("tel")} error={errors.tel} />
+          {/* 👇 ช่องนี้ "ไม่มีดาว" เพราะเป็นฟิลด์ทางเลือก */}
+          <TextInput label="ที่อยู่ (บ้านเลขที่ / ถนน)" placeholder="เช่น 99/12 หมู่ 5 ถ.พหลโยธิน"
+            value={values.address} onChange={set("address")} error={errors.address} />
+        </div>
+
+        <ThaiAddressSelects
+          value={values}
+          onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+          errors={errors}
+        />
+
+        {values.role === "sitter" && (
+          <div className="grid-2">
+            <TextInput label={<Req>เลขบัตรประชาชน (13 หลัก)</Req>} placeholder="1101601805057"
+              value={values.thaiId} onChange={set("thaiId")} error={errors.thaiId} />
+            <TextInput label={<Req>ประสบการณ์การดูแลสัตว์</Req>} placeholder="เล่าประสบการณ์ของคุณ"
+              value={values.experience} onChange={set("experience")} error={errors.experience} />
           </div>
+        )}
 
-          {values.role === "sitter" && (
-            <div className="grid-2">
-              <TextInput label="เลขบัตรประชาชน (13 หลัก)" placeholder="1101601805057"
-                value={values.thaiId} onChange={set("thaiId")} error={errors.thaiId} />
-              <TextInput label="ประสบการณ์การดูแลสัตว์" placeholder="เล่าประสบการณ์ของคุณ"
-                value={values.experience} onChange={set("experience")} error={errors.experience} />
-            </div>
-          )}
-
-          <div className="field">
-            <label className="checkbox">
-              <input type="checkbox" checked={values.consent} onChange={set("consent")} />
-              <span>ยินยอมให้เก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายความเป็นส่วนตัว</span>
-            </label>
-            {errors.consent && <div className="field-error">{errors.consent}</div>}
-          </div>
-
+        <div className="field">
+          <label className="checkbox">
+            <input type="checkbox" checked={values.consent} onChange={set("consent")} />
+            <span>ยินยอมให้เก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายความเป็นส่วนตัว <span className="req">*</span></span>
+          </label>
+          {errors.consent && <div className="field-error">{errors.consent}</div>}
+        </div>
+        
           <Button type="submit" loading={status === "submitting"}>สมัครสมาชิก</Button>
         </form>
-
+        
         <div className="auth-links">
           <span className="muted">มีบัญชีแล้ว?</span>
           <Link to="/login">เข้าสู่ระบบ</Link>
         </div>
+
+        
       </div>
     </div>
   );
