@@ -1,8 +1,13 @@
-import { Prisma } from '../generated/prisma/client.js'
 import prisma from '../utils/prisma.js'
 import { hashPassword } from '../utils/password.js'
 import { AppError } from '../utils/errors.js'
 import { RegisterInput, UserRole } from '../types/user.js'
+
+interface NewUserRow {
+  userid: number
+  username: string
+  email: string
+}
 
 export const registerUser = async (data: RegisterInput) => {
   const username = (data.username || data.name || '').trim()
@@ -16,35 +21,24 @@ export const registerUser = async (data: RegisterInput) => {
   // 1. Hash Password
   const hashedPassword = await hashPassword(password)
 
-  // 2. บันทึกลงฐานข้อมูลด้วย Nested Write เพื่อรองรับ Connection Pooler / PgBouncer อย่างเสถียร
+  // 2. เรียก Stored Function — 1 round trip แทน 4
+  const tel = data.tel ? String(data.tel).trim() : null
+  const province = data.province ? String(data.province).trim() : null
+  const district = data.district ? String(data.district).trim() : null
+  const address = data.address ? String(data.address).trim() : null
+  const experience = data.experience ? String(data.experience).trim() : null
+
   try {
-    const newUser = await prisma.uSER.create({
-      data: {
-        username,
-        email,
-        password: hashedPassword,
-        tel: data.tel ? String(data.tel).trim() : null,
-        province: data.province ? String(data.province).trim() : null,
-        district: data.district ? String(data.district).trim() : null,
-        subdistrict: subdistrict || null,
-        postal_code: postal || null,
-        address: data.address ? String(data.address).trim() : null,
-        ...(role === 'sitter'
-          ? {
-              petsitter: {
-                create: {
-                  thaiid: thaiId,
-                  experience: data.experience ? String(data.experience).trim() : null,
-                },
-              },
-            }
-          : {
-              petowner: {
-                create: {},
-              },
-            }),
-      },
-    })
+    const rows = await prisma.$queryRaw<NewUserRow[]>`
+      SELECT * FROM register_user(
+        ${username}, ${email}, ${hashedPassword},
+        ${tel}, ${province}, ${district},
+        ${subdistrict || null}, ${postal || null}, ${address},
+        ${role}, ${thaiId || null}, ${experience}
+      )
+    `
+
+    const newUser = rows[0]
 
     return {
       userId: newUser.userid,
@@ -55,23 +49,28 @@ export const registerUser = async (data: RegisterInput) => {
         role,
       },
     }
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const targetStr = [
-        Array.isArray(error.meta?.target) ? error.meta.target.join(' ') : (error.meta?.target || ''),
-        (error.meta as Record<string, unknown> | undefined)?.constraint || '',
-        error.message || '',
-      ].join(' ').toLowerCase()
+  } catch (error: unknown) {
+    // Prisma adapter wrap PG error ไว้ใน message แทนที่จะโยน code ตรงๆ
+    // ต้องเช็คทั้ง raw PG code และ Prisma wrapped message
+    const err = error as { code?: string; detail?: string; constraint?: string; message?: string }
 
-      if (targetStr.includes('email')) {
+    const isUniqueViolation =
+      err?.code === '23505' ||
+      err?.message?.includes('23505')
+
+    if (isUniqueViolation) {
+      const hint = [err.detail, err.constraint, err.message]
+        .filter(Boolean).join(' ').toLowerCase()
+
+      if (hint.includes('email')) {
         throw new AppError(409, 'EMAIL_DUPLICATE', 'Email already registered')
       }
-      if (targetStr.includes('username')) {
+      if (hint.includes('username')) {
         throw new AppError(409, 'USERNAME_DUPLICATE', 'Username already registered', [
           { field: 'username', message: 'Username already registered' },
         ])
       }
-      if (targetStr.includes('thaiid')) {
+      if (hint.includes('thaiid')) {
         throw new AppError(409, 'THAI_ID_DUPLICATE', 'Thai ID already registered', [
           { field: 'thaiId', message: 'Thai ID already registered' },
         ])

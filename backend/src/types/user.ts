@@ -40,13 +40,3 @@ export interface PhoneValidationResult {
   error?: string
 }
 
-export interface ThaiAddressValidationResult {
-  isValid: boolean
-  errors: ValidationError[]
-  normalized?: {
-    province: string
-    district: string
-    subdistrict: string
-    postalCode: string
-  }
-}
