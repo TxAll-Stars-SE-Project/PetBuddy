@@ -1,29 +1,36 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { api } from "../services/api.js";
-import { isEmail } from "../utils/validators.js";
 import Logo from "../components/ui/Logo.jsx";
 import TextInput from "../components/ui/TextInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 
 export default function ForgotPasswordPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
   const [status, setStatus] = useState("idle");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !isEmail(email)) { setError("รูปแบบอีเมลไม่ถูกต้อง"); return; }
+    if (!email.trim()) {
+      setError("กรุณากรอกอีเมล");
+      return;
+    }
     setError("");
     setStatus("submitting");
+
     try {
       await api.post("/auth/forgot-password", { email });
       setSent(true);
-    } catch {
-      setSent(true);
+    } catch (err) {
+      const statusCode = err.response?.status;
+      if (statusCode >= 500) {
+        setError("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง");
+      } else {
+        setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+      }
     } finally {
       setStatus("idle");
     }
@@ -36,16 +43,13 @@ export default function ForgotPasswordPage() {
           <Logo />
           <h1 className="auth-title">ตรวจสอบอีเมลของคุณ</h1>
           <AlertBanner type="success">
-            ระบบส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว (ลิงก์มีอายุ 15 นาที)
+            หากอีเมลนี้มีอยู่ในระบบ ลิงก์รีเซ็ตรหัสผ่านจะถูกส่งไปยังอีเมลของคุณ
           </AlertBanner>
-          <div className="link-col">
-            <button onClick={() => navigate("/reset-password?token=mock123")} className="btn btn--aslink">
-              ทดสอบ: เปิดลิงก์รีเซ็ต (ใช้งานได้)
-            </button>
-            <button onClick={() => navigate("/reset-password?token=expired")} className="btn btn--aslink">
-              ทดสอบ: เปิดลิงก์ที่หมดอายุ
-            </button>
-            <Link to="/login">กลับหน้าเข้าสู่ระบบ</Link>
+          <p className="muted" style={{ fontSize: 14, marginTop: 12 }}>
+            กรุณาตรวจสอบกล่องจดหมาย (และโฟลเดอร์สแปม) แล้วคลิกลิงก์เพื่อตั้งรหัสผ่านใหม่
+          </p>
+          <div style={{ marginTop: 16 }}>
+            <Link className="btn btn--aslink" to="/login">กลับหน้าเข้าสู่ระบบ</Link>
           </div>
         </div>
       </div>
@@ -57,14 +61,24 @@ export default function ForgotPasswordPage() {
       <div className="auth-card">
         <Logo />
         <h1 className="auth-title">ลืมรหัสผ่าน?</h1>
-        <p className="auth-sub">กรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านให้</p>
+        <p className="auth-sub">กรอกอีเมลของคุณ เราจะส่งลิงก์รีเซ็ตรหัสผ่านให้</p>
+
+        {error && <AlertBanner type="error">{error}</AlertBanner>}
+
         <form onSubmit={onSubmit} noValidate>
-          <TextInput label="อีเมล" placeholder="you@example.com"
-            value={email} onChange={(e) => setEmail(e.target.value)} error={error} />
-          <Button type="submit" loading={status === "submitting"}>ส่งลิงก์รีเซ็ตรหัสผ่าน</Button>
+          <TextInput
+            label="อีเมล"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button type="submit" loading={status === "submitting"}>
+            ส่งลิงก์รีเซ็ตรหัสผ่าน
+          </Button>
         </form>
+
         <div className="auth-links">
-          <Link to="/login">กลับหน้าเข้าสู่ระบบ</Link>
+          <Link to="/login">กลับสู่หน้าเข้าสู่ระบบ</Link>
         </div>
       </div>
     </div>

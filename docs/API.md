@@ -86,8 +86,8 @@ Rules called out in the backlog (enforced server-side, not just UI):
 | POST | `/auth/register` | None | Create a new account |
 | POST | `/auth/login` | None | Log in, receive session/token |
 | POST | `/auth/logout` | Any | Invalidate current session/token |
-| POST | `/auth/password-reset` | None | Request a password reset email |
-| POST | `/auth/password-reset/:token` | None | Set a new password using the emailed token |
+| POST | `/auth/forgot-password` | None | Request a password reset email |
+| POST | `/auth/reset-password` | None | Set a new password using the emailed token |
 
 ### `POST /auth/register`
 
@@ -163,42 +163,87 @@ handler runs)
 | 401 | `TOKEN_EXPIRED` / `INVALID_TOKEN` | Token expired, or is malformed/has a bad signature |
 | 500 | `INTERNAL_SERVER_ERROR` | Database error while blacklisting the token |
 
-### `POST /auth/password-reset`
+### `POST /auth/forgot-password`
 
-Sends a password reset link to the given email if it exists.
+Sends a password reset link to the given email if a matching account
+exists. Always responds `200` with the same generic message regardless of
+whether the email is registered, and regardless of whether the email
+actually sent successfully — both are logged server-side only, to avoid
+account enumeration and to match the frontend's own error handling
+(`ForgotPasswordPage.jsx` shows the same success screen either way).
 
 **Request body**
 ```json
 { "email": "string" }
 ```
 
-**Success — 200** — generic acknowledgement (does not reveal whether the
-email exists, to avoid account enumeration).
+**Success — 200** — generic acknowledgement.
 ```json
-{ "message": "If that email exists, a reset link has been sent." }
+{ "success": true, "message": "If that email exists, a reset link has been sent." }
 ```
 
-### `POST /auth/password-reset/:token`
+**Errors**
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_FIELDS` | Missing email field |
 
-Completes a password reset. The token is single-use and expires after a
-fixed window (exact TTL not specified in backlog).
+> Implementation notes:
+> - Reset token: 32 random bytes, hex-encoded (64 chars), stored in the
+>   `passwordresettoken` table with the requesting user's `userid` and an
+>   `expiresat` of now + `PASSWORD_RESET_TOKEN_TTL_MINUTES` (default 15).
+> - Reset link sent: `{FRONTEND_URL}/reset-password?token=<token>`,
+>   matching the frontend's existing `/reset-password` route
+>   (`ResetPasswordPage.jsx`, which reads `?token=`).
+> - Email is sent via Nodemailer. In development, a fresh Ethereal
+>   (fake SMTP) test account is created automatically at server startup —
+>   no real email is sent; the server log prints a preview URL for the
+>   "sent" message instead.
+> - Requesting multiple resets for the same email creates multiple valid
+>   tokens; each remains valid independently until used or expired, unless
+>   one of them is actually used to reset the password — see
+>   `POST /auth/reset-password` below, which then deletes all of a user's
+>   outstanding reset tokens, not just the one used.
+
+### `POST /auth/reset-password`
+
+Completes a password reset using the token from the emailed link. On
+success, the user's password is updated and **every** outstanding reset
+token for that user is deleted (not just the one used) — an older,
+still-unused reset email can no longer work once any one of them succeeds.
+The user is **not** auto-logged-in; the frontend already redirects to
+`/login` on success (`ResetPasswordPage.jsx`).
 
 **Request body**
 ```json
-{ "password": "string (min 8 chars)" }
+{ "token": "string", "newPassword": "string (min 8 chars, must include a letter and a number)" }
 ```
 
 **Success — 200**
 ```json
-{ "message": "Password updated." }
+{ "success": true, "message": "Password reset successfully. Please login with your new password." }
 ```
 
-**Errors**
-| Status | Condition |
-|---|---|
-| 400 | Password fails validation |
-| 409 | Token expired or already used |
-| 404 | Token not found/invalid |
+**Errors** — all `400`, matching the frontend's check (`ResetPasswordPage.jsx`
+treats *any* `400` from this endpoint as "link expired/used" and shows that
+screen, regardless of which specific error code caused it — **known gap:**
+`SAME_AS_OLD_PASSWORD` and `INVALID_PASSWORD` are both password-format
+problems, not link problems, so a user hitting either currently sees a
+misleading "link expired or already used" message instead of being told
+to pick a different/valid password. Frontend would need to branch on
+`error.response.data.error` instead of just the status code to fix this.)
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_FIELDS` | Missing `token` or `newPassword` |
+| 400 | `INVALID_PASSWORD` | Password doesn't meet the length/letter/number rule |
+| 400 | `SAME_AS_OLD_PASSWORD` | New password matches the account's current password |
+| 400 | `TOKEN_INVALID` | Token doesn't exist (never issued, or already used/deleted) |
+| 400 | `TOKEN_EXPIRED` | Token exists but its `expiresat` has passed (deleted on this check) |
+| 500 | `INTERNAL_SERVER_ERROR` | Database error while updating the password |
+
+> Rejecting a reuse of the current password (or an invalid-format
+> password) does **not** consume the token — the same token can still be
+> retried with a valid, different password until it expires or a valid
+> reset actually succeeds.
 
 ---
 
@@ -238,11 +283,13 @@ Authorization: Bearer <token>
     "role": "owner",
     "pets": [
       {
+        "petid": 1,
         "name": "เฉาก๊วย",
         "species": "สุนัข",
         "breed": "โกลเด้น รีทริฟเวอร์",
         "gender": "ผู้",
         "birthDate": "2022-05-15",
+        "age": 2,
         "weight": 28.5,
         "allergy": "แพ้ไก่",
         "imageUrl": "https://xyz.supabase.co/storage/v1/object/public/petbuddy-images/pets/uuid-dog.jpg"
@@ -888,13 +935,13 @@ Internal table, not exposed via any API response. Backs `POST
 
 ## Open Questions / TBD
 
-- **API base path prefix** — assumed `/api/v1`; not yet established in the
-  codebase (only `/health` exists today).
-- **Auth mechanism** — backlog says "session/JWT issued" without picking
-  one; this doc assumes Bearer JWT.
+- **API base path prefix** — resolved: `/api` (see `backend/src/routes/routers.ts`).
+- **Auth mechanism** — resolved: Bearer JWT (see `POST /auth/login`).
 - **Payment proof upload size limit** — explicitly flagged as not yet
   defined in the source backlog.
-- **Password reset token TTL** — backlog says "expires/single-use" but does
-  not specify the expiry window.
+- **Password reset token TTL** — resolved: 15 minutes by default
+  (`PASSWORD_RESET_TOKEN_TTL_MINUTES` env var). Resolved: single-use —
+  `POST /auth/reset-password` deletes the token (and all other
+  outstanding tokens for that user) once used.
 - **Service `availability` shape** — backlog only says "availability
   hours"; exact schema (e.g. per-weekday ranges) is undefined.
