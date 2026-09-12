@@ -1,8 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '../errors.js'
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || 'https://azprqudssagsgjqupvzt.supabase.co'
 
 export const SUPABASE_STORAGE_BUCKET =
   process.env.SUPABASE_STORAGE_BUCKET || 'petbuddy-images'
@@ -11,6 +9,15 @@ let clientInstance: SupabaseClient | null = null
 
 export const getSupabaseClient = (): SupabaseClient => {
   if (clientInstance) return clientInstance
+
+  const supabaseUrl = process.env.SUPABASE_URL
+  if (!supabaseUrl) {
+    throw new AppError(
+      500,
+      'SUPABASE_URL_MISSING',
+      'SUPABASE_URL is not configured in backend/.env'
+    )
+  }
 
   const key =
     process.env.SUPABASE_KEY ||
@@ -25,6 +32,6 @@ export const getSupabaseClient = (): SupabaseClient => {
     )
   }
 
-  clientInstance = createClient(SUPABASE_URL, key)
+  clientInstance = createClient(supabaseUrl, key)
   return clientInstance
 }

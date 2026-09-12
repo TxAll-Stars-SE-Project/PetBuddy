@@ -1,6 +1,13 @@
 import { getSupabaseClient, SUPABASE_STORAGE_BUCKET } from './client.js'
 import { AppError } from '../errors.js'
 
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
 /**
  * Uploads a pet profile image to Supabase Storage and returns its public URL.
  */
@@ -10,10 +17,7 @@ export const uploadPetImage = async (
 ): Promise<string> => {
   const supabase = getSupabaseClient()
 
-  const originalExt = file.originalname.includes('.')
-    ? file.originalname.split('.').pop()?.toLowerCase()
-    : 'jpg'
-  const fileExt = originalExt || 'jpg'
+  const fileExt = MIME_EXTENSION_MAP[file.mimetype] || 'jpg'
   const randomSuffix = Math.random().toString(36).substring(2, 9)
   const fileName = `${Date.now()}-${randomSuffix}.${fileExt}`
   const filePath = `pets/${ownerId}/${fileName}`
