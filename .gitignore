@@ -28,3 +28,12 @@ dist-ssr
 
 .claude/
 .windsurf/
+
+# Tests & Coverage
+__tests__/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage/
+.nyc_output/

@@ -142,22 +142,25 @@ Registers a new Pet Owner or Pet Sitter account.
 ### `POST /auth/logout`
 
 **Auth:** Any. No request body — the token is taken from the
-`Authorization: Bearer <token>` header. Invalidates the current token by
-inserting it into the `tokenblacklist` table (checked by `requireAuth` on
-future protected routes), until its natural expiry. Only the current token
-is invalidated — other devices/sessions for the same user are unaffected.
+`Authorization: Bearer <token>` header. Runs behind the `requireAuth`
+middleware (same gate used by other protected routes), which validates the
+token and checks the blacklist before the handler runs. On success,
+inserts the token into the `tokenblacklist` table until its natural
+expiry. Only the current token is invalidated — other devices/sessions for
+the same user are unaffected.
 
 **Success — 200**
 ```json
 { "success": true, "message": "Logged out successfully" }
 ```
 
-**Errors**
+**Errors** (the first three are returned by `requireAuth` before the
+handler runs)
 | Status | Error code | Condition |
 |---|---|---|
-| 400 | `MISSING_TOKEN` | No `Authorization` header / token present |
-| 401 | `INVALID_TOKEN` | Token is malformed or expired |
+| 401 | `MISSING_TOKEN` | No `Authorization` header / token present |
 | 401 | `TOKEN_INVALIDATED` | Token was already logged out / blacklisted |
+| 401 | `TOKEN_EXPIRED` / `INVALID_TOKEN` | Token expired, or is malformed/has a bad signature |
 | 500 | `INTERNAL_SERVER_ERROR` | Database error while blacklisting the token |
 
 ### `POST /auth/forgot-password`
@@ -225,8 +228,81 @@ treats as "link expired/used")
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
+| GET | `/users/me` | Any | Get current logged-in user profile (Owner / Sitter) |
 | PATCH | `/account` | Any | Edit account details |
 | POST | `/account/deactivate` | Any | Deactivate (remove) own account |
+
+### `GET /users/me`
+
+Retrieves the profile of the currently logged-in user with role-specific details: pet profiles with images for Pet Owners, or Thai ID and experience for Pet Sitters.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Request body**: None
+
+**Success — 200 (Pet Owner)**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "username": "somchai_dev",
+    "email": "somchai@example.com",
+    "tel": "0812345678",
+    "province": "กรุงเทพมหานคร",
+    "district": "จตุจักร",
+    "subdistrict": "จันทรเกษม",
+    "postalCode": "10900",
+    "address": "123/45 ถนนพหลโยธิน",
+    "role": "owner",
+    "pets": [
+      {
+        "name": "เฉาก๊วย",
+        "species": "สุนัข",
+        "breed": "โกลเด้น รีทริฟเวอร์",
+        "gender": "ผู้",
+        "birthDate": "2022-05-15",
+        "weight": 28.5,
+        "allergy": "แพ้ไก่",
+        "imageUrl": "https://xyz.supabase.co/storage/v1/object/public/petbuddy-images/pets/uuid-dog.jpg"
+      }
+    ]
+  }
+}
+```
+
+**Success — 200 (Pet Sitter)**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 2,
+    "username": "sitter_jane",
+    "email": "jane@example.com",
+    "tel": "0899999999",
+    "province": "นนทบุรี",
+    "district": "เมืองนนทบุรี",
+    "subdistrict": "บางเขน",
+    "postalCode": "11000",
+    "address": "99/88 ซอยงามวงศ์วาน",
+    "role": "sitter",
+    "thaiId": "1234567890123",
+    "experience": "รับดูแลสุนัขและแมว ประสบการณ์ 3 ปี"
+  }
+}
+```
+
+**Errors**
+| Status | Error code | Condition |
+|---|---|---|
+| 401 | `MISSING_TOKEN` / `UNAUTHORIZED` | No token in Authorization header |
+| 401 | `TOKEN_EXPIRED` | JWT token expired |
+| 401 | `INVALID_TOKEN` | Token is invalid or signature mismatch |
+| 404 | `USER_NOT_FOUND` | User account does not exist in database |
+| 500 | `INTERNAL_SERVER_ERR` | Database / internal error |
 
 ### `PATCH /account`
 

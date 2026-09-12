@@ -1,7 +1,4 @@
-export interface ValidationError {
-  field: string
-  message: string
-}
+
 
 /**
  * ตรวจสอบว่าค่าเป็น null, undefined หรือเป็น String ว่างหรือไม่
