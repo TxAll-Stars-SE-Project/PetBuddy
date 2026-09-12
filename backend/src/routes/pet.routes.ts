@@ -1,8 +1,11 @@
 import { Router } from 'express'
-import { deletePet } from '../controllers/pet.controller.js'
 import { requireAuth, authorize } from '../middleware/auth.middleware.js'
 import { uploadPetImageMiddleware } from '../middleware/upload.middleware.js'
-import { createPetHandler, updatePetHandler } from '../controllers/pet/pet.controller.js'
+import {
+  createPetHandler,
+  updatePetHandler,
+  deletePet,
+} from '../controllers/pet/pet.controller.js'
 
 const router = Router()
 
