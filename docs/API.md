@@ -199,28 +199,51 @@ account enumeration and to match the frontend's own error handling
 >   no real email is sent; the server log prints a preview URL for the
 >   "sent" message instead.
 > - Requesting multiple resets for the same email creates multiple valid
->   tokens; nothing currently invalidates earlier unused tokens when a new
->   one is issued (each remains valid independently until used or expired
->   — see `POST /auth/reset-password`, not yet implemented).
+>   tokens; each remains valid independently until used or expired, unless
+>   one of them is actually used to reset the password — see
+>   `POST /auth/reset-password` below, which then deletes all of a user's
+>   outstanding reset tokens, not just the one used.
 
 ### `POST /auth/reset-password`
 
-**Not yet implemented.** Will complete a password reset using the token
-from the emailed link. The token is intended to be single-use and expires
-per `PASSWORD_RESET_TOKEN_TTL_MINUTES`.
+Completes a password reset using the token from the emailed link. On
+success, the user's password is updated and **every** outstanding reset
+token for that user is deleted (not just the one used) — an older,
+still-unused reset email can no longer work once any one of them succeeds.
+The user is **not** auto-logged-in; the frontend already redirects to
+`/login` on success (`ResetPasswordPage.jsx`).
 
-**Request body** (per the frontend's existing call in
-`ResetPasswordPage.jsx`)
+**Request body**
 ```json
-{ "token": "string", "newPassword": "string (min 8 chars)" }
+{ "token": "string", "newPassword": "string (min 8 chars, must include a letter and a number)" }
 ```
 
-**Errors** (planned; a `400` response is what the frontend currently
-treats as "link expired/used")
-| Status | Condition |
-|---|---|
-| 400 | Password fails validation, or token expired/already used |
-| 404 | Token not found/invalid |
+**Success — 200**
+```json
+{ "success": true, "message": "Password reset successfully. Please login with your new password." }
+```
+
+**Errors** — all `400`, matching the frontend's check (`ResetPasswordPage.jsx`
+treats *any* `400` from this endpoint as "link expired/used" and shows that
+screen, regardless of which specific error code caused it — **known gap:**
+`SAME_AS_OLD_PASSWORD` and `INVALID_PASSWORD` are both password-format
+problems, not link problems, so a user hitting either currently sees a
+misleading "link expired or already used" message instead of being told
+to pick a different/valid password. Frontend would need to branch on
+`error.response.data.error` instead of just the status code to fix this.)
+| Status | Error code | Condition |
+|---|---|---|
+| 400 | `MISSING_FIELDS` | Missing `token` or `newPassword` |
+| 400 | `INVALID_PASSWORD` | Password doesn't meet the length/letter/number rule |
+| 400 | `SAME_AS_OLD_PASSWORD` | New password matches the account's current password |
+| 400 | `TOKEN_INVALID` | Token doesn't exist (never issued, or already used/deleted) |
+| 400 | `TOKEN_EXPIRED` | Token exists but its `expiresat` has passed (deleted on this check) |
+| 500 | `INTERNAL_SERVER_ERROR` | Database error while updating the password |
+
+> Rejecting a reuse of the current password (or an invalid-format
+> password) does **not** consume the token — the same token can still be
+> retried with a valid, different password until it expires or a valid
+> reset actually succeeds.
 
 ---
 
@@ -915,9 +938,8 @@ Internal table, not exposed via any API response. Backs `POST
 - **Payment proof upload size limit** — explicitly flagged as not yet
   defined in the source backlog.
 - **Password reset token TTL** — resolved: 15 minutes by default
-  (`PASSWORD_RESET_TOKEN_TTL_MINUTES` env var). Token is generated
-  single-use in the sense that nothing currently re-derives it, but
-  `POST /auth/reset-password` (not yet implemented) is what will actually
-  enforce single-use by deleting/marking the token consumed.
+  (`PASSWORD_RESET_TOKEN_TTL_MINUTES` env var). Resolved: single-use —
+  `POST /auth/reset-password` deletes the token (and all other
+  outstanding tokens for that user) once used.
 - **Service `availability` shape** — backlog only says "availability
   hours"; exact schema (e.g. per-weekday ranges) is undefined.

@@ -4,7 +4,7 @@ import { validateLoginInput, validateRegisterInput } from '../../validators/auth
 import * as authService from '../../services/auth.service.js'
 import { AppError } from '../../utils/errors.js'
 import prisma from '../../utils/prisma.js'
-import { comparePassword } from '../../utils/password.js'
+import { comparePassword, hashPassword } from '../../utils/password.js'
 import { signAuthToken } from '../../utils/jwt.js'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
 import { sendPasswordResetEmail } from '../../utils/email.js'
@@ -145,4 +145,58 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 
   res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' })
+}
+
+const isPasswordValid = (password: string): boolean =>
+  password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password)
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const token = typeof req.body?.token === 'string' ? req.body.token : ''
+  const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : ''
+
+  if (!token || !newPassword) {
+    res.status(400).json({ error: 'MISSING_FIELDS' })
+    return
+  }
+
+  if (!isPasswordValid(newPassword)) {
+    res.status(400).json({ error: 'INVALID_PASSWORD' })
+    return
+  }
+
+  try {
+    const resetToken = await prisma.passwordresettoken.findUnique({
+      where: { token },
+      include: { USER: true },
+    })
+
+    if (!resetToken) {
+      res.status(400).json({ error: 'TOKEN_INVALID' })
+      return
+    }
+
+    if (resetToken.expiresat < new Date()) {
+      await prisma.passwordresettoken.delete({ where: { token } })
+      res.status(400).json({ error: 'TOKEN_EXPIRED' })
+      return
+    }
+
+    const isSameAsOldPassword = await comparePassword(newPassword, resetToken.USER.password)
+    if (isSameAsOldPassword) {
+      res.status(400).json({ error: 'SAME_AS_OLD_PASSWORD' })
+      return
+    }
+
+    const hashed = await hashPassword(newPassword)
+
+    await prisma.$transaction([
+      prisma.uSER.update({ where: { userid: resetToken.userid }, data: { password: hashed } }),
+      prisma.passwordresettoken.deleteMany({ where: { userid: resetToken.userid } }),
+    ])
+
+    res.status(200).json({ success: true, message: 'Password reset successfully. Please login with your new password.' })
+  } catch (error) {
+    console.error('Error during reset-password:', error)
+    res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' })
+  }
 }
