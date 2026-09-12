@@ -1,8 +1,11 @@
 import { Router } from 'express'
-import { deletePet } from '../controllers/pet.controller.js'
 import { requireAuth, authorize } from '../middleware/auth.middleware.js'
 import { uploadPetImageMiddleware } from '../middleware/upload.middleware.js'
-import { createPetHandler } from '../controllers/pet/pet.controller.js'
+import {
+  createPetHandler,
+  updatePetHandler,
+  deletePet,
+} from '../controllers/pet/pet.controller.js'
 
 const router = Router()
 
@@ -21,6 +24,23 @@ router.post(
   authorize('owner'),
   uploadPetImageMiddleware,
   createPetHandler
+)
+
+// Edit pet: support both PATCH /api/pets/:id and PUT /api/pets/:id
+router.patch(
+  '/:id',
+  requireAuth,
+  authorize('owner'),
+  uploadPetImageMiddleware,
+  updatePetHandler
+)
+
+router.put(
+  '/:id',
+  requireAuth,
+  authorize('owner'),
+  uploadPetImageMiddleware,
+  updatePetHandler
 )
 
 // DELETE /api/pets/:id
