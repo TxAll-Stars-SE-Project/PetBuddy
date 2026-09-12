@@ -39,7 +39,6 @@ export default function LoginPage() {
       navigate("/");
     } catch (err) {
       const statusCode = err.response?.status;
-      const errorCode = err.response?.data?.error;
 
       if (statusCode === 401) {
         // Backend ส่ง INVALID_CREDENTIALS ทั้ง email ไม่มี และ รหัสผิด

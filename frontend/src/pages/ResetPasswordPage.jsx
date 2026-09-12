@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
             setTokenError(mapped.msg);
           } else {
             // รหัสผ่านมีปัญหา → แสดง error ใต้ช่อง input
-            setErrors({ password: mapped.msg });
+            setErrors((prev) => ({ ...prev, password: mapped.msg }));
           }
         } else {
           // error code ที่ไม่รู้จัก → fallback
