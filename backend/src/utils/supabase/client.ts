@@ -1,5 +1,8 @@
+import dotenv from 'dotenv'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '../errors.js'
+
+dotenv.config()
 
 
 export const SUPABASE_STORAGE_BUCKET =

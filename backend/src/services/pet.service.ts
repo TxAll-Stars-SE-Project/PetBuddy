@@ -1,6 +1,7 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { calculateAge } from '../utils/helpers.js'
+import { deletePetImage } from '../utils/supabase/index.js'
 import { CreatePetInput, PetResponse } from '../types/pet.js'
 
 export const deletePet = async (petId: number, ownerId: number): Promise<void> => {
@@ -22,10 +23,17 @@ export const deletePet = async (petId: number, ownerId: number): Promise<void> =
   // แต่ตาราง booking ยังไม่มีคอลัมน์เชื่อมไปหา pet จึงยังเช็คไม่ได้
   // ต้องรอให้ความสัมพันธ์ pet <-> booking ถูกเพิ่มเข้า schema ก่อน
 
-  // 3. ลบจริง
+  // 3. ลบจริงในฐานข้อมูล
   await prisma.pet.delete({
     where: { petid: petId },
   })
+
+  // 4. ลบไฟล์รูปภาพใน Supabase Storage (ถ้ามี) เพื่อป้องกัน Orphaned file
+  if (pet.image_url) {
+    await deletePetImage(pet.image_url).catch((err) =>
+      console.warn(`[Supabase Storage] Could not delete image for pet ${petId}:`, err)
+    )
+  }
 }
 
 export const createPet = async (

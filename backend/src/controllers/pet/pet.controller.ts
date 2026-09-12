@@ -2,13 +2,15 @@ import { Response } from 'express'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
 import { validateCreatePetInput } from '../../validators/pet.validator.js'
 import * as petService from '../../services/pet.service.js'
-import { uploadPetImage } from '../../utils/supabase/index.js'
+import { uploadPetImage, deletePetImage } from '../../utils/supabase/index.js'
 import { AppError } from '../../utils/errors.js'
 
 export const createPetHandler = async (
   req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
+  let uploadedImageUrl: string | null = null
+
   try {
     const ownerId = req.auth?.userId
 
@@ -17,19 +19,20 @@ export const createPetHandler = async (
       return
     }
 
-    let imageUrl: string | null = req.body.image_url || req.body.photo || null
-
-    // 1. Upload to Supabase Storage if an image file was provided
-    if (req.file) {
-      imageUrl = await uploadPetImage(req.file, ownerId)
-    }
-
-    // 2. Validate input fields
+    // 1. Validate input fields FIRST before uploading to prevent orphaned files on invalid input
+    const rawImageUrl = req.body.image_url || req.body.photo || null
     const validatedData = validateCreatePetInput({
       ...req.body,
-      image_url: imageUrl,
-      photo: imageUrl,
+      image_url: rawImageUrl,
+      photo: rawImageUrl,
     })
+
+    // 2. Upload to Supabase Storage only after input validation succeeds
+    if (req.file) {
+      uploadedImageUrl = await uploadPetImage(req.file, ownerId)
+      validatedData.image_url = uploadedImageUrl
+      validatedData.photo = uploadedImageUrl
+    }
 
     // 3. Create pet record in database
     const pet = await petService.createPet(ownerId, validatedData)
@@ -40,6 +43,13 @@ export const createPetHandler = async (
       ...pet,
     })
   } catch (error: unknown) {
+    // Rollback: if an image was uploaded but database creation failed, delete it from storage
+    if (uploadedImageUrl) {
+      await deletePetImage(uploadedImageUrl).catch((err) =>
+        console.error('Failed to rollback uploaded image from storage:', err)
+      )
+    }
+
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
         error: error.errorCode,
