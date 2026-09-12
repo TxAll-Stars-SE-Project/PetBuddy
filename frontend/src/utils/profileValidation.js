@@ -19,9 +19,9 @@ export function validateProfile(v) {
     errors.email = "รูปแบบอีเมลไม่ถูกต้อง";
   }
 
-  if (!v.tel.trim()) {
+  if (!v.tel?.toString().trim()) {
     errors.tel = "กรุณากรอกเบอร์โทร";
-  } else if (!isTel(v.tel)) {
+  } else if (!isTel(v.tel.toString())) {
     errors.tel = "เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก";
   }
 
@@ -49,9 +49,9 @@ export function validateProfile(v) {
     errors.subdistrict = "ตำบล/แขวงต้องไม่เกิน 50 ตัวอักษร";
   }
 
-  if (!v.postalCode.trim()) {
+  if (!v.postalCode?.toString().trim()) {
     errors.postalCode = "กรุณากรอกรหัสไปรษณีย์";
-  } else if (!isPostal(v.postalCode)) {
+  } else if (!isPostal(v.postalCode.toString())) {
     errors.postalCode = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
   }
 

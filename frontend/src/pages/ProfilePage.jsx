@@ -34,8 +34,6 @@ function ProfilePage() {
   const [originalProfile, setOriginalProfile] = useState(profile);
   const [errors, setErrors] = useState({});
 
-  const [isEditing, setIsEditing] = useState(false);
-
   // GET /api/users/me
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -72,6 +70,8 @@ function ProfilePage() {
               name: p.name || "",
               species: p.species || "",
               breed: p.breed || "",
+              gender: p.gender || "", 
+              weight: p.weight || "",
               age: p.birthDate || "",
               photo: p.imageUrl || "",
               notes: p.allergy ? `แพ้: ${p.allergy}` : "",
@@ -169,6 +169,7 @@ function ProfilePage() {
   const [currentPetIndex, setCurrentPetIndex] = useState(null);
   const [activePetForm, setActivePetForm] = useState({
     petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "",
+    gender: "", weight: "", photoFile: null
   });
   const [petError, setPetError] = useState("");
 
@@ -205,7 +206,7 @@ function ProfilePage() {
         payload.thaiId = profile.thaiId;
       }
 
-      //await api.put("/users/me", payload);
+      await api.put("/users/me", payload);
 
       const updatedUser = { ...user, ...profile, pets };
       localStorage.setItem("pb_user", JSON.stringify(updatedUser));
@@ -235,7 +236,7 @@ function ProfilePage() {
   const openAddPetModal = () => {
     setCurrentPetIndex(null);
     setModalMode("add");
-    setActivePetForm({ petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "" });
+    setActivePetForm({ petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "", gender: "", weight: "", photoFile: null });
     setPetError("");
     setShowPetModal(true);
   };
@@ -256,27 +257,87 @@ function ProfilePage() {
     setShowPetModal(true);
   };
 
-  const handleSavePet = () => {
+  const handleSavePet = async () => {
     if (!activePetForm.name.trim()) {
       setPetError("กรุณากรอกชื่อสัตว์เลี้ยง");
       return;
     }
 
-    const updatedPets = modalMode === "edit" && currentPetIndex !== null
-      ? pets.map((p, idx) => (idx === currentPetIndex ? activePetForm : p))
-      : [...pets, activePetForm];
+    try {
+      const formData = new FormData();
+      formData.append("name", activePetForm.name.trim());
+      if (activePetForm.species) formData.append("species", activePetForm.species.trim());
+      if (activePetForm.breed) formData.append("breed", activePetForm.breed.trim());
+      if (activePetForm.gender) formData.append("gender", activePetForm.gender.trim());
+      if (activePetForm.weight) formData.append("weight", activePetForm.weight); 
+      if (activePetForm.age) formData.append("age", activePetForm.age);
+      if (activePetForm.notes) formData.append("notes", activePetForm.notes.trim());
 
-    setPets(updatedPets);
-    localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: updatedPets }));
-    setShowPetModal(false);
+      if (activePetForm.photoFile) {
+        formData.append("photo", activePetForm.photoFile);
+      }
+
+      let savedPet;
+
+      if (modalMode === "add") {
+        const res = await api.post("/pets", formData);
+        savedPet = res.data;
+      } else if (modalMode === "edit" && activePetForm.petId) {
+        const res = await api.patch(`/pets/${activePetForm.petId}`, formData);
+        savedPet = res.data;
+      }
+
+      const profileRes = await api.get("/users/me");
+      const latestPets = profileRes.data?.data?.pets || [];
+      
+      const mappedPets = latestPets.map((p) => ({
+        petId: p.petId || p.petid || p.id || null,
+        name: p.name || "",
+        species: p.species || "",
+        breed: p.breed || "",
+        gender: p.gender || "", 
+        weight: p.weight || "",
+        age: p.age !== null && p.age !== undefined ? p.age : "",
+        photo: p.imageUrl || p.photo || "",
+        notes: p.allergy || p.notes || "",
+      }));
+
+      setPets(mappedPets);
+      localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: mappedPets }));
+      
+      setShowPetModal(false);
+      alert("บันทึกข้อมูลสัตว์เลี้ยงสำเร็จ");
+
+    } catch (error) {
+      console.error("Save pet error:", error);
+      if (error.response?.status === 409) {
+        setPetError("คุณมีสัตว์เลี้ยงชื่อนี้อยู่แล้ว กรุณาใช้ชื่ออื่น");
+      } else {
+        setPetError(`บันทึกไม่สำเร็จ: ${error.response?.status || "API อาจจะยังไม่พร้อม"}`);
+      }
+    }
   };
 
-  const handleRemoveCurrentModalPet = () => {
+  const handleRemoveCurrentModalPet = async () => {
     if (currentPetIndex !== null) {
-      const updatedPets = pets.filter((_, index) => index !== currentPetIndex);
-      setPets(updatedPets);
-      localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: updatedPets }));
-      setShowPetModal(false);
+      const targetPet = pets[currentPetIndex];
+      try {
+        // ยิง API ลบข้อมูลหลังบ้าน (ถ้าสัตว์เลี้ยงนี้เคยถูกบันทึกแล้วและมี petId)
+        if (targetPet.petId) {
+          await api.delete(`/pets/${targetPet.petId}`);
+        }
+
+        // ลบออกจากหน้าจอ
+        const updatedPets = pets.filter((_, index) => index !== currentPetIndex);
+        setPets(updatedPets);
+        localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: updatedPets }));
+        setShowPetModal(false);
+        
+        alert("ลบสัตว์เลี้ยงสำเร็จ");
+      } catch (error) {
+        console.error("Delete pet error:", error);
+        alert("ไม่สามารถลบสัตว์เลี้ยงได้");
+      }
     }
   };
 
