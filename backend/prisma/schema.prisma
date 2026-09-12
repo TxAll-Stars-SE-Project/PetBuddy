@@ -21,6 +21,7 @@ model USER {
   address     String?    @db.Text
   petowner    petowner?
   petsitter   petsitter?
+  passwordresettoken passwordresettoken[]
 }
 
 model booking {
@@ -116,4 +117,12 @@ model tokenblacklist {
   id        Int      @id @default(autoincrement())
   token     String   @unique @db.VarChar(500)
   expiresat DateTime @db.Timestamp(6)
+}
+
+model passwordresettoken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @db.VarChar(500)
+  userid    Int
+  expiresat DateTime @db.Timestamp(6)
+  USER      USER     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 }

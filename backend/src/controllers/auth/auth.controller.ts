@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import { Request, Response } from 'express'
 import { validateLoginInput, validateRegisterInput } from '../../validators/auth.validator.js'
 import * as authService from '../../services/auth.service.js'
@@ -6,6 +7,10 @@ import prisma from '../../utils/prisma.js'
 import { comparePassword } from '../../utils/password.js'
 import { signAuthToken } from '../../utils/jwt.js'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
+import { sendPasswordResetEmail } from '../../utils/email.js'
+
+const PASSWORD_RESET_TOKEN_TTL_MINUTES = Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES ?? 15)
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173'
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -102,4 +107,42 @@ export const logout = async (req: AuthenticatedRequest, res: Response): Promise<
     console.error('Error during logout:', error)
     res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' })
   }
+}
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+
+  if (!email) {
+    res.status(400).json({ error: 'MISSING_FIELDS' })
+    return
+  }
+
+  // Always respond 200 regardless of outcome below, to avoid leaking
+  // whether an email is registered (account enumeration).
+  try {
+    const user = await prisma.uSER.findUnique({ where: { email } })
+
+    if (user) {
+      const token = randomBytes(32).toString('hex')
+      const expiresat = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000)
+
+      await prisma.passwordresettoken.create({
+        data: { token, userid: user.userid, expiresat },
+      })
+
+      const resetLink = `${FRONTEND_URL}/reset-password?token=${token}`
+
+      try {
+        await sendPasswordResetEmail(user.email, resetLink)
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError)
+      }
+    } else {
+      console.warn(`Forgot-password request for unknown email: ${email}`)
+    }
+  } catch (error) {
+    console.error('Error during forgot-password:', error)
+  }
+
+  res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' })
 }
