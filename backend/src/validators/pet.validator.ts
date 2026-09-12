@@ -73,7 +73,7 @@ export const validatePetInput = (
       ageNum = parsedAge
       b_date = calculateBirthDateFromAge(parsedAge)
     }
-  } else if (!isUpdate) {
+  } else if (hasDate || hasAge || !isUpdate) {
     b_date = null
     ageNum = null
   }
