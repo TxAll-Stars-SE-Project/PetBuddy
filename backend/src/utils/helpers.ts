@@ -29,3 +29,29 @@ export const isThaiIDValid = (id: string): boolean => {
   }
   return (11 - (sum % 11)) % 10 === parseInt(id.charAt(12), 10)
 }
+
+/**
+ * คำนวณอายุ (ปี) จากวันเกิด (Date หรือ String ISO)
+ */
+export const calculateAge = (bDate: Date | string | null | undefined): number | null => {
+  if (!bDate) return null
+  const birth = bDate instanceof Date ? bDate : new Date(bDate)
+  if (isNaN(birth.getTime())) return null
+
+  const now = new Date()
+  let years = now.getFullYear() - birth.getFullYear()
+  const monthDiff = now.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    years--
+  }
+  return Math.max(0, years)
+}
+
+/**
+ * คำนวณวันเกิดคร่าวๆ จากอายุ (ปี)
+ */
+export const calculateBirthDateFromAge = (age: number): Date => {
+  const approxDate = new Date()
+  approxDate.setMonth(approxDate.getMonth() - Math.round(age * 12))
+  return approxDate
+}

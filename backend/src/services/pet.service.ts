@@ -1,5 +1,8 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
+import { calculateAge } from '../utils/helpers.js'
+import { deletePetImage } from '../utils/supabase/index.js'
+import { CreatePetInput, PetResponse } from '../types/pet.js'
 
 export const deletePet = async (petId: number, ownerId: number): Promise<void> => {
   // 1. หา pet ที่จะลบ
@@ -20,8 +23,95 @@ export const deletePet = async (petId: number, ownerId: number): Promise<void> =
   // แต่ตาราง booking ยังไม่มีคอลัมน์เชื่อมไปหา pet จึงยังเช็คไม่ได้
   // ต้องรอให้ความสัมพันธ์ pet <-> booking ถูกเพิ่มเข้า schema ก่อน
 
-  // 3. ลบจริง
+  // 3. ลบจริงในฐานข้อมูล
   await prisma.pet.delete({
     where: { petid: petId },
   })
+
+  // 4. ลบไฟล์รูปภาพใน Supabase Storage (ถ้ามี) เพื่อป้องกัน Orphaned file
+  if (pet.image_url) {
+    await deletePetImage(pet.image_url).catch((err) =>
+      console.warn(`[Supabase Storage] Could not delete image for pet ${petId}:`, err)
+    )
+  }
 }
+
+export const createPet = async (
+  ownerId: number,
+  data: CreatePetInput
+): Promise<PetResponse> => {
+  // Ensure the petowner row exists for foreign key constraint
+  const ownerExists = await prisma.petowner.findUnique({
+    where: { userid: ownerId },
+  })
+
+  if (!ownerExists) {
+    // Check if user exists to create the petowner row
+    const user = await prisma.uSER.findUnique({
+      where: { userid: ownerId },
+    })
+
+    if (!user) {
+      throw new AppError(404, 'USER_NOT_FOUND', 'ไม่พบข้อมูลผู้ใช้นี้ในระบบ')
+    }
+
+    await prisma.petowner.create({
+      data: { userid: ownerId },
+    })
+  }
+
+  try {
+    const newPet = await prisma.pet.create({
+      data: {
+        ownerid: ownerId,
+        name: data.name,
+        b_date: data.b_date,
+        species: data.species,
+        breed: data.breed,
+        gender: data.gender,
+        weight: data.weight !== null && data.weight !== undefined ? data.weight : null,
+        allergy: data.allergy || data.notes,
+        image_url: data.image_url || data.photo,
+      },
+    })
+
+    const calculatedAge = data.age ?? calculateAge(newPet.b_date)
+
+    return {
+      id: String(newPet.petid),
+      petid: newPet.petid,
+      ownerId: String(newPet.ownerid),
+      ownerid: newPet.ownerid,
+      name: newPet.name,
+      species: newPet.species,
+      breed: newPet.breed,
+      age: calculatedAge,
+      b_date: newPet.b_date ? newPet.b_date.toISOString().split('T')[0] : null,
+      gender: newPet.gender,
+      weight: newPet.weight ? Number(newPet.weight) : null,
+      notes: newPet.allergy,
+      allergy: newPet.allergy,
+      photo: newPet.image_url,
+      image_url: newPet.image_url,
+    }
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string }
+
+    const isUniqueViolation =
+      err?.code === 'P2002' ||
+      err?.code === '23505' ||
+      err?.message?.includes('23505') ||
+      err?.message?.includes('pet_ownerid_name_unique')
+
+    if (isUniqueViolation) {
+      throw new AppError(
+        409,
+        'PET_NAME_DUPLICATE',
+        'คุณมีสัตว์เลี้ยงชื่อนี้ในระบบแล้ว กรุณาใช้ชื่ออื่น'
+      )
+    }
+
+    throw error
+  }
+}
+

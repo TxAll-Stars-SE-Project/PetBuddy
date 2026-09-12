@@ -41,11 +41,13 @@ export interface PhoneValidationResult {
 }
 
 export interface PetProfileResponse {
+  petid: number
   name: string
   species: string | null
   breed: string | null
   gender: string | null
   birthDate: string | null
+  age: number | null
   weight: number | null
   allergy: string | null
   imageUrl: string | null
