@@ -8,14 +8,25 @@ import PasswordInput from "../components/ui/PasswordInput.jsx";
 import Button from "../components/ui/Button.jsx";
 import AlertBanner from "../components/ui/AlertBanner.jsx";
 
+const Req = ({ children }) => <>{children} <span className="req">*</span></>;
+
+/* 👇 Map error code → ข้อความภาษาไทย + ประเภท (token issue vs password issue) */
+const RESET_ERROR_MAP = {
+  TOKEN_INVALID:          { msg: "ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้อง", type: "token" },
+  TOKEN_EXPIRED:          { msg: "ลิงก์รีเซ็ตรหัสผ่านหมดอายุแล้ว", type: "token" },
+  MISSING_FIELDS:         { msg: "ข้อมูลไม่ครบถ้วน กรุณาลองใหม่", type: "token" },
+  INVALID_PASSWORD:       { msg: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร ประกอบด้วยอักษรและตัวเลข", type: "password" },
+  SAME_AS_OLD_PASSWORD:   { msg: "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม", type: "password" },
+};
+
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
-  
+
   const [values, setValues] = useState({ password: "", confirm: "" });
   const [errors, setErrors] = useState({});
-  const [expired, setExpired] = useState(false);
+  const [tokenError, setTokenError] = useState("");
   const [status, setStatus] = useState("idle");
 
   const set = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
@@ -36,21 +47,41 @@ export default function ResetPasswordPage() {
       toast("เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบ");
       navigate("/login");
     } catch (err) {
-      const status = err.response?.status;
-      if (status === 400) setExpired(true);
-      else toast("เกิดข้อผิดพลาด กรุณาลองใหม่", "info");
+      const statusCode = err.response?.status;
+      const errorCode = err.response?.data?.error;
+
+      if (statusCode === 400 && errorCode) {
+        const mapped = RESET_ERROR_MAP[errorCode];
+
+        if (mapped) {
+          if (mapped.type === "token") {
+            // ลิงก์มีปัญหา → แสดงหน้า "ขอลิงก์ใหม่"
+            setTokenError(mapped.msg);
+          } else {
+            // รหัสผ่านมีปัญหา → แสดง error ใต้ช่อง input
+            setErrors((prev) => ({ ...prev, password: mapped.msg }));
+          }
+        } else {
+          // error code ที่ไม่รู้จัก → fallback
+          toast("เกิดข้อผิดพลาด กรุณาลองใหม่", "info");
+        }
+      } else if (statusCode >= 500) {
+        toast("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง", "info");
+      } else {
+        toast("เกิดข้อผิดพลาด กรุณาลองใหม่", "info");
+      }
     } finally {
       setStatus("idle");
     }
   };
 
-  if (expired || !token) {
+  if (tokenError || !token) {
     return (
       <div className="auth-page">
         <div className="auth-card">
           <Logo />
           <h1 className="auth-title">ตั้งรหัสผ่านใหม่</h1>
-          <AlertBanner type="error">ลิงก์นี้หมดอายุหรือถูกใช้แล้ว</AlertBanner>
+          <AlertBanner type="error">{tokenError || "ลิงก์นี้หมดอายุหรือถูกใช้แล้ว"}</AlertBanner>
           <Link className="btn btn--aslink" to="/forgot-password">ขอลิงก์ใหม่</Link>
         </div>
       </div>
@@ -64,9 +95,9 @@ export default function ResetPasswordPage() {
         <h1 className="auth-title">ตั้งรหัสผ่านใหม่</h1>
         <p className="auth-sub">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
         <form onSubmit={onSubmit} noValidate>
-          <PasswordInput label="รหัสผ่านใหม่" placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
+          <PasswordInput label={<Req>รหัสผ่านใหม่</Req>} placeholder="อย่างน้อย 8 ตัว มีอักษร+ตัวเลข"
             value={values.password} onChange={set("password")} error={errors.password} />
-          <PasswordInput label="ยืนยันรหัสผ่าน" placeholder="กรอกรหัสผ่านอีกครั้ง"
+          <PasswordInput label={<Req>ยืนยันรหัสผ่าน</Req>} placeholder="กรอกรหัสผ่านอีกครั้ง"
             value={values.confirm} onChange={set("confirm")} error={errors.confirm} />
           <Button type="submit" loading={status === "submitting"}>อัปเดตรหัสผ่าน</Button>
         </form>
