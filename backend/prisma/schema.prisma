@@ -9,19 +9,19 @@ datasource db {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model USER {
-  userid      Int        @id @default(autoincrement())
-  username    String     @unique @db.VarChar(50)
-  password    String     @db.VarChar(100)
-  email       String     @unique @db.VarChar(100)
-  tel         String?    @db.VarChar(10)
-  province    String?    @db.VarChar(100)
-  district    String?    @db.VarChar(100)
-  subdistrict String?    @db.VarChar(100)
-  postal_code String?    @db.VarChar(10)
-  address     String?    @db.Text
-  petowner    petowner?
-  petsitter   petsitter?
+  userid             Int                  @id @default(autoincrement())
+  username           String               @unique @db.VarChar(50)
+  password           String               @db.VarChar(100)
+  email              String               @unique @db.VarChar(100)
+  tel                String?              @db.VarChar(10)
+  province           String?              @db.VarChar(100)
+  postal_code        String?              @db.VarChar(10)
+  district           String?              @db.VarChar(100)
+  subdistrict        String?              @db.VarChar(100)
+  address            String?
   passwordresettoken passwordresettoken[]
+  petowner           petowner?
+  petsitter          petsitter?
 }
 
 model booking {
@@ -55,18 +55,19 @@ model payment {
 }
 
 model pet {
-  ownerid  Int
-  name     String   @db.VarChar(50)
-  b_date   DateTime @db.Date
-  allergy  String?
-  gender   String?  @db.VarChar(20)
-  weight   Decimal? @db.Decimal(5, 2)
-  species  String?  @db.VarChar(50)
-  breed    String?  @db.VarChar(50)
-  image_url String? 
-  petowner petowner @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  ownerid   Int
+  name      String    @db.VarChar(50)
+  b_date    DateTime? @db.Date
+  allergy   String?
+  gender    String?   @db.VarChar(20)
+  weight    Decimal?  @db.Decimal(5, 2)
+  species   String?   @db.VarChar(50)
+  breed     String?   @db.VarChar(50)
+  image_url String?
+  petid     Int       @id @default(autoincrement())
+  petowner  petowner  @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([ownerid, name, b_date])
+  @@unique([ownerid, name], map: "pet_ownerid_name_unique")
 }
 
 model petowner {
