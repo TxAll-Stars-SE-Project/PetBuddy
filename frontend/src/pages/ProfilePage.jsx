@@ -34,6 +34,8 @@ function ProfilePage() {
   const [originalProfile, setOriginalProfile] = useState(profile);
   const [errors, setErrors] = useState({});
 
+  const [isEditing, setIsEditing] = useState(false);
+
   // GET /api/users/me
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -196,9 +198,12 @@ function ProfilePage() {
         postalCode: profile.postalCode,
         address: profile.address,
         role: profile.role,        
-        experience: profile.experience,
-        thaiId: profile.thaiId
       };
+
+      if (profile.role === "sitter") {
+        payload.experience = profile.experience;
+        payload.thaiId = profile.thaiId;
+      }
 
       //await api.put("/users/me", payload);
 

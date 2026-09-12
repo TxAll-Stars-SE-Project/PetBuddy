@@ -39,6 +39,20 @@ function PetModal({
           ) : (
             /* Input form for Add / Edit */
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px", textAlign: "left" }}>
+                <div style={{ textAlign: "center", marginBottom: "4px" }}>
+                {pet.photo ? (
+                  <img 
+                    src={pet.photo} 
+                    alt="Pet Preview" 
+                    style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "1px solid #ccc" }} 
+                    onError={(e) => { e.target.src = "https://via.placeholder.com/80?text=Error"; }} // ดัก Error ถ้ารูปพัง
+                  />
+                ) : (
+                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "#eee", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "30px", border: "1px dashed #ccc", color: "#999" }}>
+                    🐾
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="profile-label" style={{ display: "block", marginBottom: "2px", fontSize: "13px" }}>ชื่อสัตว์เลี้ยง (Name)</label>
                 <input
