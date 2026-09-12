@@ -1,5 +1,6 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
+import { calculateAge } from '../utils/helpers.js'
 import { CreatePetInput, PetResponse } from '../types/pet.js'
 
 export const deletePet = async (petId: number, ownerId: number): Promise<void> => {
@@ -66,18 +67,7 @@ export const createPet = async (
       },
     })
 
-    // Compute age for response if b_date is available
-    let calculatedAge: number | null = data.age ?? null
-    if (newPet.b_date && calculatedAge === null) {
-      const now = new Date()
-      const birth = new Date(newPet.b_date)
-      let years = now.getFullYear() - birth.getFullYear()
-      const monthDiff = now.getMonth() - birth.getMonth()
-      if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
-        years--
-      }
-      calculatedAge = Math.max(0, years)
-    }
+    const calculatedAge = data.age ?? calculateAge(newPet.b_date)
 
     return {
       id: String(newPet.petid),

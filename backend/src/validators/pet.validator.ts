@@ -1,7 +1,7 @@
 import { CreatePetInput } from '../types/pet.js'
 import { ValidationError } from '../types/user.js'
 import { AppError } from '../utils/errors.js'
-import { isEmpty, toCleanString } from '../utils/helpers.js'
+import { isEmpty, toCleanString, calculateAge, calculateBirthDateFromAge } from '../utils/helpers.js'
 
 export const validateCreatePetInput = (data: unknown): CreatePetInput => {
   const body = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
@@ -40,14 +40,7 @@ export const validateCreatePetInput = (data: unknown): CreatePetInput => {
       errors.push({ field: 'b_date', message: 'วันเกิดต้องไม่เป็นวันที่ในอนาคต' })
     } else {
       b_date = parsed
-      // Calculate age from b_date
-      const now = new Date()
-      let years = now.getFullYear() - parsed.getFullYear()
-      const monthDiff = now.getMonth() - parsed.getMonth()
-      if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < parsed.getDate())) {
-        years--
-      }
-      ageNum = Math.max(0, years)
+      ageNum = calculateAge(parsed)
     }
   } else if (!isEmpty(body.age)) {
     const parsedAge = Number(body.age)
@@ -55,10 +48,7 @@ export const validateCreatePetInput = (data: unknown): CreatePetInput => {
       errors.push({ field: 'age', message: 'อายุต้องเป็นตัวเลขที่ถูกต้อง (0 - 100)' })
     } else {
       ageNum = parsedAge
-      // Approximate birth date by subtracting age
-      const approxDate = new Date()
-      approxDate.setMonth(approxDate.getMonth() - Math.round(parsedAge * 12))
-      b_date = approxDate
+      b_date = calculateBirthDateFromAge(parsedAge)
     }
   }
 

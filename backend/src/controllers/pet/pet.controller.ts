@@ -2,7 +2,7 @@ import { Response } from 'express'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
 import { validateCreatePetInput } from '../../validators/pet.validator.js'
 import * as petService from '../../services/pet.service.js'
-import { uploadPetImage } from '../../utils/supabase.js'
+import { uploadPetImage } from '../../utils/supabase/index.js'
 import { AppError } from '../../utils/errors.js'
 
 export const createPetHandler = async (

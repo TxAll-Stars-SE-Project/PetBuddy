@@ -2,6 +2,7 @@ import { Prisma } from '../generated/prisma/client.js'
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { getUniqueConstraintTarget } from '../utils/prismaError.js'
+import { calculateAge } from '../utils/helpers.js'
 import { UserProfileResponse, PetProfileResponse } from '../types/user.js'
 import type { UpdateProfileInput } from '../validators/profile.validator.js'
 
@@ -44,6 +45,7 @@ export const getUserProfile = async (userId: number): Promise<UserProfileRespons
   }
 
   const pets: PetProfileResponse[] = (user.petowner?.pet ?? []).map((pet) => ({
+    petid: pet.petid,
     name: pet.name,
     species: pet.species ?? null,
     breed: pet.breed ?? null,
@@ -51,6 +53,7 @@ export const getUserProfile = async (userId: number): Promise<UserProfileRespons
     birthDate: pet.b_date
       ? (pet.b_date instanceof Date ? pet.b_date.toISOString().slice(0, 10) : String(pet.b_date).slice(0, 10))
       : null,
+    age: calculateAge(pet.b_date),
     weight: pet.weight !== null && pet.weight !== undefined ? Number(pet.weight) : null,
     allergy: pet.allergy ?? null,
     imageUrl: pet.image_url ?? null,

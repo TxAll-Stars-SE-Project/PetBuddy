@@ -21,11 +21,8 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "libphonenumber-js": "^1.13.13",
-<<<<<<< HEAD
     "nodemailer": "^10.0.7",
-=======
     "multer": "^2.3.0",
->>>>>>> f6e0bbe (feat(addPet) : implement Add pet API)
     "pg": "^8.23.0"
   },
   "devDependencies": {

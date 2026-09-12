@@ -283,11 +283,13 @@ Authorization: Bearer <token>
     "role": "owner",
     "pets": [
       {
+        "petid": 1,
         "name": "เฉาก๊วย",
         "species": "สุนัข",
         "breed": "โกลเด้น รีทริฟเวอร์",
         "gender": "ผู้",
         "birthDate": "2022-05-15",
+        "age": 2,
         "weight": 28.5,
         "allergy": "แพ้ไก่",
         "imageUrl": "https://xyz.supabase.co/storage/v1/object/public/petbuddy-images/pets/uuid-dog.jpg"
