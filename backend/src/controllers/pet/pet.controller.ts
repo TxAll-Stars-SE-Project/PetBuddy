@@ -124,6 +124,7 @@ export const updatePetHandler = async (
 
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
+        success: false,
         error: error.errorCode,
         message: error.message,
         ...(error.errors ? { errors: error.errors } : {}),
@@ -133,6 +134,7 @@ export const updatePetHandler = async (
 
     console.error('Error updating pet:', error)
     res.status(500).json({
+      success: false,
       error: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to update pet profile',
       detail: error instanceof Error ? error.message : 'Internal server error',

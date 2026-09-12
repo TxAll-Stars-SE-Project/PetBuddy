@@ -139,7 +139,10 @@ export const updatePet = async (
     const duplicate = await prisma.pet.findFirst({
       where: {
         ownerid: ownerId,
-        name: data.name.trim(),
+        name: {
+          equals: data.name.trim(),
+          mode: 'insensitive',
+        },
         NOT: { petid: petId },
       },
     })
