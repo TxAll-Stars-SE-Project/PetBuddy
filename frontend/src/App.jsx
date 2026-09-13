@@ -9,6 +9,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import "./styles/global.css";
 
 /* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
@@ -40,6 +41,8 @@ function AppRoutes() {
         
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

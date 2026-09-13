@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import Logo from "./ui/Logo.jsx";
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   return (
@@ -19,7 +21,7 @@ export default function Navbar() {
             <>
               <div className="overlay" onClick={() => setOpen(false)} />
               <div className="dropdown">
-                <button className="dropdown-item" disabled>โปรไฟล์ของฉัน</button>
+                <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/profile")}}>โปรไฟล์ของฉัน</button>
                 <button className="dropdown-item" disabled>การจองของฉัน</button>
                 <div className="dropdown-divider" />
                 <button className="dropdown-item dropdown-item--danger"
