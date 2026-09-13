@@ -58,11 +58,18 @@ function ProfilePage() {
 
           setProfile(loadedProfile);
           setOriginalProfile(loadedProfile);
+          
 
-          localStorage.setItem(
-            "pb_user",
-            JSON.stringify({ ...user, ...loadedProfile, pets: data.pets || [] })
-          );
+          const fullUserData = { ...user, ...loadedProfile, pets: data.pets || [] };
+          if (setUser) setUser(fullUserData);
+
+          const safeUserData = {
+            id: fullUserData.id,
+            username: fullUserData.username,
+            email: fullUserData.email,
+            role: fullUserData.role,
+          };
+          localStorage.setItem("pb_user", JSON.stringify(safeUserData))
 
           if (data.pets && Array.isArray(data.pets)) {
             const mappedPets = data.pets.map((p) => ({
@@ -573,7 +580,7 @@ function ProfilePage() {
                           <img 
                             src={pet.photo} 
                             alt={pet.name} 
-                            onError={(e) => { e.target.src = "https://via.placeholder.com/40?text=🐾"; }}
+                            onError={(e) => { e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' style='background:%23eee;'%3E%3Ctext x='50%25' y='50%25' font-size='40' text-anchor='middle' dy='.35em'%3E%26%23128062%3B%3C/text%3E%3C/svg%3E"; }}
                             style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover", border: "1px solid #ccc" }} 
                           />
                         ) : (

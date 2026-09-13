@@ -58,7 +58,7 @@ function PetModal({
                   src={pet.photo} 
                   alt="Pet Preview" 
                   className="pet-modal-preview-img"
-                  onError={(e) => { e.target.src = "https://via.placeholder.com/80?text=Error"; }} 
+                  onError={(e) => { e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' style='background:%23eee;'%3E%3Ctext x='50%25' y='50%25' font-size='40' text-anchor='middle' dy='.35em'%3E%26%23128062%3B%3C/text%3E%3C/svg%3E"; }} 
                 />
               ) : (
                 <div className="pet-modal-placeholder">🐾</div>
@@ -137,13 +137,19 @@ function PetModal({
                 className="profile-input"
                 onChange={(e) => {
                   const file = e.target.files[0];
-                  if (file) {
-                    if (pet.photo && pet.photo.startsWith("blob:")) {
-                      URL.revokeObjectURL(pet.photo);
-                    }
-                    onChange("photoFile", file); 
-                    onChange("photo", URL.createObjectURL(file));
+                  if (!file) return;
+
+                  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+                  if (file.size > MAX_FILE_SIZE) {
+                    alert("ขนาดไฟล์ใหญ่เกินไป กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB");
+                    return;
                   }
+
+                  if (pet.photo && pet.photo.startsWith("blob:")) {
+                    URL.revokeObjectURL(pet.photo);
+                  }
+                  onChange("photoFile", file); 
+                  onChange("photo", URL.createObjectURL(file)); 
                 }}
               />
             </div>
