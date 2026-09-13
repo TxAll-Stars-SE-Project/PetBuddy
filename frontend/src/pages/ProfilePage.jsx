@@ -117,10 +117,13 @@ function ProfilePage() {
 
   const handleProvinceChange = (e) => {
     const selectedProvince = e.target.value;
-    handleChange("province", selectedProvince);
-    handleChange("district", ""); 
-    handleChange("subdistrict", "");
-    handleChange("postalCode", ""); 
+    setProfile((prev) => ({
+      ...prev,
+      province: selectedProvince,
+      district: "", 
+      subdistrict: "",
+      postalCode: ""
+    }));
 
     const prov = provincesData.find((p) => p.name_th === selectedProvince);
     setAvailableDistricts(prov ? districtsData.filter(d => d.province_id === prov.id) : []);
@@ -130,9 +133,12 @@ function ProfilePage() {
 
   const handleDistrictChange = (e) => {
     const selectedDistrict = e.target.value;
-    handleChange("district", selectedDistrict);
-    handleChange("subdistrict", "");
-    handleChange("postalCode", ""); 
+    setProfile((prev) => ({
+      ...prev,
+      district: selectedDistrict,
+      subdistrict: "",
+      postalCode: ""
+    }));
 
     const dist = availableDistricts.find((d) => d.name_th === selectedDistrict);
     if (dist) {
@@ -147,13 +153,16 @@ function ProfilePage() {
 
   const handleSubdistrictChange = (e) => {
     const selectedSub = e.target.value;
-    handleChange("subdistrict", selectedSub);
-    handleChange("postalCode", ""); 
-
     const sub = availableSubdistricts.find((s) => s.name_th === selectedSub);
+
+    setProfile((prev) => ({
+      ...prev,
+      subdistrict: selectedSub,
+      postalCode: sub && sub.zip_code ? sub.zip_code.toString() : ""
+    }));
+
     if (sub && sub.zip_code) {
       setAvailableZipcodes([sub.zip_code]);
-      handleChange("postalCode", sub.zip_code);
     } else {
       setAvailableZipcodes([]);
     }
@@ -318,7 +327,9 @@ function ProfilePage() {
       }));
 
       setPets(mappedPets);
-      if (setUser) setUser(updatedUser);
+      if (setUser) {
+        setUser((prev) => ({ ...prev, pets: mappedPets }));
+      }
       
       setShowPetModal(false);
       alert("บันทึกข้อมูลสัตว์เลี้ยงสำเร็จ");
@@ -346,7 +357,9 @@ function ProfilePage() {
         // ลบออกจากหน้าจอ
         const updatedPets = pets.filter((_, index) => index !== currentPetIndex);
         setPets(updatedPets);
-        if (setUser) setUser(updatedUser);
+        if (setUser) {
+          setUser((prev) => ({ ...prev, pets: updatedPets }));
+        }
         setShowPetModal(false);
         
         alert("ลบสัตว์เลี้ยงสำเร็จ");
@@ -560,6 +573,7 @@ function ProfilePage() {
                           <img 
                             src={pet.photo} 
                             alt={pet.name} 
+                            onError={(e) => { e.target.src = "https://via.placeholder.com/40?text=🐾"; }}
                             style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover", border: "1px solid #ccc" }} 
                           />
                         ) : (
