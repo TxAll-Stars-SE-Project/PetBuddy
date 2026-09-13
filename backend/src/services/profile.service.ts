@@ -80,11 +80,54 @@ export const updateUserProfile = async (
     throw new AppError(400, 'NO_FIELDS_PROVIDED', 'ไม่มีข้อมูลที่ต้องการแก้ไข')
   }
 
-  try {
-    await prisma.uSER.update({
+  // แยกฟิลด์ระหว่างตาราง USER และ petsitter
+  const { experience, ...userData } = data
+
+  const sitterData: { experience?: string | null } = {}
+  if (experience !== undefined) {
+    sitterData.experience = experience
+  }
+
+  const hasUserFields = Object.keys(userData).length > 0
+  const hasSitterFields = Object.keys(sitterData).length > 0
+
+  if (!hasUserFields && !hasSitterFields) {
+    throw new AppError(400, 'NO_FIELDS_PROVIDED', 'ไม่มีข้อมูลที่ต้องการแก้ไข')
+  }
+
+  // หากมีการส่งฟิลด์เฉพาะของ Sitter มา ตรวจสอบว่าผู้ใช้มีบทบาทเป็น Pet Sitter หรือไม่
+  if (hasSitterFields) {
+    const sitter = await prisma.petsitter.findUnique({
       where: { userid: userId },
-      data,
       select: { userid: true },
+    })
+
+    if (!sitter) {
+      throw new AppError(
+        400,
+        'ROLE_MISMATCH',
+        'เฉพาะผู้ดูแลสัตว์ (Pet Sitter) เท่านั้นที่สามารถแก้ไขข้อมูลนี้ได้'
+      )
+    }
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (hasUserFields) {
+        await tx.uSER.update({
+          where: { userid: userId },
+          data: userData,
+          select: { userid: true },
+        })
+      }
+
+      if (hasSitterFields) {
+        await tx.petsitter.update({
+          where: { userid: userId },
+          data: sitterData,
+          select: { userid: true },
+        })
+      }
     })
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

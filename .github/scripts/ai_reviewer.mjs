@@ -7,6 +7,34 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 const GITHUB_EVENT_PATH = process.env.GITHUB_EVENT_PATH;
 const GITHUB_STEP_SUMMARY = process.env.GITHUB_STEP_SUMMARY;
+const AI_REVIEW_MARKER = '<!-- petbuddy-ai-reviewer -->';
+
+async function githubApi(endpoint, options = {}) {
+  const url = endpoint.startsWith('https://') ? endpoint : `https://api.github.com${endpoint}`;
+  const response = await fetch(url, {
+    method: options.method || 'GET',
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'PetBuddy-AI-Reviewer',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    },
+    body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`GitHub API ${options.method || 'GET'} ${endpoint} failed (${response.status}): ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+}
 
 async function postRequest(url, headers, body) {
   return new Promise((resolve, reject) => {
@@ -143,6 +171,56 @@ Format your response in GitHub Markdown using this structure:
   throw lastError || new Error('No candidate Gemini model succeeded.');
 }
 
+function isAIReviewComment(comment) {
+  if (!comment || !comment.body) return false;
+
+  // Check for hidden marker
+  if (comment.body.includes(AI_REVIEW_MARKER)) {
+    return true;
+  }
+
+  // Backwards compatibility for existing reviews without the hidden marker
+  const hasReviewSignature =
+    comment.body.includes('### 🤖 AI Code Review') ||
+    comment.body.includes('Reviewed by Antigravity AI');
+
+  const isBotUser =
+    comment.user?.type === 'Bot' ||
+    comment.user?.login === 'github-actions[bot]' ||
+    comment.user?.login?.endsWith('[bot]');
+
+  return Boolean(hasReviewSignature && isBotUser);
+}
+
+async function deletePreviousAIReviews(prNumber) {
+  try {
+    console.log(`🔍 Checking for existing AI review comments on PR #${prNumber}...`);
+    const comments = await githubApi(`/repos/${GITHUB_REPOSITORY}/issues/${prNumber}/comments?per_page=100`);
+
+    if (!Array.isArray(comments)) {
+      return;
+    }
+
+    const outdatedComments = comments.filter(isAIReviewComment);
+    if (outdatedComments.length === 0) {
+      console.log('No outdated AI review comments found.');
+      return;
+    }
+
+    console.log(`Found ${outdatedComments.length} outdated AI review comment(s). Deleting...`);
+    for (const comment of outdatedComments) {
+      try {
+        await githubApi(`/repos/${GITHUB_REPOSITORY}/issues/comments/${comment.id}`, { method: 'DELETE' });
+        console.log(`🗑️ Deleted outdated review comment ID: ${comment.id}`);
+      } catch (err) {
+        console.warn(`Failed to delete comment ID ${comment.id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.warn(`Could not retrieve or delete previous comments on PR #${prNumber}:`, err.message);
+  }
+}
+
 async function postCommentToPR(comment) {
   if (!GITHUB_TOKEN || !GITHUB_REPOSITORY || !fs.existsSync(GITHUB_EVENT_PATH)) {
     return;
@@ -156,16 +234,16 @@ async function postCommentToPR(comment) {
     return;
   }
 
-  const url = `https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${prNumber}/comments`;
-  await postRequest(
-    url,
-    {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      Accept: 'application/vnd.github.v3+json',
-    },
-    { body: comment }
-  );
-  console.log(`Successfully posted AI review comment to PR #${prNumber}`);
+  // 1. Delete outdated AI review comments first
+  await deletePreviousAIReviews(prNumber);
+
+  // 2. Post new review with marker
+  const markedComment = `${AI_REVIEW_MARKER}\n${comment}`;
+  await githubApi(`/repos/${GITHUB_REPOSITORY}/issues/${prNumber}/comments`, {
+    method: 'POST',
+    body: { body: markedComment },
+  });
+  console.log(`✅ Successfully posted fresh AI review comment to PR #${prNumber}`);
 }
 
 async function main() {
