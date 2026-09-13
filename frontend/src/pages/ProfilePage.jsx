@@ -72,7 +72,7 @@ function ProfilePage() {
               breed: p.breed || "",
               gender: p.gender || "", 
               weight: p.weight || "",
-              age: p.birthDate || "",
+              age: p.age !== null && p.age !== undefined ? p.age : "",
               photo: p.imageUrl || "",
               notes: p.allergy ? `แพ้: ${p.allergy}` : "",
             }));
@@ -184,10 +184,26 @@ function ProfilePage() {
   };
 
   const handleSaveSection = async (sectionType) => {
-    const validationErrors = validateProfile(profile);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    const allErrors = validateProfile(profile);
+    let sectionErrors = {};
 
+    if (sectionType === "account") {
+      if (allErrors.username) sectionErrors.username = allErrors.username;
+      if (allErrors.email) sectionErrors.email = allErrors.email;
+      if (allErrors.tel) sectionErrors.tel = allErrors.tel;
+    } else if (sectionType === "address") {
+      if (allErrors.address) sectionErrors.address = allErrors.address;
+      if (allErrors.province) sectionErrors.province = allErrors.province;
+      if (allErrors.district) sectionErrors.district = allErrors.district;
+      if (allErrors.subdistrict) sectionErrors.subdistrict = allErrors.subdistrict;
+      if (allErrors.postalCode) sectionErrors.postalCode = allErrors.postalCode;
+    } else if (sectionType === "sitter") {
+      if (allErrors.experience) sectionErrors.experience = allErrors.experience;
+    }
+
+    setErrors(sectionErrors);
+
+    if (Object.keys(sectionErrors).length > 0) return;
     try {
       const payload = {
         username: profile.username,
@@ -319,6 +335,7 @@ function ProfilePage() {
 
   const handleRemoveCurrentModalPet = async () => {
     if (currentPetIndex !== null) {
+      if (!window.confirm("คุณต้องการลบสัตว์เลี้ยงนี้ใช่หรือไม่?")) return;
       const targetPet = pets[currentPetIndex];
       try {
         // ยิง API ลบข้อมูลหลังบ้าน (ถ้าสัตว์เลี้ยงนี้เคยถูกบันทึกแล้วและมี petId)
@@ -348,7 +365,7 @@ function ProfilePage() {
     }
     setDeleteStatus("submitting");
     try {
-      await api.delete("/auth/account", { password: deletePassword });
+      await api.delete("/auth/account", { data: { password: deletePassword } });
       localStorage.removeItem("pb_token");
       localStorage.removeItem("pb_user");
       setShowDeleteModal(false);
