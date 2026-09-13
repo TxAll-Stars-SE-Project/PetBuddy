@@ -203,7 +203,6 @@ function ProfilePage() {
 
       if (profile.role === "sitter") {
         payload.experience = profile.experience;
-        payload.thaiId = profile.thaiId;
       }
 
       await api.put("/users/me", payload);
