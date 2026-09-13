@@ -5,7 +5,7 @@ import { validateThaiAddress } from './thaiAddress.validator.js'
 import { validateEmailDomain } from './emailDomain.validator.js'
 import { validateAndNormalizeThaiPhone } from './phone.validator.js'
 
-/** ฟิลด์ที่ยอมให้แก้ผ่าน PUT /api/users/me — userid/password/role ไม่อยู่ในนี้โดยตั้งใจ */
+/** ฟิลด์ที่ยอมให้แก้ผ่าน PUT /api/users/me — userid/password/role/thaiId ไม่อยู่ในนี้โดยตั้งใจ */
 export interface UpdateProfileInput {
   username?: string
   email?: string
@@ -15,6 +15,7 @@ export interface UpdateProfileInput {
   subdistrict?: string
   postal_code?: string
   address?: string | null
+  experience?: string | null
 }
 
 /** ชื่อฟิลด์ที่ frontend อาจส่งมาได้หลายแบบ (camelCase / snake_case / ชื่อเดิม) */
@@ -38,7 +39,8 @@ const pick = (body: Record<string, unknown>, keys: readonly string[]): string | 
  * - อัปเดตเฉพาะฟิลด์ที่ส่งมา (partial update) ฟิลด์ที่ไม่ส่งมาจะไม่ถูกแตะ
  * - ที่อยู่ต้องส่งมาครบทั้ง 4 ส่วนพร้อมกัน เพราะ validateThaiAddress ตรวจความสัมพันธ์
  *   จังหวัด → อำเภอ → ตำบล → รหัสไปรษณีย์ ว่าตรงกันจริงหรือไม่
- * - ฟิลด์ที่ไม่รู้จัก (role, thaiId, experience, userid, password) จะถูกเมินทั้งหมด
+ * - รองรับข้อมูลเฉพาะของ Pet Sitter: experience
+ * - ฟิลด์ที่ไม่รู้จักหรือไม่ยอมให้แก้ไข (role, thaiId, userid, password) จะถูกเมินทั้งหมด
  *
  * โยน AppError(400) เมื่อไม่ผ่าน — รูปแบบเดียวกับ validateRegisterInput
  */
@@ -146,6 +148,23 @@ export const validateUpdateProfileInput = async (data: unknown): Promise<UpdateP
   if (detailKey) {
     const address = toCleanString(body[detailKey])
     result.address = address === '' ? null : address
+  }
+
+  // 6. Sitter: ประสบการณ์ (experience)
+  const expKey = pick(body, ['experience'])
+  if (expKey) {
+    if (body[expKey] === null) {
+      result.experience = null
+    } else {
+      const experience = toCleanString(body[expKey])
+      if (isEmpty(body[expKey])) {
+        errors.push({ field: 'experience', message: 'กรุณากรอกประสบการณ์' })
+      } else if (experience.length > 500) {
+        errors.push({ field: 'experience', message: 'ประสบการณ์ต้องไม่เกิน 500 ตัวอักษร' })
+      } else {
+        result.experience = experience
+      }
+    }
   }
 
   if (errors.length > 0) {
