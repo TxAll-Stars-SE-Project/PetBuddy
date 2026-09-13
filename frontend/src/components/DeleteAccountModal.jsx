@@ -9,8 +9,7 @@ function DeleteAccountModal({
   return (
     <div className="delete-modal-overlay">
       <div className="delete-modal">
-        <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }}></form>
-
+        <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }}>
           <h2>ยืนยันการลบบัญชี</h2>
 
           <p className="delete-modal-warning">
@@ -18,8 +17,7 @@ function DeleteAccountModal({
           </p>
 
           <p>
-            กรุณากรอกรหัสผ่านของคุณ
-            เพื่อยืนยันการลบบัญชี
+            กรุณากรอกรหัสผ่านของคุณ เพื่อยืนยันการลบบัญชี
           </p>
 
           <input
@@ -27,20 +25,13 @@ function DeleteAccountModal({
             className="delete-password-input"
             placeholder="กรอกรหัสผ่าน"
             value={password}
-            onChange={(e) =>
-              onPasswordChange(e.target.value)
-            }
+            onChange={(e) => onPasswordChange(e.target.value)}
             disabled={status === "submitting"}
           />
 
-          {error && (
-            <div className="delete-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="delete-error">{error}</div>}
 
           <div className="delete-modal-actions">
-
             <button
               type="button"
               className="delete-cancel-button"
@@ -49,20 +40,15 @@ function DeleteAccountModal({
             >
               ยกเลิก
             </button>
-
             <button
               type="submit"
               className="delete-confirm-button"
-              onClick={onConfirm}
               disabled={status === "submitting"}
             >
-              {status === "submitting"
-                ? "กำลังลบ..."
-                : "ยืนยันการลบบัญชี"}
+              {status === "submitting" ? "กำลังลบ..." : "ยืนยันการลบบัญชี"}
             </button>
-
           </div>
-
+        </form>
       </div>
     </div>
   );

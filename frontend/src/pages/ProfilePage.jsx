@@ -214,7 +214,9 @@ function ProfilePage() {
       if (allErrors.subdistrict) sectionErrors.subdistrict = allErrors.subdistrict;
       if (allErrors.postalCode) sectionErrors.postalCode = allErrors.postalCode;
     } else if (sectionType === "sitter") {
-      if (allErrors.experience) sectionErrors.experience = allErrors.experience;
+      if (allErrors.experience && profile.experience.trim() !== "") {
+        sectionErrors.experience = allErrors.experience;
+      }
     }
 
     setErrors(sectionErrors);
@@ -591,8 +593,8 @@ function ProfilePage() {
                         <span style={{ fontSize: "15px", fontWeight: "600" }}>{pet.name}</span>
                       </div>
                       <div style={{ display: "flex", gap: "6px" }}>
-                        <button type="button" className="profile-edit-button" style={{ padding: "4px 10px", fontSize: "12px" }} onClick={() => openViewPetModal(index)} title="ดูข้อมูล">🦹‍♂️​</button>
-                        <button type="button" className="profile-edit-button" style={{ padding: "4px 10px", fontSize: "12px", background: "#f0ad4e", borderColor: "#eea236", color: "#fff" }} onClick={() => openEditPetModal(index)} title="แก้ไขข้อมูล">🖋️​</button>
+                        <button type="button" className="profile-edit-button pet-btn-sm" onClick={() => openViewPetModal(index)} title="ดูข้อมูล">🔍</button>
+                        <button type="button" className="profile-edit-button pet-btn-sm pet-btn-warning" onClick={() => openEditPetModal(index)} title="แก้ไขข้อมูล">🖋️</button>
                       </div>
                     </div>
                   ))

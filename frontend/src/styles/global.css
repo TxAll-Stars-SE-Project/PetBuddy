@@ -258,3 +258,18 @@ input[type="password"]::-ms-clear{
     grid-template-columns: 1fr;
   }
 }
+
+/* =========Pet Action Buttons (Profile Page)========== */
+.pet-btn-sm {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.pet-btn-warning {
+  background-color: #f0ad4e !important;
+  border-color: #eea236 !important;
+  color: #fff !important;
+}
+.pet-btn-warning:hover {
+  background-color: #ec971f !important;
+}
