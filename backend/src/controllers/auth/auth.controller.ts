@@ -36,6 +36,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
+    // US2-1: บัญชีที่ถูกปิดใช้งานแล้วห้ามล็อกอิน
+    // เช็คหลังตรวจรหัสผ่าน เพื่อไม่ให้คนที่เดารหัสผ่านผิดรู้ว่าอีเมลนี้มีอยู่จริง
+    if (!user.is_active) {
+      console.warn(`Login blocked: account deactivated for userId ${user.userid}`)
+      res.status(403).json({
+        error: 'ACCOUNT_DEACTIVATED',
+        message: 'บัญชีนี้ถูกปิดใช้งานแล้ว',
+      })
+      return
+    }
+
     const role = user.petsitter ? 'sitter' : 'owner'
     const token = signAuthToken({ userId: user.userid, role }, rememberMe === true)
 
@@ -109,6 +120,76 @@ export const logout = async (req: AuthenticatedRequest, res: Response): Promise<
   }
 }
 
+/**
+ * DELETE /api/auth/account — ปิดบัญชีของตัวเอง (US2-1)
+ *
+ * เป็น soft delete (is_active = false) ไม่ลบแถวจริง เพราะ foreign key ของ
+ * petowner/petsitter ตั้ง onDelete: Cascade ไว้ — ลบ USER หนึ่งแถวจะทำให้
+ * pet / booking / review / payment ที่ผูกอยู่หายตามไปทั้งหมดและกู้คืนไม่ได้
+ *
+ * ต้องกรอกรหัสผ่านยืนยันอีกครั้งตาม acceptance criteria แล้วระบบจะ:
+ *   1. ตั้ง is_active = false  → login จะถูกบล็อกด้วย 403 ACCOUNT_DEACTIVATED
+ *   2. ยัด token ปัจจุบันเข้า tokenblacklist → ใช้ token เดิมต่อไม่ได้ทันที
+ */
+export const deactivateAccount = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  const password = typeof req.body?.password === 'string' ? req.body.password : ''
+
+  if (!password) {
+    res.status(400).json({ error: 'MISSING_FIELDS', message: 'กรุณากรอกรหัสผ่าน' })
+    return
+  }
+
+  try {
+    const userId = req.auth!.userId
+
+    const user = await prisma.uSER.findUnique({
+      where: { userid: userId },
+      select: { userid: true, password: true, is_active: true },
+    })
+
+    if (!user) {
+      res.status(404).json({ error: 'USER_NOT_FOUND', message: 'ไม่พบผู้ใช้ในระบบ' })
+      return
+    }
+
+    const passwordMatches = await comparePassword(password, user.password)
+    if (!passwordMatches) {
+      console.warn(`Deactivate failed: wrong password for userId ${userId}`)
+      res.status(401).json({ error: 'INVALID_PASSWORD', message: 'รหัสผ่านไม่ถูกต้อง' })
+      return
+    }
+
+    if (!user.is_active) {
+      res.status(409).json({ error: 'ALREADY_DEACTIVATED', message: 'บัญชีนี้ถูกปิดใช้งานไปแล้ว' })
+      return
+    }
+
+    // ปิดบัญชีและตัด session ปัจจุบันทิ้งพร้อมกัน ถ้าอย่างใดอย่างหนึ่งพังให้ย้อนกลับทั้งคู่
+    await prisma.$transaction(async (tx) => {
+      await tx.uSER.update({
+        where: { userid: userId },
+        data: { is_active: false },
+        select: { userid: true },
+      })
+
+      await tx.tokenblacklist.create({
+        data: {
+          token: req.token!,
+          expiresat: new Date(req.auth!.exp! * 1000),
+        },
+      })
+    })
+
+    res.status(200).json({ success: true, message: 'ปิดบัญชีเรียบร้อยแล้ว' })
+  } catch (error) {
+    console.error('Error during account deactivation:', error)
+    res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' })
+  }
+}
+
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
 
@@ -122,7 +203,11 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   try {
     const user = await prisma.uSER.findUnique({ where: { email } })
 
-    if (user) {
+    // US2-1: บัญชีที่ปิดใช้งานแล้วต้องไม่ได้รับลิงก์รีเซ็ตรหัสผ่าน
+    // (ยังตอบ 200 เหมือนเดิมเพื่อไม่ให้รู้ว่าอีเมลนี้มีอยู่จริงหรือไม่)
+    if (user && !user.is_active) {
+      console.warn(`Forgot-password blocked: account deactivated for userId ${user.userid}`)
+    } else if (user) {
       const token = randomBytes(32).toString('hex')
       const expiresat = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000)
 

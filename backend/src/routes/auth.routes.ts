@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { login, register, logout, forgotPassword, resetPassword } from '../controllers/auth/auth.controller.js'
+import { login, register, logout, forgotPassword, resetPassword, deactivateAccount } from '../controllers/auth/auth.controller.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 
 const router = Router()
@@ -18,5 +18,8 @@ router.post('/forgot-password', forgotPassword)
 
 // POST /api/auth/reset-password
 router.post('/reset-password', resetPassword)
+
+// DELETE /api/auth/account — ปิดบัญชีตัวเอง (US2-1)
+router.delete('/account', requireAuth, deactivateAccount)
 
 export default router
