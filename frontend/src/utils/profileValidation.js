@@ -12,6 +12,9 @@ export function validateProfile(v) {
   } else if (v.username.length > 50) {
     errors.username = "ชื่อผู้ใช้ต้องไม่เกิน 50 ตัวอักษร";
   }
+  else if (v.username.length < 3) {
+  errors.username = "ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร";
+}
 
   if (!v.email.trim()) {
     errors.email = "กรุณากรอกอีเมล";

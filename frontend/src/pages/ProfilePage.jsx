@@ -14,7 +14,7 @@ import { validateProfile } from "../utils/profileValidation.js";
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const isSitter = user?.role === "sitter";
 
   const [profile, setProfile] = useState({
@@ -224,7 +224,7 @@ function ProfilePage() {
       await api.put("/users/me", payload);
 
       const updatedUser = { ...user, ...profile, pets };
-      localStorage.setItem("pb_user", JSON.stringify(updatedUser));
+      if (setUser) setUser(updatedUser);
       setOriginalProfile({ ...profile });
       setErrors({});
 
@@ -318,7 +318,7 @@ function ProfilePage() {
       }));
 
       setPets(mappedPets);
-      localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: mappedPets }));
+      if (setUser) setUser(updatedUser);
       
       setShowPetModal(false);
       alert("บันทึกข้อมูลสัตว์เลี้ยงสำเร็จ");
@@ -346,7 +346,7 @@ function ProfilePage() {
         // ลบออกจากหน้าจอ
         const updatedPets = pets.filter((_, index) => index !== currentPetIndex);
         setPets(updatedPets);
-        localStorage.setItem("pb_user", JSON.stringify({ ...user, ...profile, pets: updatedPets }));
+        if (setUser) setUser(updatedUser);
         setShowPetModal(false);
         
         alert("ลบสัตว์เลี้ยงสำเร็จ");
@@ -366,12 +366,11 @@ function ProfilePage() {
     setDeleteStatus("submitting");
     try {
       await api.delete("/auth/account", { data: { password: deletePassword } });
-      localStorage.removeItem("pb_token");
-      localStorage.removeItem("pb_user");
       setShowDeleteModal(false);
+      logout(); 
       navigate("/register");
     } catch (err) {
-      setDeleteError(err.status === 401 ? "รหัสผ่านไม่ถูกต้อง" : "ไม่สามารถลบบัญชีได้ กรุณาลองใหม่อีกครั้ง");
+      setDeleteError(err.response?.status === 401 ? "รหัสผ่านไม่ถูกต้อง" : "ไม่สามารถลบบัญชีได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setDeleteStatus("idle");
     }

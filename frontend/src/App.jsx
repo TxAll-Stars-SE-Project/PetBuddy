@@ -42,7 +42,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        <Route path="/profile" element={user ? <ProfilePage /> : <Navigate to="/login" replace />} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

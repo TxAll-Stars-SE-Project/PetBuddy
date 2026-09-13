@@ -138,8 +138,11 @@ function PetModal({
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
+                    if (pet.photo && pet.photo.startsWith("blob:")) {
+                      URL.revokeObjectURL(pet.photo);
+                    }
                     onChange("photoFile", file); 
-                    onChange("photo", URL.createObjectURL(file)); 
+                    onChange("photo", URL.createObjectURL(file));
                   }
                 }}
               />
