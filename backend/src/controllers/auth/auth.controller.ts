@@ -36,13 +36,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    // US2-1: บัญชีที่ถูกปิดใช้งานแล้วห้ามล็อกอิน
-    // เช็คหลังตรวจรหัสผ่าน เพื่อไม่ให้คนที่เดารหัสผ่านผิดรู้ว่าอีเมลนี้มีอยู่จริง
-    if (!user.is_active) {
+    if (!user.isActive) {
       console.warn(`Login blocked: account deactivated for userId ${user.userid}`)
       res.status(403).json({
         error: 'ACCOUNT_DEACTIVATED',
-        message: 'บัญชีนี้ถูกปิดใช้งานแล้ว',
+        message: 'บัญชีนี้ถูกปิดใช้งานแล้ว ไม่สามารถเข้าสู่ระบบได้',
       })
       return
     }
@@ -147,7 +145,7 @@ export const deactivateAccount = async (
 
     const user = await prisma.uSER.findUnique({
       where: { userid: userId },
-      select: { userid: true, password: true, is_active: true },
+      select: { userid: true, password: true, isActive: true },
     })
 
     if (!user) {
@@ -162,7 +160,7 @@ export const deactivateAccount = async (
       return
     }
 
-    if (!user.is_active) {
+    if (!user.isActive) {
       res.status(409).json({ error: 'ALREADY_DEACTIVATED', message: 'บัญชีนี้ถูกปิดใช้งานไปแล้ว' })
       return
     }
@@ -171,7 +169,7 @@ export const deactivateAccount = async (
     await prisma.$transaction(async (tx) => {
       await tx.uSER.update({
         where: { userid: userId },
-        data: { is_active: false },
+        data: { isActive: false },
         select: { userid: true },
       })
 
@@ -205,7 +203,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
     // US2-1: บัญชีที่ปิดใช้งานแล้วต้องไม่ได้รับลิงก์รีเซ็ตรหัสผ่าน
     // (ยังตอบ 200 เหมือนเดิมเพื่อไม่ให้รู้ว่าอีเมลนี้มีอยู่จริงหรือไม่)
-    if (user && !user.is_active) {
+    if (user && !user.isActive) {
       console.warn(`Forgot-password blocked: account deactivated for userId ${user.userid}`)
     } else if (user) {
       const token = randomBytes(32).toString('hex')

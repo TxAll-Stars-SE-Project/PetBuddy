@@ -23,13 +23,27 @@ export const requireAuth = async (
   }
 
   try {
+    req.auth = verifyAuthToken(token)
+
+    const user = await prisma.uSER.findUnique({
+      where: { userid: req.auth.userId },
+      select: { isActive: true },
+    })
+
+    if (!user || !user.isActive) {
+      res.status(403).json({
+        error: 'ACCOUNT_DEACTIVATED',
+        message: 'บัญชีนี้ถูกปิดใช้งานแล้ว ไม่สามารถใช้งานได้',
+      })
+      return
+    }
+
     const blacklisted = await prisma.tokenblacklist.findUnique({ where: { token } })
     if (blacklisted) {
       res.status(401).json({ error: 'TOKEN_INVALIDATED' })
       return
     }
 
-    req.auth = verifyAuthToken(token)
     req.token = token
     next()
   } catch (error) {

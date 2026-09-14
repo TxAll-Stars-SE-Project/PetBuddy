@@ -12,6 +12,13 @@ export function AuthProvider({ children }) {
   });
   const navigate = useNavigate();
 
+  const clearSession = useCallback((destination = "/") => {
+    localStorage.removeItem("pb_token");
+    localStorage.removeItem("pb_user");
+    setUser(null);
+    navigate(destination);
+  }, [navigate]);
+
   const login = useCallback(async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
@@ -28,26 +35,20 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try { await api.post("/auth/logout"); } catch (e) { /* ไม่สน */ }
-    localStorage.removeItem("pb_token");
-    localStorage.removeItem("pb_user");
-    setUser(null);
-    navigate("/");
+    clearSession();
     toast("ออกจากระบบแล้ว");
-  }, [navigate]);
+  }, [clearSession]);
 
   useEffect(() => {
     const onExpired = () => {
-      localStorage.removeItem("pb_token");
-      localStorage.removeItem("pb_user");
-      setUser(null);
-      navigate("/login?expired=1");
+      clearSession("/login?expired=1");
     };
     window.addEventListener("pb:session-expired", onExpired);
     return () => window.removeEventListener("pb:session-expired", onExpired);
-  }, [navigate]);
+  }, [clearSession]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, clearSession }}>
       {children}
     </AuthContext.Provider>
   );

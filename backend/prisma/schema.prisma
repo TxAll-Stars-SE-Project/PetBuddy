@@ -19,7 +19,7 @@ model USER {
   district           String?              @db.VarChar(100)
   subdistrict        String?              @db.VarChar(100)
   address            String?
-  is_active          Boolean              @default(true)
+  isActive            Boolean              @default(true) @map("is_active")
   passwordresettoken passwordresettoken[]
   petowner           petowner?
   petsitter          petsitter?

@@ -15,7 +15,7 @@ import { toast } from "../utils/toast.js";
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const { user, logout, setUser } = useAuth();
+  const { user, clearSession, setUser } = useAuth();
   const isSitter = user?.role === "sitter";
 
   const [profile, setProfile] = useState({
@@ -194,7 +194,6 @@ function ProfilePage() {
   const [petError, setPetError] = useState("");
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleteStatus, setDeleteStatus] = useState("idle");
 
@@ -394,18 +393,14 @@ function ProfilePage() {
 
   const handleDelete = async () => {
     setDeleteError("");
-    if (!deletePassword.trim()) {
-      setDeleteError("กรุณากรอกรหัสผ่าน");
-      return;
-    }
     setDeleteStatus("submitting");
     try {
-      await api.delete("/auth/account", { data: { password: deletePassword } });
+      await api.patch("/users/me/deactivate");
       setShowDeleteModal(false);
-      logout(); 
-      navigate("/register");
+      clearSession("/login");
+      toast("ปิดใช้งานบัญชีเรียบร้อยแล้ว");
     } catch (err) {
-      setDeleteError(err.response?.status === 401 ? "รหัสผ่านไม่ถูกต้อง" : "ไม่สามารถลบบัญชีได้ กรุณาลองใหม่อีกครั้ง");
+      setDeleteError(err.response?.data?.message || "ไม่สามารถปิดใช้งานบัญชีได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setDeleteStatus("idle");
     }
@@ -637,8 +632,8 @@ function ProfilePage() {
 
           <div className="profile-actions" style={{ marginTop: "20px" }}>
             <div className="profile-actions-row">
-              <button type="button" className="profile-delete-button" onClick={() => { setDeletePassword(""); setDeleteError(""); setDeleteStatus("idle"); setShowDeleteModal(true); }}>
-                ลบบัญชี
+              <button type="button" className="profile-delete-button" onClick={() => { setDeleteError(""); setDeleteStatus("idle"); setShowDeleteModal(true); }}>
+                ปิดใช้งานบัญชี
               </button>
             </div>
             <button type="button" className="profile-confirm-button" onClick={() => navigate("/")}>
@@ -672,10 +667,8 @@ function ProfilePage() {
 
         {showDeleteModal && (
           <DeleteAccountModal
-            password={deletePassword}
             error={deleteError}
             status={deleteStatus}
-            onPasswordChange={setDeletePassword}
             onCancel={() => { if (deleteStatus !== "submitting") setShowDeleteModal(false); }}
             onConfirm={handleDelete}
           />
