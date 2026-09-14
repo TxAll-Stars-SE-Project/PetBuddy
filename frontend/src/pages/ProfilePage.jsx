@@ -397,8 +397,8 @@ function ProfilePage() {
     try {
       await api.patch("/users/me/deactivate");
       setShowDeleteModal(false);
-      clearSession("/login");
       toast("ปิดใช้งานบัญชีเรียบร้อยแล้ว");
+      clearSession("/login");
     } catch (err) {
       setDeleteError(err.response?.data?.message || "ไม่สามารถปิดใช้งานบัญชีได้ กรุณาลองใหม่อีกครั้ง");
     } finally {

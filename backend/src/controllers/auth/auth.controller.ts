@@ -36,7 +36,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    if (!user.isActive) {
+    // US2-1: บัญชีที่ถูกปิดใช้งานแล้วห้ามล็อกอิน
+    // เช็คหลังตรวจรหัสผ่าน เพื่อไม่ให้คนที่เดารหัสผ่านผิดรู้ว่าอีเมลนี้มีอยู่จริง
+    if (!user.is_active) {
       console.warn(`Login blocked: account deactivated for userId ${user.userid}`)
       res.status(403).json({
         error: 'ACCOUNT_DEACTIVATED',
@@ -119,33 +121,25 @@ export const logout = async (req: AuthenticatedRequest, res: Response): Promise<
 }
 
 /**
- * DELETE /api/auth/account — ปิดบัญชีของตัวเอง (US2-1)
+ * PATCH /api/users/me/deactivate — ปิดใช้งานบัญชีของตัวเอง (US2-1)
  *
  * เป็น soft delete (is_active = false) ไม่ลบแถวจริง เพราะ foreign key ของ
  * petowner/petsitter ตั้ง onDelete: Cascade ไว้ — ลบ USER หนึ่งแถวจะทำให้
  * pet / booking / review / payment ที่ผูกอยู่หายตามไปทั้งหมดและกู้คืนไม่ได้
  *
- * ต้องกรอกรหัสผ่านยืนยันอีกครั้งตาม acceptance criteria แล้วระบบจะ:
- *   1. ตั้ง is_active = false  → login จะถูกบล็อกด้วย 403 ACCOUNT_DEACTIVATED
- *   2. ยัด token ปัจจุบันเข้า tokenblacklist → ใช้ token เดิมต่อไม่ได้ทันที
+ * ตั้ง is_active = false และ blacklist token ปัจจุบันใน transaction เดียวกัน
+ * เพื่อให้บัญชีหยุดใช้งานทันทีโดยไม่ลบข้อมูลเดิม
  */
 export const deactivateAccount = async (
   req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
-  const password = typeof req.body?.password === 'string' ? req.body.password : ''
-
-  if (!password) {
-    res.status(400).json({ error: 'MISSING_FIELDS', message: 'กรุณากรอกรหัสผ่าน' })
-    return
-  }
-
   try {
     const userId = req.auth!.userId
 
     const user = await prisma.uSER.findUnique({
       where: { userid: userId },
-      select: { userid: true, password: true, isActive: true },
+      select: { userid: true, is_active: true },
     })
 
     if (!user) {
@@ -153,14 +147,7 @@ export const deactivateAccount = async (
       return
     }
 
-    const passwordMatches = await comparePassword(password, user.password)
-    if (!passwordMatches) {
-      console.warn(`Deactivate failed: wrong password for userId ${userId}`)
-      res.status(401).json({ error: 'INVALID_PASSWORD', message: 'รหัสผ่านไม่ถูกต้อง' })
-      return
-    }
-
-    if (!user.isActive) {
+    if (!user.is_active) {
       res.status(409).json({ error: 'ALREADY_DEACTIVATED', message: 'บัญชีนี้ถูกปิดใช้งานไปแล้ว' })
       return
     }
@@ -169,7 +156,7 @@ export const deactivateAccount = async (
     await prisma.$transaction(async (tx) => {
       await tx.uSER.update({
         where: { userid: userId },
-        data: { isActive: false },
+        data: { is_active: false },
         select: { userid: true },
       })
 
@@ -181,7 +168,7 @@ export const deactivateAccount = async (
       })
     })
 
-    res.status(200).json({ success: true, message: 'ปิดบัญชีเรียบร้อยแล้ว' })
+    res.status(200).json({ success: true, message: 'ปิดใช้งานบัญชีเรียบร้อยแล้ว' })
   } catch (error) {
     console.error('Error during account deactivation:', error)
     res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' })
@@ -203,7 +190,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
     // US2-1: บัญชีที่ปิดใช้งานแล้วต้องไม่ได้รับลิงก์รีเซ็ตรหัสผ่าน
     // (ยังตอบ 200 เหมือนเดิมเพื่อไม่ให้รู้ว่าอีเมลนี้มีอยู่จริงหรือไม่)
-    if (user && !user.isActive) {
+    if (user && !user.is_active) {
       console.warn(`Forgot-password blocked: account deactivated for userId ${user.userid}`)
     } else if (user) {
       const token = randomBytes(32).toString('hex')

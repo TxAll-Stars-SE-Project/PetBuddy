@@ -38,12 +38,15 @@ export default function LoginPage() {
       toast("เข้าสู่ระบบสำเร็จ");
       navigate("/");
     } catch (err) {
-      const statusCode = err.response?.status;
+      const statusCode = err.status;
+      const errorCode = err.data?.error;
 
       if (statusCode === 401) {
         // Backend ส่ง INVALID_CREDENTIALS ทั้ง email ไม่มี และ รหัสผิด
         // → แสดงข้อความเดียวกัน (ปลอดภัย ไม่บอกว่า email มีจริงไหม)
         setFormError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      } else if (statusCode === 403 && errorCode === "ACCOUNT_DEACTIVATED") {
+        setFormError("บัญชีนี้ถูกปิดใช้งานแล้ว ไม่สามารถเข้าสู่ระบบได้");
       } else if (statusCode >= 500) {
         setFormError("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง");
       } else {

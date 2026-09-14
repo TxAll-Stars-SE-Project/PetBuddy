@@ -28,6 +28,9 @@ api.interceptors.response.use(
     if (status === 401 && hasToken && !isAuthRequest) {
       window.dispatchEvent(new Event("pb:session-expired"));
     }
+    if (status === 403 && error.response?.data?.error === "ACCOUNT_DEACTIVATED") {
+      window.dispatchEvent(new Event("pb:account-deactivated"));
+    }
     // ถ้าเป็น 401 จาก login (email/รหัสผิด) → ไม่ยิง event, ให้ LoginPage จัดการเอง
 
     return Promise.reject(error);

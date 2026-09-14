@@ -1,6 +1,5 @@
 import { Response } from 'express'
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js'
-import prisma from '../utils/prisma.js'
 import { getUserProfile, updateUserProfile } from '../services/profile.service.js'
 import { validateUpdateProfileInput } from '../validators/profile.validator.js'
 import { AppError } from '../utils/errors.js'
@@ -83,51 +82,6 @@ export const updateMyProfile = async (req: AuthenticatedRequest, res: Response):
       success: false,
       error: 'INTERNAL_SERVER_ERR',
       message: 'ระบบฐานข้อมูลขัดข้อง',
-    })
-  }
-}
-
-export const deactivateMyAccount = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  const userId = req.auth?.userId
-  const token = req.token
-
-  if (!userId || !token || !req.auth?.exp) {
-    res.status(401).json({
-      success: false,
-      error: 'UNAUTHORIZED',
-      message: 'เซสชันไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่',
-    })
-    return
-  }
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.uSER.update({
-        where: { userid: userId },
-        data: { isActive: false },
-      })
-
-      await tx.tokenblacklist.create({
-        data: {
-          token,
-          expiresat: new Date(req.auth!.exp! * 1000),
-        },
-      })
-    })
-
-    res.status(200).json({
-      success: true,
-      message: 'ปิดใช้งานบัญชีเรียบร้อยแล้ว',
-    })
-  } catch (error) {
-    console.error('Error deactivating account:', error)
-    res.status(500).json({
-      success: false,
-      error: 'INTERNAL_SERVER_ERROR',
-      message: 'ไม่สามารถปิดใช้งานบัญชีได้ กรุณาลองใหม่อีกครั้ง',
     })
   }
 }

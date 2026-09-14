@@ -27,10 +27,15 @@ export const requireAuth = async (
 
     const user = await prisma.uSER.findUnique({
       where: { userid: req.auth.userId },
-      select: { isActive: true },
+      select: { is_active: true },
     })
 
-    if (!user || !user.isActive) {
+    if (!user) {
+      res.status(401).json({ error: 'INVALID_TOKEN' })
+      return
+    }
+
+    if (!user.is_active) {
       res.status(403).json({
         error: 'ACCOUNT_DEACTIVATED',
         message: 'บัญชีนี้ถูกปิดใช้งานแล้ว ไม่สามารถใช้งานได้',

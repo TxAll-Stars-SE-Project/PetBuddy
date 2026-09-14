@@ -43,8 +43,15 @@ export function AuthProvider({ children }) {
     const onExpired = () => {
       clearSession("/login?expired=1");
     };
+    const onDeactivated = () => {
+      clearSession("/login");
+    };
     window.addEventListener("pb:session-expired", onExpired);
-    return () => window.removeEventListener("pb:session-expired", onExpired);
+    window.addEventListener("pb:account-deactivated", onDeactivated);
+    return () => {
+      window.removeEventListener("pb:session-expired", onExpired);
+      window.removeEventListener("pb:account-deactivated", onDeactivated);
+    };
   }, [clearSession]);
 
   return (
