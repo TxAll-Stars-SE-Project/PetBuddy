@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "../utils/toast.js";
+import AlertBanner from "./ui/AlertBanner.jsx";
 
 function PetModal({
   pet,
   mode, // "add", "edit", or "view"
   error,
+  isSaving = false,
+  isDeleting = false,
   onChange,
   onClose,
   onSave,
@@ -12,6 +16,8 @@ function PetModal({
 }) {
   const isView = mode === "view";
   const isEdit = mode === "edit";
+  const fileInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -20,6 +26,71 @@ function PetModal({
       }
     };
   }, [pet.photo]);
+
+  const processFile = (file) => {
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast("กรุณาเลือกไฟล์รูปภาพ (JPG, PNG หรือ WEBP)", "error");
+      return;
+    }
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast("ขนาดไฟล์ใหญ่เกินไป กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB", "error");
+      return;
+    }
+
+    if (pet.photo && pet.photo.startsWith("blob:")) {
+      URL.revokeObjectURL(pet.photo);
+    }
+    onChange("photoFile", file);
+    onChange("photo", URL.createObjectURL(file));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+    if (e.target) {
+      e.target.value = "";
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    if (pet.photo && pet.photo.startsWith("blob:")) {
+      URL.revokeObjectURL(pet.photo);
+    }
+    onChange("photoFile", null);
+    onChange("photo", "");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
 
   return (
     <div className="delete-modal-overlay">
@@ -53,16 +124,25 @@ function PetModal({
           <div className="pet-modal-grid">
             
             <div className="pet-modal-full-width pet-modal-preview-wrapper">
-              {pet.photo ? (
-                <img 
-                  src={pet.photo} 
-                  alt="Pet Preview" 
-                  className="pet-modal-preview-img"
-                  onError={(e) => { e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' style='background:%23eee;'%3E%3Ctext x='50%25' y='50%25' font-size='40' text-anchor='middle' dy='.35em'%3E%26%23128062%3B%3C/text%3E%3C/svg%3E"; }} 
-                />
-              ) : (
-                <div className="pet-modal-placeholder">🐾</div>
-              )}
+              <div
+                className="pet-modal-avatar-clickable"
+                onClick={() => fileInputRef.current?.click()}
+                title="คลิกเพื่อเลือกหรือเปลี่ยนรูปภาพ"
+              >
+                {pet.photo ? (
+                  <img 
+                    src={pet.photo} 
+                    alt="Pet Preview" 
+                    className="pet-modal-preview-img"
+                    onError={(e) => { e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' style='background:%23eee;'%3E%3Ctext x='50%25' y='50%25' font-size='40' text-anchor='middle' dy='.35em'%3E%26%23128062%3B%3C/text%3E%3C/svg%3E"; }} 
+                  />
+                ) : (
+                  <div className="pet-modal-placeholder">🐾</div>
+                )}
+                <div className="pet-modal-avatar-badge" title="อัปโหลดรูปภาพ">
+                  📷
+                </div>
+              </div>
             </div>
 
             <div>
@@ -130,28 +210,75 @@ function PetModal({
             </div>
 
             <div className="pet-modal-full-width">
-              <label className="profile-label" style={{ display: "block", marginBottom: "4px", fontSize: "13px" }}>อัปโหลดรูปภาพ (Photo)</label>
+              <label className="profile-label" style={{ display: "block", marginBottom: "6px", fontSize: "13px" }}>
+                รูปภาพสัตว์เลี้ยง (Photo)
+              </label>
+
               <input
+                ref={fileInputRef}
                 type="file"
-                accept="image/jpeg, image/png, image/jpg"
-                className="profile-input"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-
-                  const MAX_FILE_SIZE = 5 * 1024 * 1024;
-                  if (file.size > MAX_FILE_SIZE) {
-                    alert("ขนาดไฟล์ใหญ่เกินไป กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB");
-                    return;
-                  }
-
-                  if (pet.photo && pet.photo.startsWith("blob:")) {
-                    URL.revokeObjectURL(pet.photo);
-                  }
-                  onChange("photoFile", file); 
-                  onChange("photo", URL.createObjectURL(file)); 
-                }}
+                accept="image/jpeg, image/png, image/jpg, image/webp"
+                style={{ display: "none" }}
+                onChange={handleFileChange}
               />
+
+              <div 
+                className={`pet-file-upload-box ${isDragging ? "pet-file-upload-box--dragover" : ""}`}
+                onClick={() => {
+                  if (!isSaving && !isDeleting) fileInputRef.current?.click();
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                title={isSaving || isDeleting ? "กำลังประมวลผล..." : "คลิกหรือลากไฟล์รูปภาพมาวางที่นี่"}
+                style={{
+                  pointerEvents: isSaving || isDeleting ? "none" : "auto",
+                  opacity: isSaving || isDeleting ? 0.65 : 1,
+                }}
+              >
+                <div className="pet-file-upload-left">
+                  <button type="button" className="pet-file-choose-btn" disabled={isSaving || isDeleting}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span>{pet.photo ? "เปลี่ยนรูปภาพ" : "เลือกรูปภาพ"}</span>
+                  </button>
+                  <div className="pet-file-info">
+                    {pet.photoFile ? (
+                      <span className="pet-file-name" title={pet.photoFile.name}>
+                        📎 {pet.photoFile.name}
+                        <span className="pet-file-size">
+                          {" "}({(pet.photoFile.size / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
+                      </span>
+                    ) : pet.photo ? (
+                      <span className="pet-file-status">
+                        ✓ มีรูปภาพแล้ว <span className="pet-file-hint">(คลิกเพื่อเปลี่ยน)</span>
+                      </span>
+                    ) : (
+                      <span className="pet-file-hint">
+                        ยังไม่ได้เลือกไฟล์ (JPG, PNG ไม่เกิน 5MB)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {(pet.photoFile || pet.photo) && (
+                  <button
+                    type="button"
+                    className="pet-file-remove-btn"
+                    title="ลบรูปภาพนี้"
+                    disabled={isSaving || isDeleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isSaving && !isDeleting) handleRemovePhoto();
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="pet-modal-full-width">
@@ -161,6 +288,7 @@ function PetModal({
                 style={{ height: "60px", resize: "vertical" }} 
                 placeholder="เช่น แพ้อาหาร" 
                 value={pet.notes || ""} 
+                disabled={isSaving || isDeleting}
                 onChange={(e) => onChange("notes", e.target.value)} 
               />
             </div>
@@ -168,8 +296,8 @@ function PetModal({
         )}
 
         {error && (
-          <div className="delete-error" style={{ marginTop: "12px", fontSize: "13px", textAlign: "center" }}>
-            {error}
+          <div style={{ marginTop: "14px" }}>
+            <AlertBanner type="error">{error}</AlertBanner>
           </div>
         )}
 
@@ -178,10 +306,12 @@ function PetModal({
             <button
               type="button"
               className="profile-delete-button"
-              style={{ padding: "8px 12px", fontSize: "13px", flex: "none" }}
+              style={{ padding: "8px 14px", fontSize: "13px", flex: "none", display: "inline-flex", alignItems: "center", gap: "6px" }}
               onClick={onDelete}
+              disabled={isSaving || isDeleting}
             >
-              ลบสัตว์เลี้ยง
+              {isDeleting && <span className="spinner" aria-hidden="true"></span>}
+              <span>{isDeleting ? "กำลังลบ…" : "ลบสัตว์เลี้ยง"}</span>
             </button>
           )}
 
@@ -197,11 +327,23 @@ function PetModal({
               </>
             ) : (
               <>
-                <button type="button" className="delete-cancel-button" onClick={onClose}>
+                <button 
+                  type="button" 
+                  className="delete-cancel-button" 
+                  onClick={onClose}
+                  disabled={isSaving || isDeleting}
+                >
                   ยกเลิก
                 </button>
-                <button type="button" className="delete-confirm-button" onClick={onSave}>
-                  บันทึก
+                <button 
+                  type="button" 
+                  className="profile-save-button" 
+                  onClick={onSave}
+                  disabled={isSaving || isDeleting}
+                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px", minWidth: "110px" }}
+                >
+                  {isSaving && <span className="spinner" aria-hidden="true"></span>}
+                  <span>{isSaving ? "กำลังบันทึก…" : "บันทึก"}</span>
                 </button>
               </>
             )}

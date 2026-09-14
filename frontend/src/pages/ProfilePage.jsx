@@ -11,6 +11,7 @@ import ProfileField from "../components/ProfileField.jsx";
 import DeleteAccountModal from "../components/DeleteAccountModal.jsx";
 import PetModal from "../components/PetModal.jsx";
 import { validateProfile } from "../utils/profileValidation.js";
+import { toast } from "../utils/toast.js";
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -33,6 +34,9 @@ function ProfilePage() {
 
   const [originalProfile, setOriginalProfile] = useState(profile);
   const [errors, setErrors] = useState({});
+  const [savingSection, setSavingSection] = useState(null);
+  const [isSavingPet, setIsSavingPet] = useState(false);
+  const [isDeletingPet, setIsDeletingPet] = useState(false);
 
   // GET /api/users/me
   useEffect(() => {
@@ -222,6 +226,7 @@ function ProfilePage() {
     setErrors(sectionErrors);
 
     if (Object.keys(sectionErrors).length > 0) return;
+    setSavingSection(sectionType);
     try {
       const payload = {
         username: profile.username,
@@ -250,11 +255,13 @@ function ProfilePage() {
       if (sectionType === "address") setIsEditingAddress(false);
       if (sectionType === "sitter") setIsEditingSitter(false);
       
-      alert("บันทึกข้อมูลสำเร็จ!");
+      toast("บันทึกข้อมูลสำเร็จ");
 
     } catch (error) {
       console.error("Save error:", error);
-      alert("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      toast("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง", "error");
+    } finally {
+      setSavingSection(null);
     }
   };
 
@@ -296,6 +303,7 @@ function ProfilePage() {
       return;
     }
 
+    setIsSavingPet(true);
     try {
       const formData = new FormData();
       formData.append("name", activePetForm.name.trim());
@@ -341,7 +349,7 @@ function ProfilePage() {
       }
       
       setShowPetModal(false);
-      alert("บันทึกข้อมูลสัตว์เลี้ยงสำเร็จ");
+      toast("บันทึกข้อมูลสัตว์เลี้ยงสำเร็จ");
 
     } catch (error) {
       console.error("Save pet error:", error);
@@ -350,6 +358,8 @@ function ProfilePage() {
       } else {
         setPetError(`บันทึกไม่สำเร็จ: ${error.response?.status || "API อาจจะยังไม่พร้อม"}`);
       }
+    } finally {
+      setIsSavingPet(false);
     }
   };
 
@@ -357,6 +367,7 @@ function ProfilePage() {
     if (currentPetIndex !== null) {
       if (!window.confirm("คุณต้องการลบสัตว์เลี้ยงนี้ใช่หรือไม่?")) return;
       const targetPet = pets[currentPetIndex];
+      setIsDeletingPet(true);
       try {
         // ยิง API ลบข้อมูลหลังบ้าน (ถ้าสัตว์เลี้ยงนี้เคยถูกบันทึกแล้วและมี petId)
         if (targetPet.petId) {
@@ -371,10 +382,12 @@ function ProfilePage() {
         }
         setShowPetModal(false);
         
-        alert("ลบสัตว์เลี้ยงสำเร็จ");
+        toast("ลบสัตว์เลี้ยงสำเร็จ");
       } catch (error) {
         console.error("Delete pet error:", error);
-        alert("ไม่สามารถลบสัตว์เลี้ยงได้");
+        toast("ไม่สามารถลบสัตว์เลี้ยงได้", "error");
+      } finally {
+        setIsDeletingPet(false);
       }
     }
   };
@@ -398,7 +411,7 @@ function ProfilePage() {
     }
   };
 
-  const renderSectionHeader = (title, isEditing, onEdit, onCancel, onSave) => (
+  const renderSectionHeader = (title, isEditing, onEdit, onCancel, onSave, isSaving = false) => (
     <div className="profile-section-header">
       <h2>{title}</h2>
       {!isEditing ? (
@@ -407,11 +420,23 @@ function ProfilePage() {
         </button>
       ) : (
         <div style={{ display: "flex", gap: "8px" }}>
-          <button type="button" className="profile-cancel-button" onClick={onCancel}>
+          <button 
+            type="button" 
+            className="profile-cancel-button" 
+            onClick={onCancel}
+            disabled={isSaving}
+          >
             ยกเลิก
           </button>
-          <button type="button" className="profile-save-button" onClick={onSave}>
-            บันทึก
+          <button 
+            type="button" 
+            className="profile-save-button" 
+            onClick={onSave}
+            disabled={isSaving}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", minWidth: "90px" }}
+          >
+            {isSaving && <span className="spinner" aria-hidden="true"></span>}
+            <span>{isSaving ? "กำลังบันทึก…" : "บันทึก"}</span>
           </button>
         </div>
       )}
@@ -437,7 +462,8 @@ function ProfilePage() {
               isEditingAccount,
               () => { setOriginalProfile({ ...profile }); setIsEditingAccount(true); },
               () => handleCancelSection("account"),
-              () => handleSaveSection("account")
+              () => handleSaveSection("account"),
+              savingSection === "account"
             )}
             <ProfileField label="ชื่อผู้ใช้" field="username" value={profile.username} isEditing={isEditingAccount} error={errors.username} onChange={handleChange} />
             <ProfileField label="อีเมล" field="email" type="email" value={profile.email} isEditing={isEditingAccount} error={errors.email} onChange={handleChange} />
@@ -450,7 +476,8 @@ function ProfilePage() {
               isEditingAddress,
               () => { setOriginalProfile({ ...profile }); setIsEditingAddress(true); },
               () => handleCancelSection("address"),
-              () => handleSaveSection("address")
+              () => handleSaveSection("address"),
+              savingSection === "address"
             )}
             {!isEditingAddress ? (
               <>
@@ -555,7 +582,8 @@ function ProfilePage() {
                 isEditingSitter,
                 () => { setOriginalProfile({ ...profile }); setIsEditingSitter(true); },
                 () => handleCancelSection("sitter"),
-                () => handleSaveSection("sitter")
+                () => handleSaveSection("sitter"),
+                savingSection === "sitter"
               )}
               <ProfileField label="ประสบการณ์" field="experience" value={profile.experience} isEditing={isEditingSitter} error={errors.experience} onChange={handleChange} />
               <div className="profile-row">
@@ -624,11 +652,18 @@ function ProfilePage() {
             pet={activePetForm}
             mode={modalMode}
             error={petError}
+            isSaving={isSavingPet}
+            isDeleting={isDeletingPet}
             onChange={(field, value) => {
               setActivePetForm((prev) => ({ ...prev, [field]: value }));
               if (field === "name") setPetError("");
             }}
-            onClose={() => { setShowPetModal(false); setPetError(""); }}
+            onClose={() => {
+              if (!isSavingPet && !isDeletingPet) {
+                setShowPetModal(false);
+                setPetError("");
+              }
+            }}
             onSave={handleSavePet}
             onDelete={handleRemoveCurrentModalPet}
             onSwitchToEdit={() => setModalMode("edit")}

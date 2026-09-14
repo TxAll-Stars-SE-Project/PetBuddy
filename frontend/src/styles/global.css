@@ -134,9 +134,14 @@ body{margin:0;background:var(--bg)}
 .muted{color:var(--muted)}
 .notfound{text-align:center}
 .nf-num{font-size:64px;font-weight:700;color:var(--primary)}
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--success);color:#fff;border-radius:999px;padding:10px 22px;font-size:14px;font-weight:500;box-shadow:0 10px 24px rgba(22,163,74,.35);z-index:50;animation:rise .25s ease}
-.toast--info{background:var(--info)}
-@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--success);color:#fff;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:500;box-shadow:0 10px 24px rgba(22,163,74,.35);z-index:10000;animation:rise .25s cubic-bezier(0.16, 1, 0.3, 1);display:flex;align-items:center;gap:10px;pointer-events:none;max-width:calc(100vw - 40px);box-sizing:border-box}
+.toast--success{background:var(--success);box-shadow:0 10px 24px rgba(22,163,74,.35)}
+.toast--info{background:var(--info);box-shadow:0 10px 24px rgba(180,83,9,.35)}
+.toast--error{background:var(--error);box-shadow:0 10px 24px rgba(220,38,38,.35)}
+.toast-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.24);font-size:13px;font-weight:700;flex-shrink:0}
+.toast-msg{line-height:1.4}
+@keyframes rise{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+
 
 /* ---------- หน้า Profile ---------- */
 .profile-main {  min-height: calc(100vh - 64px);  display: flex;  justify-content: center;  align-items: center;  padding: 40px 20px;  background: #f8f9fa;}
@@ -167,11 +172,16 @@ body{margin:0;background:var(--bg)}
 .profile-save-button,
 .profile-confirm-button {  background-color: #f97316;  color: #ffffff;  min-width: 120px;}
 .profile-cancel-button {  background-color: #e5e7eb;  color: #374151;}
-.profile-edit-button:hover,
-.profile-save-button:hover,
-.profile-delete-button:hover,
-.profile-confirm-button:hover,
-.profile-cancel-button:hover {  opacity: 0.85;}
+.profile-edit-button:hover:not(:disabled),
+.profile-save-button:hover:not(:disabled),
+.profile-delete-button:hover:not(:disabled),
+.profile-confirm-button:hover:not(:disabled),
+.profile-cancel-button:hover:not(:disabled) {  opacity: 0.85;}
+.profile-edit-button:disabled,
+.profile-save-button:disabled,
+.profile-delete-button:disabled,
+.profile-confirm-button:disabled,
+.profile-cancel-button:disabled {  opacity: 0.6;  cursor: not-allowed;}
 .profile-actions {  display: flex;  flex-direction: column;  gap: 12px;  margin-top: 35px;}
 .profile-actions-row {  display: flex;  gap: 12px;  width: 100%;}
 .profile-actions-row button {  flex: 1;}
@@ -189,7 +199,9 @@ body{margin:0;background:var(--bg)}
 .delete-modal-actions button {  flex: 1;  padding: 11px 16px;  border: none;  border-radius: 8px;  font-size: 14px;  font-weight: 600;  cursor: pointer;  transition: opacity 0.2s ease;}
 .delete-modal-actions .delete-cancel-button {  background: #eeeeee;  color: #333333;}
 .delete-modal-actions .delete-confirm-button {  background: #d32f2f;  color: #ffffff;}
-.delete-modal-actions button:hover {  opacity: 0.85;}
+.delete-modal-actions .profile-save-button {  background: var(--primary);  color: #ffffff;}
+.delete-modal-actions .profile-save-button:hover:not(:disabled) {  background: var(--primary-hover);}
+.delete-modal-actions button:hover:not(:disabled) {  opacity: 0.85;}
 .delete-modal-actions button:disabled {  opacity: 0.6;  cursor: not-allowed;}
 select.input{background:var(--surface);cursor:pointer}
 select.input:disabled{opacity:.6;cursor:not-allowed}
@@ -228,34 +240,215 @@ input[type="password"]::-ms-clear{
 }
 
 .pet-modal-preview-wrapper {
-  text-align: center;
-  margin-bottom: 4px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.pet-modal-avatar-clickable {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pet-modal-avatar-clickable:hover {
+  transform: scale(1.04);
 }
 
 .pet-modal-preview-img {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--border);
+  border: 2px solid var(--primary-border);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.12);
+  display: block;
 }
 
 .pet-modal-placeholder {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background: var(--chip);
+  background: var(--primary-soft);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  border: 1px dashed var(--icon-idle);
+  font-size: 34px;
+  border: 2px dashed var(--primary-border);
+  color: var(--primary);
+  transition: border-color 0.2s ease;
+}
+
+.pet-modal-avatar-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid #fff;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.pet-modal-avatar-clickable:hover .pet-modal-avatar-badge {
+  background: var(--primary-hover);
+  transform: scale(1.1);
+}
+
+/* ---------- Pet File Upload Component ---------- */
+.pet-file-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #FFFDF9;
+  border: 1.5px dashed var(--primary-border);
+  border-radius: var(--r-input);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+}
+
+.pet-file-upload-box:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.pet-file-upload-box--dragover {
+  border-color: var(--primary);
+  background: #FFEAD7;
+  transform: scale(1.01);
+}
+
+.pet-file-upload-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pet-file-choose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.pet-file-choose-btn:hover {
+  background: var(--primary-hover);
+}
+
+.pet-file-info {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.pet-file-name {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pet-file-size {
   color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.pet-file-status {
+  color: var(--success);
+  font-weight: 500;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pet-file-hint {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.pet-file-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: #FEE2E2;
+  color: var(--error);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.pet-file-remove-btn:hover {
+  background: var(--error);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Fallback for standard input[type="file"] */
+input[type="file"]::file-selector-button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 12px;
+  transition: background .15s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: var(--primary-hover);
 }
 
 @media (max-width: 480px) {
   .pet-modal-grid {
     grid-template-columns: 1fr;
+  }
+  .pet-file-upload-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 
