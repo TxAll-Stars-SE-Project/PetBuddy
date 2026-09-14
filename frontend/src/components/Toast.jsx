@@ -18,9 +18,16 @@ export default function Toast() {
   }, []);
 
   if (!item) return null;
+
+  const isError = item.type === "error";
+  const isInfo = item.type === "info";
+  const typeClass = isError ? " toast--error" : isInfo ? " toast--info" : " toast--success";
+  const icon = isError ? "✕" : isInfo ? "ℹ" : "✓";
+
   return (
-    <div className={"toast" + (item.type === "info" ? " toast--info" : "")}>
-      {item.message}
+    <div className={"toast" + typeClass} role="status" aria-live="polite">
+      <span className="toast-icon">{icon}</span>
+      <span className="toast-msg">{item.message}</span>
     </div>
   );
 }
