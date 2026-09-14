@@ -19,6 +19,7 @@ model USER {
   district           String?              @db.VarChar(100)
   subdistrict        String?              @db.VarChar(100)
   address            String?
+  is_active          Boolean              @default(true)
   passwordresettoken passwordresettoken[]
   petowner           petowner?
   petsitter          petsitter?
