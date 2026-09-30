@@ -12,9 +12,9 @@ export function AuthProvider({ children }) {
   });
   const navigate = useNavigate();
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, rememberMe = false) => {
     try {
-      const { data } = await api.post("/auth/login", { email, password });
+      const { data } = await api.post("/auth/login", { email, password, rememberMe });
       localStorage.setItem("pb_token", data.token);
       localStorage.setItem("pb_user", JSON.stringify(data.user));
       setUser(data.user);
