@@ -1,6 +1,7 @@
 import dotenv from 'dotenv'
 import app from './app.js'
 import prisma from './utils/prisma.js'
+import sitterRoutes from './routes/sitter.routes.js'
 
 dotenv.config()
 
@@ -14,3 +15,4 @@ app.listen(PORT, async () => {
     .catch((err) => console.warn('Database warmup warning:', err.message))
 })
 
+app.use('/api/sitter/services', sitterRoutes)
