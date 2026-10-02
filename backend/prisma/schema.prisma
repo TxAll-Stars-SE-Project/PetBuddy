@@ -112,6 +112,12 @@ model services {
   userid      Int
   servicetype String    @db.VarChar(100)
   servicename String    @db.VarChar(255)
+  createdat   DateTime  @default(now())
+  description String?
+  price       Int       @default(0)
+  status      String    @default("published") @db.VarChar(20)
+  updatedat   DateTime
+  species     String[]  @default([])
   petsitter   petsitter @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -127,4 +133,12 @@ model passwordresettoken {
   userid    Int
   expiresat DateTime @db.Timestamp(6)
   USER      USER     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum service_type_enum {
+  walking
+  sitting
+  boarding
+  grooming
+  daycare
 }
