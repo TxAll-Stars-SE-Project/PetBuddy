@@ -24,7 +24,7 @@ export const requireRole = (...roles: UserRole[]) => {
       res.status(403).json({
         status: 'error',
         error: 'ROLE_NOT_ALLOWED',
-        message: roles.map((r) => ROLE_MESSAGES[r]).join(' or '),
+        message: roles.map((r) => ROLE_MESSAGES[r] ?? `${r} role required`).join(' or '),
       })
       return
     }

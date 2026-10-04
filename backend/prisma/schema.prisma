@@ -110,7 +110,7 @@ model review {
 model services {
   serviceid   Int       @id @default(autoincrement())
   userid      Int
-  servicetype String    @db.VarChar(100)
+  servicetype service_type_enum
   species     String[] @default([]) 
   servicename String    @db.VarChar(255)
   price       Int       @default(0)                              
