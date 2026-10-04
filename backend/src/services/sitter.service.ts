@@ -1,8 +1,9 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput } from '../validators/service.validator.js'
+import { service_type_enum } from '../generated/prisma/enums.js'
 
-// map เดิมที่ซ้ำกัน 2 ที่ → รวมเป็นฟังก์ชันเดียวใช้ร่วมกัน
+// map เดิมที่ซ้ำกัน → รวมเป็นฟังก์ชันเดียวใช้ร่วมกัน (AI Review: consistent mapping)
 const mapServiceRow = (s: {
   serviceid: number
   servicename: string
@@ -49,12 +50,12 @@ export const createService = async (userid: number, input: CreateServiceInput) =
     data: {
       userid,
       servicename: input.serviceName,
-      servicetype: input.serviceType,
-      species: input.species,
+      servicetype: input.serviceType as service_type_enum,   // ✅ cast แบบ type-safe (validator การันตีค่า)
+      species: Array.from(new Set(input.species)),            // ✅ deduplicate (AI Review ข้อ 4)
       price: input.price,
       description: input.description ?? null,
-      status: 'published',   // auto-publish
+      status: 'published',                                    // auto-publish
     },
   })
-  return mapServiceRow(created)   // 👈 ใช้ map ตัวเดียวกัน ตอบ response รูปเดิมเป๊ะ
+  return mapServiceRow(created)
 }
