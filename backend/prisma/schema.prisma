@@ -119,6 +119,9 @@ model services {
   createdat   DateTime  @default(now())                          
   updatedat   DateTime  @updatedAt  
   petsitter   petsitter @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  @@index([status])                 
+  @@index([servicetype, status])    
+  @@index([userid])                 
 }
 
 model tokenblacklist {
