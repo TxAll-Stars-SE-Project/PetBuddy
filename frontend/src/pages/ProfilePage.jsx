@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import { useNavigate } from "react-router-dom";
@@ -98,33 +98,26 @@ function ProfilePage() {
     fetchUserProfile();
   }, []);
 
-  // Drop down address states
-  const [availableDistricts, setAvailableDistricts] = useState([]);
-  const [availableSubdistricts, setAvailableSubdistricts] = useState([]);
-  const [availableZipcodes, setAvailableZipcodes] = useState([]);
+  // Drop down address states derived from current selection
+  const selectedProvinceObj = useMemo(
+    () => provincesData.find((p) => p.name_th === profile.province),
+    [profile.province]
+  );
 
-  useEffect(() => {
-    if (profile.province) {
-      const prov = provincesData.find(p => p.name_th === profile.province);
-      if (prov) {
-        const filteredDistricts = districtsData.filter(d => d.province_id === prov.id);
-        setAvailableDistricts(filteredDistricts);
-        
-        if (profile.district) {
-          const dist = filteredDistricts.find(d => d.name_th === profile.district);
-          if (dist) {
-            const filteredSubdistricts = subDistrictsData.filter(s => s.district_id === dist.id);
-            setAvailableSubdistricts(filteredSubdistricts);
-            
-            if (profile.subdistrict) {
-              const sub = filteredSubdistricts.find(s => s.name_th === profile.subdistrict);
-              if (sub) setAvailableZipcodes(sub.zip_code ? [sub.zip_code] : []);
-            }
-          }
-        }
-      }
-    }
-  }, [profile.province, profile.district, profile.subdistrict]);
+  const availableDistricts = useMemo(
+    () => (selectedProvinceObj ? districtsData.filter((d) => String(d.province_id) === String(selectedProvinceObj.id)) : []),
+    [selectedProvinceObj]
+  );
+
+  const selectedDistrictObj = useMemo(
+    () => availableDistricts.find((d) => d.name_th === profile.district),
+    [availableDistricts, profile.district]
+  );
+
+  const availableSubdistricts = useMemo(
+    () => (selectedDistrictObj ? subDistrictsData.filter((s) => String(s.district_id) === String(selectedDistrictObj.id)) : []),
+    [selectedDistrictObj]
+  );
 
   const handleProvinceChange = (e) => {
     const selectedProvince = e.target.value;
@@ -135,11 +128,13 @@ function ProfilePage() {
       subdistrict: "",
       postalCode: ""
     }));
-
-    const prov = provincesData.find((p) => p.name_th === selectedProvince);
-    setAvailableDistricts(prov ? districtsData.filter(d => d.province_id === prov.id) : []);
-    setAvailableSubdistricts([]);
-    setAvailableZipcodes([]);
+    setErrors((prev) => ({
+      ...prev,
+      province: "",
+      district: "",
+      subdistrict: "",
+      postalCode: ""
+    }));
   };
 
   const handleDistrictChange = (e) => {
@@ -150,16 +145,12 @@ function ProfilePage() {
       subdistrict: "",
       postalCode: ""
     }));
-
-    const dist = availableDistricts.find((d) => d.name_th === selectedDistrict);
-    if (dist) {
-      const filteredSubdistricts = subDistrictsData.filter(s => s.district_id === dist.id);
-      setAvailableSubdistricts(filteredSubdistricts);
-      setAvailableZipcodes([]);
-    } else {
-      setAvailableSubdistricts([]);
-      setAvailableZipcodes([]);
-    }
+    setErrors((prev) => ({
+      ...prev,
+      district: "",
+      subdistrict: "",
+      postalCode: ""
+    }));
   };
 
   const handleSubdistrictChange = (e) => {
@@ -169,14 +160,13 @@ function ProfilePage() {
     setProfile((prev) => ({
       ...prev,
       subdistrict: selectedSub,
-      postalCode: sub && sub.zip_code ? sub.zip_code.toString() : ""
+      postalCode: sub && sub.zip_code ? String(sub.zip_code) : ""
     }));
-
-    if (sub && sub.zip_code) {
-      setAvailableZipcodes([sub.zip_code]);
-    } else {
-      setAvailableZipcodes([]);
-    }
+    setErrors((prev) => ({
+      ...prev,
+      subdistrict: "",
+      postalCode: ""
+    }));
   };
 
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -491,85 +481,98 @@ function ProfilePage() {
               <div className="profile-edit-address-grid">
                 <div className="profile-row" style={{ gridColumn: "1 / -1" }}> 
                   <span className="profile-label">รายละเอียดที่อยู่ (บ้านเลขที่, หมู่, ซอย, ถนน)</span>
-                  <input 
-                    type="text"
-                    className="profile-input" 
-                    value={profile.address} 
-                    onChange={(e) => handleChange("address", e.target.value)} 
-                    placeholder="เช่น 123/45 ซ.สุขุมวิท 1 ถ.สุขุมวิท" 
-                    style={{ width: "100%" }}
-                  />
-                  {errors.address && <span className="profile-error">{errors.address}</span>}
+                  <div className="profile-field-container">
+                    <input 
+                      type="text"
+                      className={`profile-input ${errors.address ? "profile-input-error" : ""}`}
+                      value={profile.address} 
+                      onChange={(e) => handleChange("address", e.target.value)} 
+                      placeholder="เช่น 123/45 ซ.สุขุมวิท 1 ถ.สุขุมวิท" 
+                    />
+                    {errors.address && <div className="profile-field-error">{errors.address}</div>}
+                  </div>
                 </div>
                 <div className="profile-row">
                   <span className="profile-label">จังหวัด</span>
-                  <input 
-                    className="profile-input" 
-                    list="province-list" 
-                    value={profile.province} 
-                    onChange={handleProvinceChange} 
-                    placeholder="พิมพ์หรือเลือกจังหวัด..." 
-                  />
-                  <datalist id="province-list">
-                    {provincesData.map((prov) => (
-                      <option key={prov.id} value={prov.name_th} />
-                    ))}
-                  </datalist>
-                  {errors.province && <span className="profile-error">{errors.province}</span>}
+                  <div className="profile-field-container">
+                    <select 
+                      className={`profile-input ${errors.province ? "profile-input-error" : ""}`}
+                      value={profile.province} 
+                      onChange={handleProvinceChange} 
+                    >
+                      <option value="">-- เลือกจังหวัด --</option>
+                      {profile.province && !provincesData.some((p) => p.name_th === profile.province) && (
+                        <option value={profile.province}>{profile.province}</option>
+                      )}
+                      {provincesData.map((prov) => (
+                        <option key={prov.id} value={prov.name_th}>
+                          {prov.name_th}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.province && <div className="profile-field-error">{errors.province}</div>}
+                  </div>
                 </div>
 
                 <div className="profile-row">
                   <span className="profile-label">เมือง/อำเภอ</span>
-                  <input 
-                    className="profile-input" 
-                    list="district-list" 
-                    value={profile.district} 
-                    onChange={handleDistrictChange} 
-                    disabled={!profile.province}
-                    placeholder="พิมพ์หรือเลือกอำเภอ..." 
-                  />
-                  <datalist id="district-list">
-                    {(availableDistricts || []).map((dist) => (
-                      <option key={dist.id} value={dist.name_th} />
-                    ))}
-                  </datalist>
-                  {errors.district && <span className="profile-error">{errors.district}</span>}
+                  <div className="profile-field-container">
+                    <select 
+                      className={`profile-input ${errors.district ? "profile-input-error" : ""}`}
+                      value={profile.district} 
+                      onChange={handleDistrictChange} 
+                      disabled={!profile.province}
+                    >
+                      <option value="">-- เลือกเมือง/อำเภอ --</option>
+                      {profile.district && !availableDistricts.some((d) => d.name_th === profile.district) && (
+                        <option value={profile.district}>{profile.district}</option>
+                      )}
+                      {(availableDistricts || []).map((dist) => (
+                        <option key={dist.id} value={dist.name_th}>
+                          {dist.name_th}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.district && <div className="profile-field-error">{errors.district}</div>}
+                  </div>
                 </div>
 
                 <div className="profile-row">
                   <span className="profile-label">ตำบล/แขวง</span>
-                  <input 
-                    className="profile-input" 
-                    list="sub-list" 
-                    value={profile.subdistrict} 
-                    onChange={handleSubdistrictChange} 
-                    disabled={!profile.district}
-                    placeholder="พิมพ์หรือเลือกตำบล..." 
-                  />
-                  <datalist id="sub-list">
-                    {(availableSubdistricts || []).map((sub) => (
-                      <option key={sub.id} value={sub.name_th} />
-                    ))}
-                  </datalist>
-                  {errors.subdistrict && <span className="profile-error">{errors.subdistrict}</span>}
+                  <div className="profile-field-container">
+                    <select 
+                      className={`profile-input ${errors.subdistrict ? "profile-input-error" : ""}`}
+                      value={profile.subdistrict} 
+                      onChange={handleSubdistrictChange} 
+                      disabled={!profile.district}
+                    >
+                      <option value="">-- เลือกตำบล/แขวง --</option>
+                      {profile.subdistrict && !availableSubdistricts.some((s) => s.name_th === profile.subdistrict) && (
+                        <option value={profile.subdistrict}>{profile.subdistrict}</option>
+                      )}
+                      {(availableSubdistricts || []).map((sub) => (
+                        <option key={sub.id} value={sub.name_th}>
+                          {sub.name_th}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.subdistrict && <div className="profile-field-error">{errors.subdistrict}</div>}
+                  </div>
                 </div>
 
                 <div className="profile-row">
                   <span className="profile-label">รหัสไปรษณีย์</span>
-                  <input 
-                    className="profile-input" 
-                    list="zip-list" 
-                    value={profile.postalCode} 
-                    onChange={(e) => handleChange("postalCode", e.target.value)} 
-                    disabled={!profile.subdistrict}
-                    placeholder="รหัสไปรษณีย์" 
-                  />
-                  <datalist id="zip-list">
-                    {(availableZipcodes || []).map((zip, idx) => (
-                      <option key={idx} value={zip} />
-                    ))}
-                  </datalist>
-                  {errors.postalCode && <span className="profile-error">{errors.postalCode}</span>}
+                  <div className="profile-field-container">
+                    <input 
+                      type="text"
+                      className={`profile-input ${errors.postalCode ? "profile-input-error" : ""}`}
+                      value={profile.postalCode} 
+                      onChange={(e) => handleChange("postalCode", e.target.value)} 
+                      disabled={!profile.subdistrict}
+                      placeholder="รหัสไปรษณีย์" 
+                    />
+                    {errors.postalCode && <div className="profile-field-error">{errors.postalCode}</div>}
+                  </div>
                 </div>
               </div>
             )}

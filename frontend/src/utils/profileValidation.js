@@ -28,11 +28,11 @@ export function validateProfile(v) {
     errors.tel = "เบอร์โทรต้องขึ้นต้นด้วย 0 และยาว 10 หลัก";
   }
 
-  if (!v.address?.trim()) {
-    errors.address = "กรุณากรอกรายละเอียดที่อยู่ (บ้านเลขที่, ซอย, ถนน)";
-  } else if (v.address.length > 255) {
-    errors.address = "รายละเอียดที่อยู่ต้องไม่เกิน 255 ตัวอักษร";
-  }
+  // if (!v.address?.trim()) {
+  //   errors.address = "กรุณากรอกรายละเอียดที่อยู่ (บ้านเลขที่, ซอย, ถนน)";
+  // } else if (v.address.length > 255) {
+  //   errors.address = "รายละเอียดที่อยู่ต้องไม่เกิน 255 ตัวอักษร";
+  // }
 
   if (!v.province.trim()) {
     errors.province = "กรุณากรอกจังหวัด";

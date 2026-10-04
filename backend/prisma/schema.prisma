@@ -26,13 +26,20 @@ model USER {
 }
 
 model booking {
-  bookingid     Int             @id @default(autoincrement())
+  bookingid     Int            @id @default(autoincrement())
   ownerid       Int
   sitterid      Int?
-  bookingdate   DateTime        @db.Timestamp(6)
-  bookingstatus String          @db.VarChar(50)
-  petowner      petowner        @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
-  petsitter     petsitter?      @relation(fields: [sitterid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  serviceid     Int
+  bookingdate   DateTime       @default(now()) @db.Timestamp(6)
+  bookingstatus booking_status @default(pending)
+  starttime     DateTime       @db.Timestamp(6)
+  endtime       DateTime       @db.Timestamp(6)
+  totalprice    Decimal        @db.Decimal(10, 2)
+  paymentplan   payment_plan?
+  note          String?
+  petowner      petowner       @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  petsitter     petsitter?     @relation(fields: [sitterid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  services      services       @relation(fields: [serviceid], references: [serviceid], onDelete: Cascade, onUpdate: NoAction)
   bookingdetail bookingdetail[]
   payment       payment[]
   review        review[]
@@ -40,33 +47,39 @@ model booking {
 
 model bookingdetail {
   bookingid Int
-  noteid    Int
-  note      String
+  petid     Int
+  pet_note  String?
   booking   booking @relation(fields: [bookingid], references: [bookingid], onDelete: Cascade, onUpdate: NoAction)
+  pet       pet     @relation(fields: [petid], references: [petid], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([bookingid, noteid])
+  @@id([bookingid, petid])
 }
 
 model payment {
-  paymentid   Int     @id @default(autoincrement())
-  bookingid   Int
-  amount      Decimal @db.Decimal(10, 2)
-  paymenttype String  @db.VarChar(50)
-  booking     booking @relation(fields: [bookingid], references: [bookingid], onDelete: Cascade, onUpdate: NoAction)
+  paymentid      Int            @id @default(autoincrement())
+  bookingid      Int
+  amount         Decimal        @db.Decimal(10, 2)
+  paymenttype    String         @db.VarChar(50)
+  slip_image     String?        @db.VarChar(500)
+  payment_stage  payment_stage
+  payment_status payment_status @default(pending_verifying)
+  paid_at        DateTime       @default(now()) @db.Timestamp(6)
+  booking        booking        @relation(fields: [bookingid], references: [bookingid], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model pet {
-  ownerid   Int
-  name      String    @db.VarChar(50)
-  b_date    DateTime? @db.Date
-  allergy   String?
-  gender    String?   @db.VarChar(20)
-  weight    Decimal?  @db.Decimal(5, 2)
-  species   String?   @db.VarChar(50)
-  breed     String?   @db.VarChar(50)
-  image_url String?
-  petid     Int       @id @default(autoincrement())
-  petowner  petowner  @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  ownerid       Int
+  name          String          @db.VarChar(50)
+  b_date        DateTime?       @db.Date
+  allergy       String?
+  gender        String?         @db.VarChar(20)
+  weight        Decimal?        @db.Decimal(5, 2)
+  species       String?         @db.VarChar(50)
+  breed         String?         @db.VarChar(50)
+  image_url     String?
+  petid         Int             @id @default(autoincrement())
+  petowner      petowner        @relation(fields: [ownerid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  bookingdetail bookingdetail[]
 
   @@unique([ownerid, name], map: "pet_ownerid_name_unique")
 }
@@ -108,11 +121,22 @@ model review {
 }
 
 model services {
-  serviceid   Int       @id @default(autoincrement())
+  serviceid   Int          @id @default(autoincrement())
   userid      Int
-  servicetype String    @db.VarChar(100)
-  servicename String    @db.VarChar(255)
-  petsitter   petsitter @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  servicetype service_type
+  servicename String       @db.VarChar(255)
+  createdat   DateTime     @default(now())
+  description String?
+  price       Int          @default(0)
+  status      String       @default("published") @db.VarChar(20)
+  updatedat   DateTime
+  species     String[]     @default([])
+  petsitter   petsitter    @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  booking     booking[]
+
+  @@index([servicetype, status])
+  @@index([status])
+  @@index([userid])
 }
 
 model tokenblacklist {
@@ -127,4 +151,47 @@ model passwordresettoken {
   userid    Int
   expiresat DateTime @db.Timestamp(6)
   USER      USER     @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum service_type {
+  walking
+  sitting
+  boarding
+  grooming
+  daycare
+}
+
+enum booking_status {
+  pending
+  waiting_payment
+  deposit_paid
+  confirmed
+  rejected
+  cancelled
+  waiting_final_payment
+  completed
+}
+
+enum species {
+  dog
+  cat
+  bird
+  exotic
+}
+
+enum payment_plan {
+  full
+  deposit
+}
+
+enum payment_stage {
+  deposit
+  final
+  full
+}
+
+enum payment_status {
+  pending_verifying
+  verified
+  rejected
 }
