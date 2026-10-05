@@ -25,7 +25,7 @@ export const validateCreateServiceInput = (body: unknown): CreateServiceInput =>
   if (!serviceType) errors.push({ field: 'serviceType', message: 'Service type is required' })
   else if (!SERVICE_TYPES.includes(serviceType))
     errors.push({ field: 'serviceType', message: `Service type must be one of: ${SERVICE_TYPES.join(', ')}` })
-
+  
   // species: optional (default []) แต่ถ้าส่งมาต้องเป็น array ของคำที่อนุญาต
   let species: string[] = []
   if (b.species !== undefined) {
@@ -33,7 +33,7 @@ export const validateCreateServiceInput = (body: unknown): CreateServiceInput =>
     else {
       const invalid = (b.species as unknown[]).find((s) => typeof s !== 'string' || !SPECIES.includes(s))
       if (invalid !== undefined) errors.push({ field: 'species', message: `Invalid species: ${String(invalid)}` })
-      else species = b.species as string[]
+      else species = Array.from(new Set(b.species as string[]))   // 👈 ตัดตัวซ้ำออก
     }
   }
 

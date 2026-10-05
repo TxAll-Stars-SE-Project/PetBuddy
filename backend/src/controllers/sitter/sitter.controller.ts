@@ -6,11 +6,6 @@ import { validateCreateServiceInput } from '../../validators/service.validator.j
 
 export const getMyServices = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    // role check ชั่วคราว — PR #4 จะ extract เป็น requireRole middleware
-    if (req.auth!.role !== 'sitter') {
-      throw new AppError(403, 'ROLE_NOT_ALLOWED', 'Sitter role required')
-    }
-
     const services = await sitterService.getServicesBySitter(req.auth!.userId)
     res.status(200).json({ status: 'success', data: services })
   } catch (error) {
@@ -25,13 +20,8 @@ export const getMyServices = async (req: AuthenticatedRequest, res: Response): P
 
 export const createService = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    if (req.auth!.role !== 'sitter') {
-      throw new AppError(403, 'ROLE_NOT_ALLOWED', 'Sitter role required')
-    }
-
     const input = validateCreateServiceInput(req.body)
     const service = await sitterService.createService(req.auth!.userId, input)
-
     res.status(201).json({ status: 'success', data: service })
   } catch (error) {
     if (error instanceof AppError) {
