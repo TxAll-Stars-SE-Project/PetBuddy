@@ -14,12 +14,13 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  const [values, setValues] = useState({ email: "", password: "" });
+  const [values, setValues] = useState({ email: "", password: "", rememberMe: false });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [status, setStatus] = useState("idle");
 
-  const set = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
+  const set = (k) => (e) =>
+    setValues((v) => ({ ...v, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +35,7 @@ export default function LoginPage() {
 
     setStatus("submitting");
     try {
-      await login(values.email, values.password);
+      await login(values.email, values.password, values.rememberMe);
       toast("เข้าสู่ระบบสำเร็จ");
       navigate("/");
     } catch (err) {
@@ -71,6 +72,10 @@ export default function LoginPage() {
             value={values.email} onChange={set("email")} error={errors.email} />
           <PasswordInput label="รหัสผ่าน" placeholder="••••••••"
             value={values.password} onChange={set("password")} error={errors.password} />
+          <label className="checkbox">
+            <input type="checkbox" checked={values.rememberMe} onChange={set("rememberMe")} />
+            จดจำฉันไว้
+          </label>
           <Button type="submit" loading={status === "submitting"}>เข้าสู่ระบบ</Button>
         </form>
 

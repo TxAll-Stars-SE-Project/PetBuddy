@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { getWelcomeEmailHtml } from '../templates/welcome-email.template.js'
+import { getPasswordResetEmailHtml } from '../templates/password-reset-email.template.js'
 
 interface WelcomeEmailParams {
   email: string
@@ -84,4 +85,31 @@ export const sendWelcomeEmail = async ({
     // ส่งไม่สำเร็จแต่ไม่ throw เพื่อไม่ให้กระทบขั้นตอน register
     return false
   }
+}
+
+/**
+ * ส่งอีเมลลิงก์รีเซ็ตรหัสผ่าน ใช้ transporter เดียวกับ Welcome Email
+ * โยน error ออกไปให้ผู้เรียก (forgotPassword) จัดการ เพื่อให้ log ความล้มเหลวได้แน่นอน
+ * โดยไม่กระทบ response ที่ตอบกลับผู้ใช้เสมอ (ป้องกัน account enumeration)
+ */
+export const sendPasswordResetEmail = async (to: string, resetLink: string, ttlMinutes: number): Promise<void> => {
+  const transporter = getMailTransporter()
+
+  if (!transporter) {
+    throw new Error('SMTP credentials are not configured in .env. Cannot send password reset email.')
+  }
+
+  const fromAddress = process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
+
+  const htmlContent = getPasswordResetEmailHtml({ resetLink, ttlMinutes })
+
+  const info = await transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject: '🔐 คำขอรีเซ็ตรหัสผ่าน PetBuddy',
+    text: `รีเซ็ตรหัสผ่านของคุณโดยใช้ลิงก์นี้ (ใช้ได้ ${ttlMinutes} นาที): ${resetLink}`,
+    html: htmlContent,
+  })
+
+  console.log(`[MailService] Password reset email sent successfully to ${to} (Message ID: ${info.messageId})`)
 }
