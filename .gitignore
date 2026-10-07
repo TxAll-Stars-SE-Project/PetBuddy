@@ -37,3 +37,13 @@ __tests__/
 *.spec.js
 coverage/
 .nyc_output/
+
+
+# Markdown files (ignore all except README and API docs)
+*.md
+!README.md
+!README*.md
+!readme.md
+!**/README.md
+!API.md
+!**/API.md
