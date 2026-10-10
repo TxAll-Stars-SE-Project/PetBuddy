@@ -29,12 +29,20 @@
 }
 
 .sitter-booking-card__status {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
   padding: 5px 11px;
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.sitter-booking-card__status-symbol {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .sitter-booking-card__status--pending {
@@ -43,6 +51,8 @@
   border-color: #fde68a;
 }
 
+.sitter-booking-card__status--deposit_paid,
+.sitter-booking-card__status--confirmed,
 .sitter-booking-card__status--waiting_payment,
 .sitter-booking-card__status--waiting_final_payment {
   color: #1d4ed8;
@@ -50,24 +60,22 @@
   border-color: #bfdbfe;
 }
 
-.sitter-booking-card__status--deposit_paid,
-.sitter-booking-card__status--confirmed {
+.sitter-booking-card__status--completed {
   color: #047857;
   background: #ecfdf5;
   border-color: #a7f3d0;
 }
 
-.sitter-booking-card__status--rejected,
-.sitter-booking-card__status--cancelled {
+.sitter-booking-card__status--rejected {
   color: #b91c1c;
   background: #fef2f2;
   border-color: #fecaca;
 }
 
-.sitter-booking-card__status--completed {
-  color: #6d28d9;
-  background: #f5f3ff;
-  border-color: #ddd6fe;
+.sitter-booking-card__status--cancelled {
+  color: #4b5563;
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .sitter-booking-card__details {

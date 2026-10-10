@@ -18,19 +18,23 @@ const statusLabels: Record<BookingStatus, string> = {
   completed: 'เสร็จสิ้น',
 };
 
+const statusSymbols: Record<BookingStatus, string> = {
+  pending: '⌛',
+  waiting_payment: '●',
+  deposit_paid: '●',
+  confirmed: '●',
+  rejected: '×',
+  cancelled: '−',
+  waiting_final_payment: '●',
+  completed: '✓',
+};
+
 const serviceTypeLabels: Record<Booking['service']['servicetype'], string> = {
   walking: 'พาสุนัขเดินเล่น',
   sitting: 'ดูแลสัตว์เลี้ยง',
   boarding: 'รับฝากสัตว์เลี้ยง',
   grooming: 'อาบน้ำตัดขน',
   daycare: 'รับดูแลช่วงกลางวัน',
-};
-
-const speciesLabels: Record<Booking['pets'][number]['species'], string> = {
-  dog: 'สุนัข',
-  cat: 'แมว',
-  bird: 'นก',
-  exotic: 'สัตว์พิเศษ',
 };
 
 function formatDateTime(value: string): string {
@@ -50,6 +54,12 @@ export default function SitterBookingCard({
   onAction,
   isUpdating = false,
 }: SitterBookingCardProps) {
+  const petDetails = booking.pets?.length
+    ? booking.pets.map((pet) => `${pet.name} (${pet.type})`).join(', ')
+    : booking.petName
+      ? `${booking.petName}${booking.petType ? ` (${booking.petType})` : ''}`
+      : 'ไม่มีข้อมูลสัตว์เลี้ยง';
+
   return (
     <article className="sitter-booking-card">
       <header className="sitter-booking-card__header">
@@ -62,6 +72,9 @@ export default function SitterBookingCard({
         <span
           className={`sitter-booking-card__status sitter-booking-card__status--${booking.bookingstatus}`}
         >
+          <span className="sitter-booking-card__status-symbol" aria-hidden="true">
+            {statusSymbols[booking.bookingstatus]}
+          </span>
           {statusLabels[booking.bookingstatus]}
         </span>
       </header>
@@ -79,13 +92,7 @@ export default function SitterBookingCard({
         </div>
         <div className="sitter-booking-card__detail sitter-booking-card__detail--wide">
           <dt>สัตว์เลี้ยง</dt>
-          <dd>
-            {booking.pets.length > 0
-              ? booking.pets
-                  .map((pet) => `${pet.name} (${speciesLabels[pet.species]})`)
-                  .join(', ')
-              : 'ไม่มีข้อมูลสัตว์เลี้ยง'}
-          </dd>
+          <dd>{petDetails}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>เริ่ม</dt>
