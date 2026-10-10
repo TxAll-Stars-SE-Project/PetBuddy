@@ -4,6 +4,13 @@ import { api } from "../services/api.js";
 import { toast } from "../utils/toast.js";
 
 const AuthContext = createContext(null);
+/**
+ * @returns {{
+ *   user: { username?: string, role?: string } | null,
+ *   login: (email: string, password: string, rememberMe?: boolean) => Promise<unknown>,
+ *   logout: () => Promise<void>
+ * }}
+ */
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
