@@ -1,0 +1,178 @@
+.sitter-booking-card {
+  display: grid;
+  gap: 20px;
+  padding: 22px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--r-card, 16px);
+  box-shadow: var(--shadow-card, 0 12px 32px rgba(31, 41, 55, 0.08));
+}
+
+.sitter-booking-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sitter-booking-card__title {
+  margin: 0;
+  color: var(--text, #1f2937);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.sitter-booking-card__service-type {
+  margin: 4px 0 0;
+  color: var(--muted, #6b7280);
+  font-size: 14px;
+}
+
+.sitter-booking-card__status {
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sitter-booking-card__status--pending {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.sitter-booking-card__status--waiting_payment,
+.sitter-booking-card__status--waiting_final_payment {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.sitter-booking-card__status--deposit_paid,
+.sitter-booking-card__status--confirmed {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.sitter-booking-card__status--rejected,
+.sitter-booking-card__status--cancelled {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.sitter-booking-card__status--completed {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.sitter-booking-card__details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+
+.sitter-booking-card__detail {
+  min-width: 0;
+}
+
+.sitter-booking-card__detail--wide {
+  grid-column: 1 / -1;
+}
+
+.sitter-booking-card__detail dt {
+  margin-bottom: 3px;
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+}
+
+.sitter-booking-card__detail dd {
+  margin: 0;
+  color: var(--text, #1f2937);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.sitter-booking-card__detail a {
+  color: var(--link, #0f766e);
+  text-decoration: none;
+}
+
+.sitter-booking-card__detail a:hover {
+  text-decoration: underline;
+}
+
+.sitter-booking-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.sitter-booking-card__button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-btn, 12px);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sitter-booking-card__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sitter-booking-card__button--accept {
+  color: #fff;
+  background: var(--primary, #f97316);
+}
+
+.sitter-booking-card__button--accept:hover:not(:disabled) {
+  background: var(--primary-hover, #ea580c);
+}
+
+.sitter-booking-card__button--reject {
+  color: var(--error, #dc2626);
+  background: #fff;
+  border-color: #fecaca;
+}
+
+.sitter-booking-card__button--reject:hover:not(:disabled) {
+  background: var(--error-bg, #fef2f2);
+}
+
+@media (max-width: 560px) {
+  .sitter-booking-card {
+    padding: 16px;
+  }
+
+  .sitter-booking-card__header {
+    flex-direction: column;
+  }
+
+  .sitter-booking-card__details {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .sitter-booking-card__detail--wide {
+    grid-column: auto;
+  }
+
+  .sitter-booking-card__actions {
+    flex-direction: column-reverse;
+  }
+
+  .sitter-booking-card__button {
+    width: 100%;
+  }
+}

@@ -44,6 +44,14 @@ export default function Navbar() {
                 {user?.role !== "sitter" && (
                   <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/bookings")}}>การจองของฉัน</button>
                 )}
+                {user?.role === "sitter" && (
+                  <button
+                    className="dropdown-item"
+                    onClick={() => { setOpen(false); navigate("/sitter/bookings"); }}
+                  >
+                    รายการคำขอจอง
+                  </button>
+                )}
                 <div className="dropdown-divider" />
                 <button className="dropdown-item dropdown-item--danger"
                   onClick={() => { setOpen(false); logout(); }}>
