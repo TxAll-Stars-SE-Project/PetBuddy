@@ -33,6 +33,12 @@ export interface ServiceInfo {
   title: string;
 }
 
+export interface BookingPetInfo {
+  id: number;
+  name: string;
+  type: string;
+}
+
 export interface Booking {
   bookingId: number;
   bookingstatus: BookingStatus;
@@ -41,8 +47,10 @@ export interface Booking {
   starttime: string;
   endtime: string;
   note?: string;
+  petName?: string;
+  petType?: string;
   owner: OwnerInfo;
-  pets: PetInfo[];
+  pets?: BookingPetInfo[];
   service: ServiceInfo;
 }
 
