@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import SitterCard, { SitterCardSkeleton } from "../components/SitterCard.jsx";
 import SitterFilters from "../components/SitterFilters.jsx";
@@ -9,6 +10,9 @@ import { DEFAULT_FILTERS, getPriceError } from "../utils/sitterOptions.js";
 const SKELETON_COUNT = 4;
 
 export default function HomePage() {
+  // คำค้นหาจาก Navbar อยู่ใน URL (?q=) เพื่อให้ใช้ได้จากทุกหน้า รีเฟรชแล้วไม่หาย และแชร์ลิงก์ได้
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get("q") ?? "";
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [resetKey, setResetKey] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
@@ -18,8 +22,8 @@ export default function HomePage() {
   const debouncedMin = useDebouncedValue(filters.min);
   const debouncedMax = useDebouncedValue(filters.max);
   const query = useMemo(
-    () => ({ ...filters, min: debouncedMin, max: debouncedMax }),
-    [filters, debouncedMin, debouncedMax]
+    () => ({ ...filters, q, min: debouncedMin, max: debouncedMax }),
+    [filters, q, debouncedMin, debouncedMax]
   );
   // ตรวจจากค่าที่พิมพ์อยู่ (ไม่ debounce) เพื่อแจ้งผู้ใช้ทันที และไม่ยิง request ที่จะโดน 400
   const priceError = getPriceError(filters);
@@ -45,9 +49,16 @@ export default function HomePage() {
       ...("province" in patch && { province: patch.province }),
       ...("district" in patch && { district: patch.district }),
     }));
+  const clearKeyword = () =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("q");
+      return next;
+    });
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setResetKey((k) => k + 1);
+    clearKeyword();
   };
 
   const { status, sitters } = result;
@@ -65,6 +76,13 @@ export default function HomePage() {
         <p className="section-sub">
           กรองตามพื้นที่ ประเภทสัตว์ ราคา และคะแนนรีวิว เพื่อหาพี่เลี้ยงที่เหมาะกับน้อง ๆ ของคุณ
         </p>
+
+        {q && (
+          <div className="search-chip">
+            <span>ค้นหา: <strong>{q}</strong></span>
+            <button type="button" aria-label="ล้างคำค้นหา" onClick={clearKeyword}>×</button>
+          </div>
+        )}
 
         <SitterFilters
           filters={filters}

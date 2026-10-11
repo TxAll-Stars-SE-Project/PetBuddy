@@ -4,6 +4,7 @@ import { api } from "./api.js";
 // แปลง state ของตัวกรองในหน้า → query params ของ API (ไม่ส่งค่าว่าง)
 export function buildSitterParams(filters) {
   const map = {
+    q: "q",
     province: "province",
     district: "district",
     pet: "petType",
