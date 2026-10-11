@@ -34,7 +34,15 @@ function AppRoutes() {
     <div className="app-root">
       <Routes>
 
-        <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
+        {/* owner → หน้าค้นหาพี่เลี้ยง, sitter → dashboard (ตาม user journey) */}
+        <Route
+          path="/"
+          element={
+            !user ? <LandingPage />
+              : user.role === "sitter" ? <Navigate to="/sitter/dashboard" replace />
+              : <HomePage />
+          }
+        />
         
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
