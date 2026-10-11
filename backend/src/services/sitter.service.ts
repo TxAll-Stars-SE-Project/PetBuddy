@@ -59,7 +59,15 @@ export const listSitters = async (filters: SitterSearchInput) => {
 
   const sitters = await prisma.petsitter.findMany({
     where: {
-      USER: { is_active: true, province: filters.province, district: filters.district },
+      USER: {
+        is_active: true,
+        province: filters.province,
+        district: filters.district,
+        // escape \ % _ เพื่อให้เป็นตัวอักษรธรรมดา ไม่ใช่ wildcard ของ ILIKE (Prisma contains ไม่ escape ให้)
+        ...(filters.q && {
+          username: { contains: filters.q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' as const },
+        }),
+      },
       services: { some: serviceWhere },
     },
     include: {

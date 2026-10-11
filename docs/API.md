@@ -552,9 +552,11 @@ Header: none (public, require: false)
 Query Examples:
 GET /api/sitters/
 GET /api/sitters/?category=sitting&maxPrice=500
+GET /api/sitters/?q=somchai
 GET /api/sitters/?province=กรุงเทพมหานคร&district=บางรัก&petType=cat&minPrice=100&maxPrice=500
 
 Parameters (ทุกตัวเป็น optional และใช้ร่วมกันแบบ AND):
+  - q        : คำค้นหาตามชื่อผู้ใช้ (username) ของพี่เลี้ยง ตรงบางส่วนและไม่สนตัวพิมพ์เล็ก/ใหญ่ (ไม่เกิน 100 ตัวอักษร)
   - province : จังหวัด (ชื่อไทยหรืออังกฤษ ตรงกับข้อมูลที่อยู่ของระบบ)
   - district : อำเภอ/เขต (ต้องส่งคู่กับ province และต้องอยู่ในจังหวัดนั้น)
   - category : กรองตาม service_type (walking/sitting/boarding/grooming/daycare)

@@ -3,8 +3,10 @@ import { SERVICE_TYPES, SPECIES } from './service.validator.js'
 import { canonicalizeProvinceDistrict } from './thaiAddress.validator.js'
 
 const MAX_PRICE = 1_000_000
+const MAX_KEYWORD_LENGTH = 100
 
 export interface SitterSearchInput {
+  q?: string
   province?: string
   district?: string
   petType?: string
@@ -52,6 +54,11 @@ export const validateSitterSearchQuery = (query: unknown): SitterSearchInput => 
   const errors: { field: string; message: string }[] = []
   const q = (query ?? {}) as Record<string, unknown>
 
+  // q: คำค้นหาตามชื่อผู้ใช้ (username) ของพี่เลี้ยง
+  const keyword = readString(q, 'q', errors)
+  if (keyword !== undefined && keyword.length > MAX_KEYWORD_LENGTH)
+    errors.push({ field: 'q', message: `q must not exceed ${MAX_KEYWORD_LENGTH} characters` })
+
   const category = readString(q, 'category', errors)
   if (category !== undefined && !SERVICE_TYPES.includes(category))
     errors.push({ field: 'category', message: `category must be one of: ${SERVICE_TYPES.join(', ')}` })
@@ -75,5 +82,5 @@ export const validateSitterSearchQuery = (query: unknown): SitterSearchInput => 
     throw new AppError(400, 'VALIDATION_ERROR', 'Validation failed', errors)
   }
 
-  return { province: area.province, district: area.district, petType, category, minPrice, maxPrice }
+  return { q: keyword, province: area.province, district: area.district, petType, category, minPrice, maxPrice }
 }
