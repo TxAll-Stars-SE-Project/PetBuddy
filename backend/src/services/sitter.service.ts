@@ -1,6 +1,7 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput } from '../validators/service.validator.js'
+import { SitterSearchInput } from '../validators/sitterSearch.validator.js'
 import { service_type } from '../generated/prisma/enums.js'
 
 // map เดิมที่ซ้ำกัน → รวมเป็นฟังก์ชันเดียวใช้ร่วมกัน (AI Review: consistent mapping)
@@ -45,7 +46,42 @@ export const getPublishedServicesBySitter = async (sitterId: number) => {
   return rows.map(mapServiceRow)
 }
 
-export const createService = async (userid: number, input: CreateServiceInput) => {
+// ค้นหาพี่เลี้ยง: 1 แถวต่อ 1 sitter, services ที่แสดงคือเฉพาะที่ตรงเงื่อนไขกรองทั้งหมดพร้อมกัน
+export const listSitters = async (filters: SitterSearchInput) => {
+  const serviceWhere = {
+    status: 'published',
+    ...(filters.category && { servicetype: filters.category as service_type }),
+    ...(filters.petType && { species: { has: filters.petType } }),
+    ...((filters.minPrice !== undefined || filters.maxPrice !== undefined) && {
+      price: { gte: filters.minPrice, lte: filters.maxPrice },
+    }),
+  }
+
+  const sitters = await prisma.petsitter.findMany({
+    where: {
+      USER: { is_active: true, province: filters.province, district: filters.district },
+      services: { some: serviceWhere },
+    },
+    include: {
+      USER: { select: { username: true, province: true, district: true } },
+      services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
+    },
+    orderBy: { userid: 'asc' },
+  })
+
+  return sitters.map((s) => ({
+    sitterId: s.userid,
+    username: s.USER.username,
+    province: s.USER.province,
+    district: s.USER.district,
+    services: s.services.map(mapServiceRow),
+    minPrice: s.services[0].price,   // services เรียงราคาน้อย→มาก และมีอย่างน้อย 1 รายการเสมอ (some)
+    rating: null as number | null,   // TODO(task 2): คำนวณจาก review
+    reviewCount: 0,
+  }))
+}
+
+export const createService =async (userid: number, input: CreateServiceInput) => {
   const created = await prisma.services.create({
     data: {
       userid,

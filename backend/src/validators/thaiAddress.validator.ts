@@ -116,6 +116,46 @@ for (const s of subDistricts) {
 }
 
 /**
+ * แปลงจังหวัด (และอำเภอ/เขต ถ้ามี) ให้เป็นชื่อมาตรฐานเดียวกับที่เก็บใน USER
+ * ใช้กับตัวกรองค้นหา ซึ่งไม่ต้องการตำบลและรหัสไปรษณีย์
+ * - district ที่ส่งมาโดยไม่มี province ถือว่าไม่ถูกต้อง
+ * - ชื่ออำเภอ/เขตตัดคำนำหน้า (เขต/อำเภอ) ตามที่ validateThaiAddress เก็บ
+ */
+export function canonicalizeProvinceDistrict(
+  provinceInput: string,
+  districtInput: string
+): { province?: string; district?: string; errors: ValidationError[] } {
+  const errors: ValidationError[] = []
+  const normProv = normalizeAddressName(provinceInput)
+  const normDist = normalizeAddressName(districtInput)
+
+  if (!normProv) {
+    if (normDist) errors.push({ field: 'district', message: 'ต้องระบุจังหวัดเมื่อระบุอำเภอ/เขต' })
+    return { errors }
+  }
+
+  const matchedProvince = provinceIndex.get(normProv)
+  if (!matchedProvince) {
+    errors.push({ field: 'province', message: 'ไม่พบจังหวัดที่ระบุในประเทศไทย' })
+    return { errors }
+  }
+
+  if (!normDist) return { province: matchedProvince.name_th, errors }
+
+  const matchedDistrict = districtIndex.get(`${matchedProvince.id}:${normDist}`)
+  if (!matchedDistrict) {
+    errors.push({ field: 'district', message: 'อำเภอ/เขต ไม่ถูกต้องหรือไม่ตรงกับจังหวัดที่เลือก' })
+    return { errors }
+  }
+
+  return {
+    province: matchedProvince.name_th,
+    district: matchedDistrict.name_th.replace(/^(เขต|อำเภอ)\s*/, ''),
+    errors,
+  }
+}
+
+/**
  * ตรวจสอบความถูกต้องและความสัมพันธ์ของที่อยู่ไทย 4 ระดับแบบ O(1) Fast Lookup:
  * 1. Province (จังหวัด)
  * 2. District (อำเภอ/เขต)
