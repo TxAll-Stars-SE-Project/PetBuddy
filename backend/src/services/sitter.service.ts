@@ -57,27 +57,34 @@ export const listSitters = async (filters: SitterSearchInput) => {
     }),
   }
 
-  const sitters = await prisma.petsitter.findMany({
-    where: {
-      USER: {
-        is_active: true,
-        province: filters.province,
-        district: filters.district,
-        // escape \ % _ เพื่อให้เป็นตัวอักษรธรรมดา ไม่ใช่ wildcard ของ ILIKE (Prisma contains ไม่ escape ให้)
-        ...(filters.q && {
-          username: { contains: filters.q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' as const },
-        }),
-      },
-      services: { some: serviceWhere },
+  const where = {
+    USER: {
+      is_active: true,
+      province: filters.province,
+      district: filters.district,
+      // escape \ % _ เพื่อให้เป็นตัวอักษรธรรมดา ไม่ใช่ wildcard ของ ILIKE (Prisma contains ไม่ escape ให้)
+      ...(filters.q && {
+        username: { contains: filters.q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' as const },
+      }),
     },
-    include: {
-      USER: { select: { username: true, province: true, district: true } },
-      services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
-    },
-    orderBy: { userid: 'asc' },
-  })
+    services: { some: serviceWhere },
+  }
 
-  return sitters.map((s) => ({
+  const [total, sitters] = await Promise.all([
+    prisma.petsitter.count({ where }),
+    prisma.petsitter.findMany({
+      where,
+      include: {
+        USER: { select: { username: true, province: true, district: true } },
+        services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
+      },
+      orderBy: { userid: 'asc' },
+      skip: (filters.page - 1) * filters.limit,
+      take: filters.limit,
+    }),
+  ])
+
+  const items = sitters.map((s) => ({
     sitterId: s.userid,
     username: s.USER.username,
     province: s.USER.province,
@@ -87,6 +94,11 @@ export const listSitters = async (filters: SitterSearchInput) => {
     rating: null as number | null,   // TODO(task 2): คำนวณจาก review
     reviewCount: 0,
   }))
+
+  return {
+    items,
+    pagination: { page: filters.page, limit: filters.limit, total, totalPages: Math.ceil(total / filters.limit) },
+  }
 }
 
 export const createService =async (userid: number, input: CreateServiceInput) => {

@@ -6,8 +6,8 @@ import { validateSitterSearchQuery } from '../validators/sitterSearch.validator.
 export const searchSitters = async (req: Request, res: Response): Promise<void> => {
   try {
     const filters = validateSitterSearchQuery(req.query)
-    const data = await sitterService.listSitters(filters)
-    res.status(200).json({ status: 'success', data })
+    const { items, pagination } = await sitterService.listSitters(filters)
+    res.status(200).json({ status: 'success', data: items, pagination })
   } catch (error) {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
