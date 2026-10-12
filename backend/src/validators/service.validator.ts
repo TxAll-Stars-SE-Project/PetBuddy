@@ -1,7 +1,7 @@
 import { AppError } from '../utils/errors.js'
 
-const SERVICE_TYPES = ['walking', 'sitting', 'boarding', 'grooming', 'daycare']
-const SPECIES = ['dog', 'cat', 'bird', 'exotic']
+export const SERVICE_TYPES = ['walking', 'sitting', 'boarding', 'grooming', 'daycare']
+export const SPECIES = ['dog', 'cat', 'bird', 'exotic']
 
 export interface CreateServiceInput {
   serviceName: string
