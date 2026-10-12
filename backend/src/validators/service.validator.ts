@@ -11,6 +11,14 @@ export interface CreateServiceInput {
   description?: string
 }
 
+export interface UpdateServiceInput {
+  serviceName?: string
+  serviceType?: string
+  species?: string[]
+  price?: number
+  description?: string | null
+}
+
 export const validateCreateServiceInput = (body: unknown): CreateServiceInput => {
   const errors: { field: string; message: string }[] = []
   const b = (body ?? {}) as Record<string, unknown>
@@ -58,16 +66,10 @@ export const validateCreateServiceInput = (body: unknown): CreateServiceInput =>
   return { serviceName, serviceType, species, price: priceValue, description }   // 👈 ใช้ priceValue
 }
 
-// ✅ เพิ่มฟังก์ชันนี้ — สำหรับ PATCH (partial update)
-export const validateUpdateServiceInput = (body: unknown): Partial<CreateServiceInput> => {
+export const validateUpdateServiceInput = (body: unknown): UpdateServiceInput => {
   const errors: { field: string; message: string }[] = []
   const b = (body ?? {}) as Record<string, unknown>
-  const result: Partial<CreateServiceInput> = {}
-
-  // ต้องส่งอย่างน้อย 1 field มา — ไม่งั้นไม่มีอะไรจะอัปเดต
-  if (Object.keys(b).length === 0) {
-    throw new AppError(400, 'VALIDATION_ERROR', 'At least one field must be provided', [])
-  }
+  const result: UpdateServiceInput = {}
 
   // serviceName (optional)
   if (b.serviceName !== undefined) {
@@ -77,7 +79,7 @@ export const validateUpdateServiceInput = (body: unknown): Partial<CreateService
     else result.serviceName = serviceName
   }
 
-  // serviceType (optional — enum check เหมือน POST)
+  // serviceType (optional)
   if (b.serviceType !== undefined) {
     const serviceType = typeof b.serviceType === 'string' ? b.serviceType.trim() : ''
     if (!serviceType) errors.push({ field: 'serviceType', message: 'Service type cannot be empty' })
@@ -104,10 +106,10 @@ export const validateUpdateServiceInput = (body: unknown): Partial<CreateService
     else result.price = b.price
   }
 
-  // description (optional)
+  // description (optional, null = clear)
   if (b.description !== undefined) {
     if (b.description === null) {
-      result.description = undefined  // null = ลบ description (allowed)
+      result.description = null
     } else if (typeof b.description !== 'string') {
       errors.push({ field: 'description', message: 'Description must be a string' })
     } else {
@@ -121,5 +123,9 @@ export const validateUpdateServiceInput = (body: unknown): Partial<CreateService
     throw new AppError(400, 'VALIDATION_ERROR', 'Validation failed', errors)
   }
 
+  // กันทั้ง {} และ {"foo":1} — ต้องมี field ที่อัปเดตได้จริงอย่างน้อย 1 ตัว
+  if (Object.keys(result).length === 0) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'At least one updatable field must be provided', [])
+  }
   return result
 }

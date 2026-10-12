@@ -1,7 +1,12 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
-import { CreateServiceInput } from '../validators/service.validator.js'
-import { service_type } from '../generated/prisma/enums.js'
+import { CreateServiceInput, UpdateServiceInput } from '../validators/service.validator.js'
+import { booking_status, service_type } from '../generated/prisma/enums.js'
+
+const ARCHIVED = 'archived'
+const ACTIVE_BOOKING_STATUSES: booking_status[] = [
+  'pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment',
+]
 
 // map เดิมที่ซ้ำกัน → รวมเป็นฟังก์ชันเดียวใช้ร่วมกัน (AI Review: consistent mapping)
 const mapServiceRow = (s: {
@@ -24,10 +29,10 @@ const mapServiceRow = (s: {
   createdAt: s.createdat,
 })
 
-// มุมมองเจ้าของ: เห็นทุก status
+// มุมมองเจ้าของ: ซ่อนตัวที่ archive แล้ว (soft-deleted)
 export const getServicesBySitter = async (userid: number) => {
   const rows = await prisma.services.findMany({
-    where: { userid },
+    where: { userid, status: { not: ARCHIVED } },
     orderBy: [{ createdat: 'desc' }, { serviceid: 'desc' }],
   })
   return rows.map(mapServiceRow)
@@ -60,20 +65,15 @@ export const createService = async (userid: number, input: CreateServiceInput) =
   return mapServiceRow(created)
 }
 
-// ✅ ฟังก์ชันสำหรับ PATCH
-export const updateService = async (serviceId: number, userId: number, input: Partial<CreateServiceInput>) => {
-  // 1. หา service + เช็ก ownership
-  const service = await prisma.services.findUnique({ where: { serviceid: serviceId } })
-  
-  if (!service) {
-    throw new AppError(404, 'SERVICE_NOT_FOUND', 'Service not found')
-  }
-  
-  if (service.userid !== userId) {
-    throw new AppError(403, 'NOT_OWNER', 'Not the owner of this service')
-  }
-  
-  // 2. อัปเดตเฉพาะ field ที่ส่งมา (partial update)
+export const updateService = async (serviceId: number, userId: number, input: UpdateServiceInput) => {
+  // Two-step check-then-update is safe here: services.userid is immutable
+  // (no ownership-transfer feature exists), so ownership cannot change between queries.
+  const service = await prisma.services.findFirst({
+    where: { serviceid: serviceId, status: { not: ARCHIVED } },
+  })
+  if (!service) throw new AppError(404, 'SERVICE_NOT_FOUND', 'Service not found')
+  if (service.userid !== userId) throw new AppError(403, 'NOT_OWNER', 'Not the owner of this service')
+
   const updated = await prisma.services.update({
     where: { serviceid: serviceId },
     data: {
@@ -81,39 +81,32 @@ export const updateService = async (serviceId: number, userId: number, input: Pa
       ...(input.serviceType !== undefined && { servicetype: input.serviceType as service_type }),
       ...(input.species !== undefined && { species: input.species }),
       ...(input.price !== undefined && { price: input.price }),
-      ...(input.description !== undefined && { description: input.description ?? null }),
+      ...(input.description !== undefined && { description: input.description }),  // null clears
     },
   })
-  
   return mapServiceRow(updated)
 }
 
-// ✅ ฟังก์ชันสำหรับ DELETE
 export const deleteService = async (serviceId: number, userId: number) => {
-  // 1. หา service + เช็ก ownership
-  const service = await prisma.services.findUnique({
-    where: { serviceid: serviceId },
-    include: { booking: true },  // ดึง bookings มาด้วยเพื่อเช็ก active
+  const service = await prisma.services.findFirst({
+    where: { serviceid: serviceId, status: { not: ARCHIVED } },
   })
-  
-  if (!service) {
-    throw new AppError(404, 'SERVICE_NOT_FOUND', 'Service not found')
-  }
-  
-  if (service.userid !== userId) {
-    throw new AppError(403, 'NOT_OWNER', 'Not the owner of this service')
-  }
-  
-  // 2. เช็ก active bookings (ถ้ามี → ห้ามลบ)
-  const activeStatuses = ['pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment']
-  const hasActiveBookings = service.booking.some((b) => activeStatuses.includes(b.bookingstatus))
-  
-  if (hasActiveBookings) {
+  if (!service) throw new AppError(404, 'SERVICE_NOT_FOUND', 'Service not found')
+  if (service.userid !== userId) throw new AppError(403, 'NOT_OWNER', 'Not the owner of this service')
+
+  const activeBookings = await prisma.booking.count({
+    where: { serviceid: serviceId, bookingstatus: { in: ACTIVE_BOOKING_STATUSES } },
+  })
+  if (activeBookings > 0) {
     throw new AppError(409, 'SERVICE_HAS_ACTIVE_BOOKINGS', 'Service has active bookings')
   }
-  
-  // 3. ลบ service
-  await prisma.services.delete({ where: { serviceid: serviceId } })
-  
+
+  // Soft delete: keep the row so bookings/payments/reviews history survives (no cascade).
+  // Public search already filters status='published', so archived disappears automatically.
+  await prisma.services.update({
+    where: { serviceid: serviceId },
+    data: { status: ARCHIVED },
+  })
+
   return { serviceId }
 }
