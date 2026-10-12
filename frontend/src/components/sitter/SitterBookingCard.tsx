@@ -4,6 +4,7 @@ import './SitterBookingCard.css';
 interface SitterBookingCardProps {
   booking: Booking;
   onAction: (bookingId: number, action: BookingAction) => void;
+  onRequestConfirm?: (booking: Booking, action: BookingAction) => void;
   isUpdating?: boolean;
 }
 
@@ -19,7 +20,7 @@ const statusLabels: Record<BookingStatus, string> = {
 };
 
 const statusSymbols: Record<BookingStatus, string> = {
-  pending: '⌛',
+  pending: '●',
   waiting_payment: '●',
   deposit_paid: '●',
   confirmed: '●',
@@ -49,45 +50,75 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
+type ExtendedPet = { name?: string; petName?: string; type?: string; species?: string };
+interface ExtendedBooking extends Booking {
+  serviceName?: string;
+  ownerName?: string;
+}
+
 export default function SitterBookingCard({
   booking,
   onAction,
+  onRequestConfirm,
   isUpdating = false,
 }: SitterBookingCardProps) {
-  const petDetails = booking.pets?.length
-    ? booking.pets.map((pet) => `${pet.name} (${pet.type})`).join(', ')
-    : booking.petName
-      ? `${booking.petName}${booking.petType ? ` (${booking.petType})` : ''}`
+  const b = booking as ExtendedBooking;
+  const rawPets = Array.isArray(b.pets) ? (b.pets as ExtendedPet[]) : [];
+
+  const petDetails = rawPets.length
+    ? rawPets
+        .map(
+          (pet) =>
+            `${pet.name || pet.petName || 'สัตว์เลี้ยง'}${
+              pet.type || pet.species ? ` (${pet.type || pet.species})` : ''
+            }`
+        )
+        .join(', ')
+    : typeof b.petName === 'string'
+      ? `${b.petName}${typeof b.petType === 'string' ? ` (${b.petType})` : ''}`
       : 'ไม่มีข้อมูลสัตว์เลี้ยง';
+
+  const serviceTitle = b.service?.title || b.serviceName || 'บริการสัตว์เลี้ยง';
+  const serviceTypeKey = b.service?.servicetype;
+  const serviceTypeLabel = serviceTypeKey && serviceTypeLabels[serviceTypeKey]
+    ? serviceTypeLabels[serviceTypeKey]
+    : serviceTypeKey || 'บริการสัตว์เลี้ยง';
+
+  const ownerName = b.owner?.fullname || b.ownerName || 'ไม่ระบุชื่อ';
+  const ownerPhone = b.owner?.phone || '-';
+  const statusKey = (b.bookingstatus || 'pending') as BookingStatus;
+  const totalPriceNum = Number(b.totalprice) || 0;
 
   return (
     <article className="sitter-booking-card">
       <header className="sitter-booking-card__header">
         <div>
-          <h2 className="sitter-booking-card__title">{booking.service.title}</h2>
-          <p className="sitter-booking-card__service-type">
-            {serviceTypeLabels[booking.service.servicetype]}
-          </p>
+          <h2 className="sitter-booking-card__title">{serviceTitle}</h2>
+          <p className="sitter-booking-card__service-type">{serviceTypeLabel}</p>
         </div>
         <span
-          className={`sitter-booking-card__status sitter-booking-card__status--${booking.bookingstatus}`}
+          className={`sitter-booking-card__status sitter-booking-card__status--${statusKey}`}
         >
           <span className="sitter-booking-card__status-symbol" aria-hidden="true">
-            {statusSymbols[booking.bookingstatus]}
+            {statusSymbols[statusKey] || '●'}
           </span>
-          {statusLabels[booking.bookingstatus]}
+          {statusLabels[statusKey] || statusKey}
         </span>
       </header>
 
       <dl className="sitter-booking-card__details">
         <div className="sitter-booking-card__detail">
           <dt>เจ้าของ</dt>
-          <dd>{booking.owner.fullname}</dd>
+          <dd>{ownerName}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>เบอร์โทร</dt>
           <dd>
-            <a href={`tel:${booking.owner.phone}`}>{booking.owner.phone}</a>
+            {ownerPhone !== '-' ? (
+              <a href={`tel:${ownerPhone}`}>{ownerPhone}</a>
+            ) : (
+              '-'
+            )}
           </dd>
         </div>
         <div className="sitter-booking-card__detail sitter-booking-card__detail--wide">
@@ -96,23 +127,23 @@ export default function SitterBookingCard({
         </div>
         <div className="sitter-booking-card__detail">
           <dt>เริ่ม</dt>
-          <dd>{formatDateTime(booking.starttime)}</dd>
+          <dd>{formatDateTime(b.starttime || '')}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>สิ้นสุด</dt>
-          <dd>{formatDateTime(booking.endtime)}</dd>
+          <dd>{formatDateTime(b.endtime || '')}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>ราคารวม</dt>
-          <dd>{booking.totalprice.toLocaleString('th-TH')} บาท</dd>
+          <dd>{totalPriceNum.toLocaleString('th-TH')} บาท</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>แผนชำระเงิน</dt>
-          <dd>{booking.paymentplan === 'full' ? 'ชำระเต็มจำนวน' : 'ชำระมัดจำ'}</dd>
+          <dd>{b.paymentplan === 'full' ? 'ชำระเต็มจำนวน' : 'ชำระมัดจำ'}</dd>
         </div>
         <div className="sitter-booking-card__detail sitter-booking-card__detail--wide">
           <dt>หมายเหตุ</dt>
-          <dd>{booking.note?.trim() || 'ไม่มีหมายเหตุ'}</dd>
+          <dd>{b.note?.trim() || 'ไม่มีหมายเหตุ'}</dd>
         </div>
       </dl>
 
@@ -122,7 +153,11 @@ export default function SitterBookingCard({
             className="sitter-booking-card__button sitter-booking-card__button--reject"
             type="button"
             disabled={isUpdating}
-            onClick={() => onAction(booking.bookingId, 'reject')}
+            onClick={() =>
+              onRequestConfirm
+                ? onRequestConfirm(booking, 'reject')
+                : onAction(booking.bookingId, 'reject')
+            }
           >
             ปฏิเสธ (Reject)
           </button>
@@ -130,7 +165,11 @@ export default function SitterBookingCard({
             className="sitter-booking-card__button sitter-booking-card__button--accept"
             type="button"
             disabled={isUpdating}
-            onClick={() => onAction(booking.bookingId, 'accept')}
+            onClick={() =>
+              onRequestConfirm
+                ? onRequestConfirm(booking, 'accept')
+                : onAction(booking.bookingId, 'accept')
+            }
           >
             รับงาน (Accept)
           </button>
@@ -139,10 +178,14 @@ export default function SitterBookingCard({
       {booking.bookingstatus === 'confirmed' && (
         <footer className="sitter-booking-card__actions">
           <button
-            className="sitter-booking-card__button sitter-booking-card__button--accept"
+            className="sitter-booking-card__button sitter-booking-card__button--complete"
             type="button"
             disabled={isUpdating}
-            onClick={() => onAction(booking.bookingId, 'complete')}
+            onClick={() =>
+              onRequestConfirm
+                ? onRequestConfirm(booking, 'complete')
+                : onAction(booking.bookingId, 'complete')
+            }
           >
             ส่งงานเสร็จสิ้น (Complete Job)
           </button>

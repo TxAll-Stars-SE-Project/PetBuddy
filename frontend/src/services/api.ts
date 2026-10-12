@@ -7,10 +7,10 @@ type ApiEnvelope<T> = {
 };
 
 // แชร์ instance เพื่อให้ทุก request ใช้ base URL และ interceptors ชุดเดียวกัน
-export const api = axios.create({ baseURL: 'http://localhost:5000' });
+export const api = axios.create({ baseURL: 'http://localhost:5001/api' });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || localStorage.getItem('pb_token');
   if (token) {
     config.headers.Authorization = 'Bearer ' + token;
   }

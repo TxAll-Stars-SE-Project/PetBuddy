@@ -20,7 +20,10 @@ export const getSitterBookings = async (
     const sitterUserId = req.auth!.userId
     const statusFilter = validateBookingStatusQuery(req.query.status)
 
+    console.log(`[SitterBookingController] GET /api/sitter/bookings called by userId: ${sitterUserId}, statusFilter: ${statusFilter || 'ALL'}`)
     const bookings = await sitterBookingService.getSitterBookings(sitterUserId, statusFilter)
+    console.log(`[SitterBookingController] Returning ${bookings.length} bookings for userId: ${sitterUserId}`)
+
     res.status(200).json({ status: 'success', data: bookings })
   } catch (error) {
     if (error instanceof AppError) {

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SitterBookingCard from './SitterBookingCard';
+import BookingConfirmModal from './BookingConfirmModal';
 import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
+import { toast } from '../../utils/toast';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
 import './SitterBookingList.css';
 
@@ -27,6 +29,10 @@ export default function SitterBookingList() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<BookingTab>('ALL');
+  const [confirmTarget, setConfirmTarget] = useState<{
+    booking: Booking;
+    action: BookingAction;
+  } | null>(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -34,9 +40,28 @@ export default function SitterBookingList() {
 
     try {
       const result = await getSitterBookings();
-      setBookings(result);
+      let list: Booking[] = [];
+
+      if (Array.isArray(result)) {
+        list = result;
+      } else if (result && typeof result === 'object') {
+        const raw = result as Record<string, unknown>;
+        if (Array.isArray(raw.data)) {
+          list = raw.data as Booking[];
+        } else if (raw.data && typeof raw.data === 'object') {
+          const inner = raw.data as Record<string, unknown>;
+          if (Array.isArray(inner.data)) {
+            list = inner.data as Booking[];
+          } else if (Array.isArray(inner)) {
+            list = inner as Booking[];
+          }
+        }
+      }
+
+      setBookings(list);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -46,31 +71,64 @@ export default function SitterBookingList() {
     void fetchBookings();
   }, [fetchBookings]);
 
+  const safeBookings = useMemo(() => (Array.isArray(bookings) ? bookings : []), [bookings]);
+
   const sortedBookings = useMemo(
     () =>
-      [...bookings].sort(
+      [...safeBookings].sort(
         (first, second) =>
-          Number(second.bookingstatus === 'pending') -
-          Number(first.bookingstatus === 'pending'),
+          Number(second?.bookingstatus === 'pending') -
+          Number(first?.bookingstatus === 'pending'),
       ),
-    [bookings],
+    [safeBookings],
   );
 
   const filteredBookings =
     activeTab === 'ALL'
       ? sortedBookings
       : sortedBookings.filter((booking) =>
-          statusGroups[activeTab].includes(booking.bookingstatus),
+          booking && statusGroups[activeTab]?.includes(booking.bookingstatus),
         );
 
   const countForTab = (tab: BookingTab) =>
     tab === 'ALL'
-      ? bookings.length
-      : bookings.filter((booking) =>
-          statusGroups[tab].includes(booking.bookingstatus),
+      ? safeBookings.length
+      : safeBookings.filter((booking) =>
+          booking && statusGroups[tab]?.includes(booking.bookingstatus),
         ).length;
 
-  const handleAction = async (bookingId: number, action: BookingAction) => {
+  const handleRequestConfirm = (booking: Booking, action: BookingAction) => {
+    setConfirmTarget({ booking, action });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmTarget) return;
+
+    const { booking, action } = confirmTarget;
+    setUpdatingId(booking.bookingId);
+    setError(null);
+
+    try {
+      await updateBookingStatus(booking.bookingId, action);
+      const actionText =
+        action === 'accept'
+          ? 'รับงานคำขอจองเรียบร้อยแล้ว (สถานะ: รอชำระเงิน)'
+          : action === 'reject'
+            ? 'ปฏิเสธคำขอจองเรียบร้อยแล้ว'
+            : 'ส่งมอบงานเสร็จสิ้นเรียบร้อยแล้ว';
+      toast(actionText, 'success');
+      setConfirmTarget(null);
+      await fetchBookings();
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้';
+      setError(errMsg);
+      toast(errMsg, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleDirectAction = async (bookingId: number, action: BookingAction) => {
     setUpdatingId(bookingId);
     setError(null);
 
@@ -120,12 +178,22 @@ export default function SitterBookingList() {
             <SitterBookingCard
               key={booking.bookingId}
               booking={booking}
-              onAction={handleAction}
+              onAction={handleDirectAction}
+              onRequestConfirm={handleRequestConfirm}
               isUpdating={updatingId === booking.bookingId}
             />
           ))}
         </div>
       )}
+
+      <BookingConfirmModal
+        isOpen={confirmTarget !== null}
+        booking={confirmTarget?.booking ?? null}
+        action={confirmTarget?.action ?? null}
+        isSubmitting={updatingId !== null}
+        onConfirm={() => void handleConfirmAction()}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

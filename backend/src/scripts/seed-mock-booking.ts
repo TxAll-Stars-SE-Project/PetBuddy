@@ -5,50 +5,21 @@ async function seedMockBooking() {
   console.log('🚀 กำลังเริ่มสร้างข้อมูลจำลองการจอง (Mock Booking)...')
 
   try {
-    // 1. ค้นหา Sitter ล่าสุด (หรือ sitter_test@gmail.com)
-    let sitterUser = await prisma.uSER.findUnique({
-      where: { email: 'sitter_test@gmail.com' },
+    // 1. ค้นหา Sitter ทุกคนในระบบ
+    const sitters = await prisma.uSER.findMany({
+      where: { petsitter: { isNot: null } },
       include: { petsitter: true },
     })
 
-    if (!sitterUser || !sitterUser.petsitter) {
-      // ค้นหา sitter คนแรกที่เจอในระบบ
-      sitterUser = await prisma.uSER.findFirst({
-        where: { petsitter: { isNot: null } },
-        include: { petsitter: true },
-      })
-    }
-
-    if (!sitterUser || !sitterUser.petsitter) {
+    if (sitters.length === 0) {
       console.error('❌ ไม่พบบัญชี Pet Sitter ในระบบ กรุณา Register บัญชี Sitter ก่อน')
       return
     }
 
-    console.log(`✅ พบ Pet Sitter: ${sitterUser.username} (User ID: ${sitterUser.userid})`)
+    console.log(`✅ พบ Pet Sitter ในระบบทั้งหมด ${sitters.length} ท่าน:`)
+    sitters.forEach((s) => console.log(`   - ${s.username} (User ID: ${s.userid}, Email: ${s.email})`))
 
-    // 2. ตรวจสอบหรือสร้างบริการ (Service) ของ Sitter คนนี้
-    let service = await prisma.services.findFirst({
-      where: { userid: sitterUser.userid },
-    })
-
-    if (!service) {
-      service = await prisma.services.create({
-        data: {
-          userid: sitterUser.userid,
-          servicename: 'รับฝากดูแลสัตว์เลี้ยงช่วงกลางวัน',
-          servicetype: 'sitting',
-          price: 500,
-          description: 'ดูแลน้องๆ อย่างใกล้ชิด มีพื้นที่วิ่งเล่น มีห้องแอร์ ป้อนข้าวป้อนน้ำตรงเวลา',
-          status: 'published',
-          species: ['dog', 'cat'],
-        },
-      })
-      console.log(`✅ สร้างบริการตัวอย่าง: "${service.servicename}" (Service ID: ${service.serviceid})`)
-    } else {
-      console.log(`✅ พบบริการของ Sitter: "${service.servicename}" (Service ID: ${service.serviceid})`)
-    }
-
-    // 3. ตรวจสอบหรือสร้างเจ้าของสัตว์เลี้ยง (Pet Owner)
+    // 2. ตรวจสอบหรือสร้างเจ้าของสัตว์เลี้ยง (Pet Owner)
     const ownerEmail = 'owner_mock@gmail.com'
     let ownerUser = await prisma.uSER.findUnique({
       where: { email: ownerEmail },
@@ -80,7 +51,7 @@ async function seedMockBooking() {
       console.log(`✅ พบ Pet Owner ตัวอย่าง: ${ownerUser.username} (User ID: ${ownerUser.userid})`)
     }
 
-    // 4. ตรวจสอบหรือสร้างสัตว์เลี้ยง (Pets) ของ Owner
+    // 3. ตรวจสอบหรือสร้างสัตว์เลี้ยง (Pets) ของ Owner
     let petDog = await prisma.pet.findFirst({
       where: { ownerid: ownerUser.userid, name: 'เจ้าตูบ' },
     })
@@ -116,49 +87,64 @@ async function seedMockBooking() {
     }
     console.log(`✅ สัตว์เลี้ยงพร้อม: ${petDog.name} (${petDog.breed}) และ ${petCat.name} (${petCat.breed})`)
 
-    // 5. สร้างการจองจำลอง (Mock Booking) สถานะ pending
-    const startTime = new Date(Date.now() + 86400000) // พรุ่งนี้
-    const endTime = new Date(Date.now() + 86400000 + 14400000) // พรุ่งนี้ + 4 ชั่วโมง
+    // 4. วนลูปสร้าง Booking ให้ Sitter ทุกคน
+    for (const sitterUser of sitters) {
+      // ตรวจสอบ/สร้างบริการของ Sitter คนนี้
+      let service = await prisma.services.findFirst({
+        where: { userid: sitterUser.userid },
+      })
 
-    const newBooking = await prisma.booking.create({
-      data: {
-        ownerid: ownerUser.userid,
-        sitterid: sitterUser.userid,
-        serviceid: service.serviceid,
-        bookingdate: new Date(),
-        starttime: startTime,
-        endtime: endTime,
-        totalprice: 1000,
-        paymentplan: 'full',
-        bookingstatus: 'pending',
-        note: 'ขอให้พาเจ้าตูบเดินเล่นรอบเย็นด้วยนะครับ ส่วนส้มจี๊ดค่อนข้างขี้อาย ขอบคุณครับ',
-        bookingdetail: {
-          create: [
-            {
-              petid: petDog.petid,
-              pet_note: 'ชอบเล่นบอล ไม่ดุ เป็นมิตรมาก',
-            },
-            {
-              petid: petCat.petid,
-              pet_note: 'ชอบนอนในกล่อง อย่าเปิดประตูทิ้งไว้น้องชอบแอบ',
-            },
-          ],
+      if (!service) {
+        service = await prisma.services.create({
+          data: {
+            userid: sitterUser.userid,
+            servicename: 'รับฝากดูแลสัตว์เลี้ยงช่วงกลางวัน',
+            servicetype: 'sitting',
+            price: 500,
+            description: 'ดูแลน้องๆ อย่างใกล้ชิด มีพื้นที่วิ่งเล่น มีห้องแอร์ ป้อนข้าวป้อนน้ำตรงเวลา',
+            status: 'published',
+            species: ['dog', 'cat'],
+          },
+        })
+      }
+
+      // สร้างคำขอจองใหม่สถานะ pending
+      const startTime = new Date(Date.now() + 86400000) // พรุ่งนี้
+      const endTime = new Date(Date.now() + 86400000 + 14400000) // พรุ่งนี้ + 4 ชั่วโมง
+
+      const newBooking = await prisma.booking.create({
+        data: {
+          ownerid: ownerUser.userid,
+          sitterid: sitterUser.userid,
+          serviceid: service.serviceid,
+          bookingdate: new Date(),
+          starttime: startTime,
+          endtime: endTime,
+          totalprice: 1000,
+          paymentplan: 'full',
+          bookingstatus: 'pending',
+          note: 'ขอให้พาเจ้าตูบเดินเล่นรอบเย็นด้วยนะครับ ส่วนส้มจี๊ดค่อนข้างขี้อาย ขอบคุณครับ',
+          bookingdetail: {
+            create: [
+              {
+                petid: petDog.petid,
+                pet_note: 'ชอบเล่นบอล ไม่ดุ เป็นมิตรมาก',
+              },
+              {
+                petid: petCat.petid,
+                pet_note: 'ชอบนอนในกล่อง อย่าเปิดประตูทิ้งไว้น้องชอบแอบ',
+              },
+            ],
+          },
         },
-      },
-    })
+      })
 
-    console.log('\n🎉 สร้างข้อมูลจำลองการจอง (Mock Booking) สำเร็จแล้ว!')
+      console.log(`🎉 สร้าง Mock Booking สำเร็จให้ Sitter: ${sitterUser.username} (Booking ID: ${newBooking.bookingid}, Status: ${newBooking.bookingstatus})`)
+    }
+
+    console.log('\n--------------------------------------------------')
+    console.log('👉 สำเร็จทั้งหมดแล้ว! ตอนนี้สลับไปที่เบราว์เซอร์แล้วกด Refresh (Command + R) ได้ทันที!')
     console.log('--------------------------------------------------')
-    console.log(`📌 Booking ID: ${newBooking.bookingid}`)
-    console.log(`📌 สถานะ: ${newBooking.bookingstatus}`)
-    console.log(`📌 พี่เลี้ยง: ${sitterUser.username}`)
-    console.log(`📌 เจ้าของ: ${ownerUser.username}`)
-    console.log(`📌 บริการ: ${service.servicename}`)
-    console.log(`📌 สัตว์เลี้ยง: ${petDog.name}, ${petCat.name}`)
-    console.log(`📌 ยอดเงินรวม: ${newBooking.totalprice} บาท`)
-    console.log('--------------------------------------------------')
-    console.log(`👉 ตอนนี้กลับไปที่ Postman แล้วกด Send ที่ 'GET /api/sitter/bookings' ได้เลย!`)
-    console.log(`👉 และสามารถทดสอบ 'PATCH /api/sitter/bookings/${newBooking.bookingid}' ด้วย action: "accept" ได้เลย!`)
   } catch (error) {
     console.error('❌ เกิดข้อผิดพลาดในการสร้าง Mock Booking:', error)
   } finally {
