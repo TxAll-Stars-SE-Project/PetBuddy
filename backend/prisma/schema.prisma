@@ -43,6 +43,8 @@ model booking {
   bookingdetail bookingdetail[]
   payment       payment[]
   review        review[]
+
+  @@index([sitterid])
 }
 
 model bookingdetail {
@@ -118,6 +120,8 @@ model review {
   review_detail String? @db.VarChar(200)
   review_score  Int?
   booking       booking @relation(fields: [bookingid], references: [bookingid], onDelete: Cascade, onUpdate: NoAction, map: "fk_review_booking")
+
+  @@index([bookingid])
 }
 
 model services {

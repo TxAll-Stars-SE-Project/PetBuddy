@@ -7,6 +7,11 @@ const MAX_KEYWORD_LENGTH = 100
 const DEFAULT_LIMIT = 12
 const MAX_LIMIT = 50
 const MAX_PAGE = 100_000
+const MIN_RATING = 1
+const MAX_RATING = 5
+
+export const SORT_OPTIONS = ['rating', 'priceAsc', 'priceDesc'] as const
+export type SitterSort = (typeof SORT_OPTIONS)[number]
 
 export interface SitterSearchInput {
   q?: string
@@ -16,6 +21,8 @@ export interface SitterSearchInput {
   category?: string
   minPrice?: number
   maxPrice?: number
+  minRating?: number
+  sort: SitterSort
   page: number
   limit: number
 }
@@ -99,6 +106,24 @@ export const validateSitterSearchQuery = (query: unknown): SitterSearchInput => 
   if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice)
     errors.push({ field: 'minPrice', message: 'minPrice must not be greater than maxPrice' })
 
+  // minRating: จำนวนเต็ม 1-5 (ไม่ส่ง = ไม่กรองตามคะแนน)
+  const minRatingRaw = readString(q, 'minRating', errors)
+  let minRating: number | undefined
+  if (minRatingRaw !== undefined) {
+    const n = Number(minRatingRaw)
+    if (!/^\d+$/.test(minRatingRaw) || n < MIN_RATING || n > MAX_RATING)
+      errors.push({ field: 'minRating', message: `minRating must be an integer between ${MIN_RATING} and ${MAX_RATING}` })
+    else minRating = n
+  }
+
+  const sortRaw = readString(q, 'sort', errors)
+  let sort: SitterSort = 'rating'
+  if (sortRaw !== undefined) {
+    if (!(SORT_OPTIONS as readonly string[]).includes(sortRaw))
+      errors.push({ field: 'sort', message: `sort must be one of: ${SORT_OPTIONS.join(', ')}` })
+    else sort = sortRaw as SitterSort
+  }
+
   const page = readPositiveInt(q, 'page', 1, MAX_PAGE, errors)
   const limit = readPositiveInt(q, 'limit', DEFAULT_LIMIT, MAX_LIMIT, errors)
 
@@ -112,5 +137,5 @@ export const validateSitterSearchQuery = (query: unknown): SitterSearchInput => 
     throw new AppError(400, 'VALIDATION_ERROR', 'Validation failed', errors)
   }
 
-  return { q: keyword, province: area.province, district: area.district, petType, category, minPrice, maxPrice, page, limit }
+  return { q: keyword, province: area.province, district: area.district, petType, category, minPrice, maxPrice, minRating, sort, page, limit }
 }
