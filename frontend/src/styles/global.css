@@ -509,6 +509,13 @@ a.btn{text-decoration:none}
 .result-count{color:var(--muted);font-size:13.5px}
 .sitter-list{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;transition:opacity .15s}
 .sitter-list.is-loading{opacity:.5;pointer-events:none}
+.pagination{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin:24px 0 8px}
+.page-btn{min-width:38px;height:38px;padding:0 12px;border-radius:var(--r-btn);border:1.5px solid var(--border);background:#fff;font:inherit;font-size:14px;font-weight:500;color:var(--text);cursor:pointer}
+.page-btn:hover:not(:disabled):not(.active){border-color:var(--primary-border);background:var(--primary-soft)}
+.page-btn.active{border-color:var(--primary);background:var(--primary);color:#fff}
+.page-btn:disabled{opacity:.45;cursor:not-allowed}
+.page-btn.active:disabled{opacity:1;cursor:default}
+.page-gap{color:var(--muted);padding:0 4px}
 .sitter-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-card);padding:20px;display:flex;flex-direction:column;gap:12px}
 .sitter-top{display:flex;gap:14px;align-items:center}
 .sitter-avatar{width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0}

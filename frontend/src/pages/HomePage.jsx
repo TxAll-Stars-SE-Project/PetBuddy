@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
+import Pagination from "../components/Pagination.jsx";
 import SitterCard, { SitterCardSkeleton } from "../components/SitterCard.jsx";
 import SitterFilters from "../components/SitterFilters.jsx";
 import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
@@ -16,7 +17,8 @@ export default function HomePage() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [resetKey, setResetKey] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
-  const [result, setResult] = useState({ status: "loading", sitters: [] });
+  const [result, setResult] = useState({ status: "loading", sitters: [], pagination: null });
+  const resultsRef = useRef(null);
 
   // ช่องราคาพิมพ์ทีละตัวอักษร → หน่วงก่อนยิง API; ตัวกรองอื่นกดแล้วยิงทันที
   const debouncedMin = useDebouncedValue(filters.min);
@@ -25,6 +27,11 @@ export default function HomePage() {
     () => ({ ...filters, q, min: debouncedMin, max: debouncedMax }),
     [filters, q, debouncedMin, debouncedMax]
   );
+  // หน้าปัจจุบันผูกกับชุดตัวกรอง: ตัวกรอง/คำค้นเปลี่ยนเมื่อไหร่ก็กลับไปหน้า 1 อัตโนมัติ
+  const queryKey = JSON.stringify(query);
+  const [pageState, setPageState] = useState({ key: queryKey, page: 1 });
+  const page = pageState.key === queryKey ? pageState.page : 1;
+  const setPage = (p) => setPageState({ key: queryKey, page: p });
   // ตรวจจากค่าที่พิมพ์อยู่ (ไม่ debounce) เพื่อแจ้งผู้ใช้ทันที และไม่ยิง request ที่จะโดน 400
   const priceError = getPriceError(filters);
 
@@ -32,14 +39,14 @@ export default function HomePage() {
     if (priceError) return;
     const controller = new AbortController();
     setResult((r) => ({ ...r, status: "loading" }));
-    searchSitters(query, { signal: controller.signal })
-      .then((sitters) => setResult({ status: "success", sitters }))
+    searchSitters(query, page, { signal: controller.signal })
+      .then(({ sitters, pagination }) => setResult({ status: "success", sitters, pagination }))
       .catch(() => {
         if (controller.signal.aborted) return; // request เก่าถูกยกเลิกเพราะตัวกรองเปลี่ยน
         setResult((r) => ({ ...r, status: "error" }));
       });
     return () => controller.abort();
-  }, [query, priceError, reloadKey]);
+  }, [query, page, priceError, reloadKey]);
 
   const updateFilters = (patch) => setFilters((f) => ({ ...f, ...patch }));
   // ThaiAddressSelects ส่ง patch ที่มี province/district (+ ตำบล ซึ่งตัวกรองไม่ใช้) → เก็บเฉพาะที่ใช้
@@ -61,12 +68,24 @@ export default function HomePage() {
     clearKeyword();
   };
 
-  const { status, sitters } = result;
+  const { status, sitters, pagination } = result;
+
+  // ผลลัพธ์ลดลงจนหน้าที่เปิดอยู่เกินจำนวนหน้า (เช่น sitter ถูกปิดบัญชี) → ย้อนไปหน้าสุดท้าย
+  useEffect(() => {
+    if (status === "success" && pagination && pagination.total > 0 && sitters.length === 0 && page > pagination.totalPages) {
+      setPage(pagination.totalPages);
+    }
+  });
+
+  const changePage = (p) => {
+    setPage(p);
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const showSkeleton = status === "loading" && sitters.length === 0;
 
   let countText = "";
   if (status === "loading") countText = "กำลังโหลด…";
-  else if (status === "success") countText = `${sitters.length} คน`;
+  else if (status === "success") countText = `${pagination?.total ?? sitters.length} คน`;
 
   return (
     <div>
@@ -93,7 +112,7 @@ export default function HomePage() {
           onReset={resetFilters}
         />
 
-        <div className="result-head">
+        <div className="result-head" ref={resultsRef}>
           <h2>พี่เลี้ยงทั้งหมด</h2>
           <span className="result-count">{countText}</span>
         </div>
@@ -127,6 +146,15 @@ export default function HomePage() {
           <div className={`sitter-list${status === "loading" ? " is-loading" : ""}`}>
             {sitters.map((s) => <SitterCard key={s.sitterId} sitter={s} />)}
           </div>
+        )}
+
+        {status !== "error" && pagination && (
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            disabled={status === "loading"}
+            onChange={changePage}
+          />
         )}
       </main>
     </div>

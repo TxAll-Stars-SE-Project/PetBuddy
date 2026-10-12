@@ -22,7 +22,11 @@ export function buildSitterParams(filters) {
   return params;
 }
 
-export async function searchSitters(filters, { signal } = {}) {
-  const res = await api.get("/sitters", { params: buildSitterParams(filters), signal });
-  return res.data.data;
+export const PAGE_SIZE = 12;
+
+// คืน { sitters, pagination: { page, limit, total, totalPages } }
+export async function searchSitters(filters, page = 1, { signal } = {}) {
+  const params = { ...buildSitterParams(filters), page, limit: PAGE_SIZE };
+  const res = await api.get("/sitters", { params, signal });
+  return { sitters: res.data.data, pagination: res.data.pagination };
 }
