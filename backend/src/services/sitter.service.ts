@@ -1,6 +1,7 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput, UpdateServiceInput } from '../validators/service.validator.js'
+import { SitterSearchInput } from '../validators/sitterSearch.validator.js'
 import { booking_status, service_type } from '../generated/prisma/enums.js'
 
 const ARCHIVED = 'archived'
@@ -8,7 +9,6 @@ const ACTIVE_BOOKING_STATUSES: booking_status[] = [
   'pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment',
 ]
 
-// map เดิมที่ซ้ำกัน → รวมเป็นฟังก์ชันเดียวใช้ร่วมกัน (AI Review: consistent mapping)
 const mapServiceRow = (s: {
   serviceid: number
   servicename: string
@@ -29,7 +29,6 @@ const mapServiceRow = (s: {
   createdAt: s.createdat,
 })
 
-// มุมมองเจ้าของ: ซ่อนตัวที่ archive แล้ว (soft-deleted)
 export const getServicesBySitter = async (userid: number) => {
   const rows = await prisma.services.findMany({
     where: { userid, status: { not: ARCHIVED } },
@@ -38,7 +37,6 @@ export const getServicesBySitter = async (userid: number) => {
   return rows.map(mapServiceRow)
 }
 
-// มุมมองสาธารณะ: เห็นเฉพาะ published (กติกา visibility ของ US4-1)
 export const getPublishedServicesBySitter = async (sitterId: number) => {
   const sitter = await prisma.petsitter.findUnique({ where: { userid: sitterId } })
   if (!sitter) throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found')
@@ -50,24 +48,75 @@ export const getPublishedServicesBySitter = async (sitterId: number) => {
   return rows.map(mapServiceRow)
 }
 
+export const listSitters = async (filters: SitterSearchInput) => {
+  const serviceWhere = {
+    status: 'published',
+    ...(filters.category && { servicetype: filters.category as service_type }),
+    ...(filters.petType && { species: { has: filters.petType } }),
+    ...((filters.minPrice !== undefined || filters.maxPrice !== undefined) && {
+      price: { gte: filters.minPrice, lte: filters.maxPrice },
+    }),
+  }
+
+  const where = {
+    USER: {
+      is_active: true,
+      province: filters.province,
+      district: filters.district,
+      ...(filters.q && {
+        username: { contains: filters.q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' as const },
+      }),
+    },
+    services: { some: serviceWhere },
+  }
+
+  const [total, sitters] = await Promise.all([
+    prisma.petsitter.count({ where }),
+    prisma.petsitter.findMany({
+      where,
+      include: {
+        USER: { select: { username: true, province: true, district: true } },
+        services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
+      },
+      orderBy: { userid: 'asc' },
+      skip: (filters.page - 1) * filters.limit,
+      take: filters.limit,
+    }),
+  ])
+
+  const items = sitters.map((s) => ({
+    sitterId: s.userid,
+    username: s.USER.username,
+    province: s.USER.province,
+    district: s.USER.district,
+    services: s.services.map(mapServiceRow),
+    minPrice: s.services[0]?.price ?? null,
+    rating: null as number | null,
+    reviewCount: 0,
+  }))
+
+  return {
+    items,
+    pagination: { page: filters.page, limit: filters.limit, total, totalPages: Math.ceil(total / filters.limit) },
+  }
+}
+
 export const createService = async (userid: number, input: CreateServiceInput) => {
   const created = await prisma.services.create({
     data: {
       userid,
       servicename: input.serviceName,
-      servicetype: input.serviceType as service_type,          // ✅ cast แบบ type-safe (validator การันตีค่า)
-      species: Array.from(new Set(input.species)),            // ✅ deduplicate (AI Review ข้อ 4)
+      servicetype: input.serviceType as service_type,
+      species: Array.from(new Set(input.species)),
       price: input.price,
       description: input.description ?? null,
-      status: 'published',                                    // auto-publish
+      status: 'published',
     },
   })
   return mapServiceRow(created)
 }
 
 export const updateService = async (serviceId: number, userId: number, input: UpdateServiceInput) => {
-  // Two-step check-then-update is safe here: services.userid is immutable
-  // (no ownership-transfer feature exists), so ownership cannot change between queries.
   const service = await prisma.services.findFirst({
     where: { serviceid: serviceId, status: { not: ARCHIVED } },
   })
@@ -81,7 +130,7 @@ export const updateService = async (serviceId: number, userId: number, input: Up
       ...(input.serviceType !== undefined && { servicetype: input.serviceType as service_type }),
       ...(input.species !== undefined && { species: input.species }),
       ...(input.price !== undefined && { price: input.price }),
-      ...(input.description !== undefined && { description: input.description }),  // null clears
+      ...(input.description !== undefined && { description: input.description }),
     },
   })
   return mapServiceRow(updated)
@@ -101,8 +150,6 @@ export const deleteService = async (serviceId: number, userId: number) => {
     throw new AppError(409, 'SERVICE_HAS_ACTIVE_BOOKINGS', 'Service has active bookings')
   }
 
-  // Soft delete: keep the row so bookings/payments/reviews history survives (no cascade).
-  // Public search already filters status='published', so archived disappears automatically.
   await prisma.services.update({
     where: { serviceid: serviceId },
     data: { status: ARCHIVED },

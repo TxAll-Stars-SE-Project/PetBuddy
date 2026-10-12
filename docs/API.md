@@ -551,19 +551,71 @@ Header: none (public, require: false)
 
 Query Examples:
 GET /api/sitters/
-GET /api/sitters/?category=sitting&price=500
-GET /api/sitters/?category=sitting&petType=cat&price=500
+GET /api/sitters/?category=sitting&maxPrice=500
+GET /api/sitters/?q=somchai
+GET /api/sitters/?province=กรุงเทพมหานคร&district=บางรัก&petType=cat&minPrice=100&maxPrice=500
+GET /api/sitters/?page=2&limit=12
 
-Parameters:
+Parameters (ทุกตัวเป็น optional และใช้ร่วมกันแบบ AND):
+  - q        : คำค้นหาตามชื่อผู้ใช้ (username) ของพี่เลี้ยง ตรงบางส่วนและไม่สนตัวพิมพ์เล็ก/ใหญ่ (ไม่เกิน 100 ตัวอักษร)
+  - province : จังหวัด (ชื่อไทยหรืออังกฤษ ตรงกับข้อมูลที่อยู่ของระบบ)
+  - district : อำเภอ/เขต (ต้องส่งคู่กับ province และต้องอยู่ในจังหวัดนั้น)
   - category : กรองตาม service_type (walking/sitting/boarding/grooming/daycare)
-  - petType  : กรองตามชนิดสัตว์ที่บริการนั้นรับ (species)
-  - price    : กรองราคาสูงสุด
+  - petType  : กรองตามชนิดสัตว์ที่บริการนั้นรับ (dog/cat/bird/exotic)
+  - minPrice : ราคาขั้นต่ำ (จำนวนเต็ม 0 - 1,000,000)
+  - maxPrice : ราคาสูงสุด (จำนวนเต็ม 0 - 1,000,000, ต้องไม่น้อยกว่า minPrice)
+  - page     : หน้าที่ต้องการ (จำนวนเต็ม 1 - 100,000, ค่าเริ่มต้น 1)
+  - limit    : จำนวนรายการต่อหน้า (จำนวนเต็ม 1 - 50, ค่าเริ่มต้น 12)
+
+กติกา:
+  - คืน 1 แถวต่อ 1 sitter ที่เป็น active และมีอย่างน้อย 1 service (published) ที่ตรงเงื่อนไข category + petType + ราคา พร้อมกัน
+  - services ในแต่ละแถวคือเฉพาะ service ที่ตรงเงื่อนไข เรียงราคาน้อย→มาก
+  - minPrice (ในผลลัพธ์) = ราคาต่ำสุดของ services ที่ตรงเงื่อนไข
+  - เรียงตาม sitterId จากน้อยไปมาก; pagination จะนับตามจำนวน sitter (ไม่ใช่จำนวน service)
+  - ถ้า page เกินจำนวนหน้าทั้งหมด จะได้ data เป็น [] (ยังเป็น 200) พร้อม pagination ตามจริง
+  - rating / reviewCount : ยังไม่คำนวณ (rating = null, reviewCount = 0) จะเพิ่มในงานถัดไป
 
 Response 200 OK
 {
   "status": "success",
   "data": [
-    { "sitterId": 1, "username": "somchai", "serviceType": "sitting", "species": ["dog", "cat"], "rating": 4.8 }
+    {
+      "sitterId": 1,
+      "username": "somchai",
+      "province": "กรุงเทพมหานคร",
+      "district": "บางรัก",
+      "services": [
+        {
+          "serviceId": 3,
+          "serviceName": "Cat sitting at home",
+          "serviceType": "sitting",
+          "species": ["cat"],
+          "price": 300,
+          "description": null,
+          "status": "published",
+          "createdAt": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "minPrice": 300,
+      "rating": null,
+      "reviewCount": 0
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 12,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+
+Response 400 Bad Request (query ไม่ถูกต้อง)
+{
+  "status": "error",
+  "error": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "errors": [
+    { "field": "category", "message": "category must be one of: walking, sitting, boarding, grooming, daycare" }
   ]
 }
 
