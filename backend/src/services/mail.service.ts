@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import { getWelcomeEmailHtml } from '../templates/welcome-email.template.js'
 import { getPasswordResetEmailHtml } from '../templates/password-reset-email.template.js'
+import { getBookingStatusEmailHtml } from '../templates/booking-status-email.template.js'
 
 interface WelcomeEmailParams {
   email: string
@@ -112,4 +113,78 @@ export const sendPasswordResetEmail = async (to: string, resetLink: string, ttlM
   })
 
   console.log(`[MailService] Password reset email sent successfully to ${to} (Message ID: ${info.messageId})`)
+}
+
+export interface BookingStatusNotificationParams {
+  toEmail: string
+  ownerUsername: string
+  sitterUsername: string
+  serviceName: string
+  action: 'accept' | 'reject' | 'complete'
+  bookingId: number
+  startTime: string
+  endTime: string
+  petNames: string[]
+  totalPrice: number | string
+}
+
+/**
+ * ส่งอีเมลแจ้งเตือนการเปลี่ยนสถานะการจอง (Accept / Reject / Complete) ถึง Pet Owner
+ * เป็นแบบ Non-blocking พร้อม Safe fallback เพื่อไม่ให้กระทบกระบวนการหลักของ API
+ */
+export const sendBookingStatusNotificationEmail = async (
+  params: BookingStatusNotificationParams
+): Promise<boolean> => {
+  try {
+    const transporter = getMailTransporter()
+
+    if (!transporter) {
+      console.warn(
+        `[MailService] SMTP credentials are not configured. Skipping booking status notification email to: ${params.toEmail}`
+      )
+      return false
+    }
+
+    const fromAddress =
+      process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
+
+    const subjectMap = {
+      accept: `🐾 คำขอจองบริการ PetBuddy ของคุณได้รับการตอบรับแล้ว (#${params.bookingId})`,
+      reject: `🐾 แจ้งเตือนสถานะคำขอจองบริการ PetBuddy (#${params.bookingId})`,
+      complete: `🎉 บริการ PetBuddy ของคุณเสร็จสิ้นเรียบร้อยแล้ว (#${params.bookingId})`,
+    }
+
+    const htmlContent = getBookingStatusEmailHtml({
+      ownerUsername: params.ownerUsername,
+      sitterUsername: params.sitterUsername,
+      serviceName: params.serviceName,
+      action: params.action,
+      bookingId: params.bookingId,
+      startTime: params.startTime,
+      endTime: params.endTime,
+      petNames: params.petNames,
+      totalPrice: params.totalPrice,
+    })
+
+    const textContent = `สวัสดีคุณ ${params.ownerUsername}!\n\nคำขอจอง #${params.bookingId} (${params.serviceName}) ได้รับการ ${params.action === 'accept' ? 'ตอบรับ' : params.action === 'reject' ? 'ปฏิเสธ' : 'ส่งงานเสร็จสิ้น'} โดยพี่เลี้ยงคุณ ${params.sitterUsername}\n\nขอบคุณที่ใช้บริการ PetBuddy!`
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.toEmail,
+      subject: subjectMap[params.action],
+      text: textContent,
+      html: htmlContent,
+    })
+
+    console.log(
+      `[MailService] Booking status notification email (${params.action}) sent successfully to ${params.toEmail} (Message ID: ${info.messageId})`
+    )
+    return true
+  } catch (error) {
+    console.error(
+      `[MailService] Failed to send booking status notification email to ${params.toEmail}:`,
+      error
+    )
+    return false
+  }
 }
