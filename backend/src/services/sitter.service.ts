@@ -1,8 +1,9 @@
 import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput, UpdateServiceInput } from '../validators/service.validator.js'
-import { SitterSearchInput } from '../validators/sitterSearch.validator.js'
+import { SitterSearchInput, SitterSort } from '../validators/sitterSearch.validator.js'
 import { booking_status, service_type } from '../generated/prisma/enums.js'
+import { Prisma } from '../generated/prisma/client.js'
 
 const ARCHIVED = 'archived'
 const ACTIVE_BOOKING_STATUSES: booking_status[] = [
@@ -48,6 +49,61 @@ export const getPublishedServicesBySitter = async (sitterId: number) => {
   return rows.map(mapServiceRow)
 }
 
+// ORDER BY ต่อ sort option (ค่าคงที่ ไม่รับ input จากผู้ใช้) — userid ปิดท้ายเสมอเพื่อให้ลำดับคงที่ ไม่ซ้ำ/ตกหล่นข้ามหน้า
+const SORT_SQL: Record<SitterSort, Prisma.Sql> = {
+  rating: Prisma.sql`avg_rating DESC NULLS LAST, review_count DESC, userid ASC`,
+  priceAsc: Prisma.sql`min_price ASC, userid ASC`,
+  priceDesc: Prisma.sql`min_price DESC, userid ASC`,
+}
+
+interface RankedSitter {
+  userid: number
+  min_price: number
+  avg_rating: number | null
+  review_count: number
+}
+
+// CTE กลาง: matched = sitter ที่มี service ตรงเงื่อนไขทั้งหมด + ราคาต่ำสุดของ service เหล่านั้น,
+// rated = คะแนนเฉลี่ย/จำนวนรีวิว (ข้าม review_score ที่เป็น null), ranked = รวมกัน + กรอง minRating
+const buildRankedQuery = (filters: SitterSearchInput) => {
+  const conditions: Prisma.Sql[] = [Prisma.sql`u.is_active = true`, Prisma.sql`s.status = 'published'`]
+  if (filters.province) conditions.push(Prisma.sql`u.province = ${filters.province}`)
+  if (filters.district) conditions.push(Prisma.sql`u.district = ${filters.district}`)
+  // escape \ % _ เพื่อให้เป็นตัวอักษรธรรมดา ไม่ใช่ wildcard ของ ILIKE
+  if (filters.q) conditions.push(Prisma.sql`u.username ILIKE ${`%${filters.q.replace(/[\\%_]/g, '\\$&')}%`}`)
+  if (filters.category) conditions.push(Prisma.sql`s.servicetype = ${filters.category}::service_type`)
+  if (filters.petType) conditions.push(Prisma.sql`${filters.petType} = ANY(s.species)`)
+  if (filters.minPrice !== undefined) conditions.push(Prisma.sql`s.price >= ${filters.minPrice}`)
+  if (filters.maxPrice !== undefined) conditions.push(Prisma.sql`s.price <= ${filters.maxPrice}`)
+
+  // sitter ที่ยังไม่มีรีวิวไม่ผ่านเงื่อนไข minRating (avg_rating เป็น NULL)
+  const ratingFilter =
+    filters.minRating !== undefined ? Prisma.sql`WHERE rt.avg_rating >= ${filters.minRating}` : Prisma.empty
+
+  return Prisma.sql`
+    WITH matched AS (
+      SELECT p.userid, MIN(s.price) AS min_price
+      FROM petsitter p
+      JOIN "USER" u ON u.userid = p.userid
+      JOIN services s ON s.userid = p.userid
+      WHERE ${Prisma.join(conditions, ' AND ')}
+      GROUP BY p.userid
+    ), rated AS (
+      SELECT b.sitterid, AVG(r.review_score)::float8 AS avg_rating, COUNT(r.review_score)::int AS review_count
+      FROM review r
+      JOIN booking b ON b.bookingid = r.bookingid
+      WHERE r.review_score IS NOT NULL AND b.sitterid IN (SELECT userid FROM matched)
+      GROUP BY b.sitterid
+    ), ranked AS (
+      SELECT m.userid, m.min_price, rt.avg_rating, COALESCE(rt.review_count, 0)::int AS review_count
+      FROM matched m
+      LEFT JOIN rated rt ON rt.sitterid = m.userid
+      ${ratingFilter}
+    )`
+}
+
+// ค้นหาพี่เลี้ยง: 1 แถวต่อ 1 sitter, services ที่แสดงคือเฉพาะที่ตรงเงื่อนไขกรองทั้งหมดพร้อมกัน
+// เรียงลำดับ + แบ่งหน้าใน SQL (เรียงก่อนตัดหน้า) แล้วค่อยดึงรายละเอียด service ของ sitter ในหน้านั้น
 export const listSitters = async (filters: SitterSearchInput) => {
   const serviceWhere = {
     status: 'published',
@@ -58,42 +114,39 @@ export const listSitters = async (filters: SitterSearchInput) => {
     }),
   }
 
-  const where = {
-    USER: {
-      is_active: true,
-      province: filters.province,
-      district: filters.district,
-      ...(filters.q && {
-        username: { contains: filters.q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' as const },
-      }),
-    },
-    services: { some: serviceWhere },
-  }
-
-  const [total, sitters] = await Promise.all([
-    prisma.petsitter.count({ where }),
-    prisma.petsitter.findMany({
-      where,
-      include: {
-        USER: { select: { username: true, province: true, district: true } },
-        services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
-      },
-      orderBy: { userid: 'asc' },
-      skip: (filters.page - 1) * filters.limit,
-      take: filters.limit,
-    }),
+  const ranked = buildRankedQuery(filters)
+  const [countRows, pageRows] = await Promise.all([
+    prisma.$queryRaw<{ total: number }[]>(Prisma.sql`${ranked} SELECT COUNT(*)::int AS total FROM ranked`),
+    prisma.$queryRaw<RankedSitter[]>(
+      Prisma.sql`${ranked} SELECT * FROM ranked ORDER BY ${SORT_SQL[filters.sort]} LIMIT ${filters.limit} OFFSET ${(filters.page - 1) * filters.limit}`
+    ),
   ])
+  const total = countRows[0]?.total ?? 0
 
-  const items = sitters.map((s) => ({
-    sitterId: s.userid,
-    username: s.USER.username,
-    province: s.USER.province,
-    district: s.USER.district,
-    services: s.services.map(mapServiceRow),
-    minPrice: s.services[0]?.price ?? null,
-    rating: null as number | null,
-    reviewCount: 0,
-  }))
+  const sitters = await prisma.petsitter.findMany({
+    where: { userid: { in: pageRows.map((r) => r.userid) } },
+    include: {
+      USER: { select: { username: true, province: true, district: true } },
+      services: { where: serviceWhere, orderBy: [{ price: 'asc' }, { serviceid: 'asc' }] },
+    },
+  })
+  const byId = new Map(sitters.map((s) => [s.userid, s]))
+
+  const items = pageRows.flatMap((row) => {
+    const s = byId.get(row.userid)
+    if (!s || s.services.length === 0) return []   // sitter/service ถูกลบหรือ archive ระหว่างสอง query (race เล็กน้อย) → ข้าม
+    return [{
+      sitterId: s.userid,
+      username: s.USER.username,
+      province: s.USER.province,
+      district: s.USER.district,
+      services: s.services.map(mapServiceRow),
+      minPrice: row.min_price,
+      // ปัดทศนิยม 1 ตำแหน่งตอนแสดงผลเท่านั้น; การเรียง/กรอง minRating ใช้ค่าเฉลี่ยจริง
+      rating: row.avg_rating === null ? null : Math.round(row.avg_rating * 10) / 10,
+      reviewCount: row.review_count,
+    }]
+  })
 
   return {
     items,
