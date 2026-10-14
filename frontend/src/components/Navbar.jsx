@@ -66,7 +66,7 @@ export default function Navbar() {
                       className="dropdown-item"
                       onClick={() => {
                         setOpen(false);
-                        navigate("/sitter/dashboard");
+                        navigate("/sitter/bookings");
                       }}
                     >
                       คำขอจองบริการ (Booking Requests)
