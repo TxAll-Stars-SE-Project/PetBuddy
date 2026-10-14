@@ -11,6 +11,7 @@ import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import OwnerBookingPage from "./pages/OwnerBookingPage.jsx";
+import SitterDashboardPage from "./pages/SitterDashboardPage.jsx";
 import SitterBookingsPage from "./pages/sitter/SitterBookingsPage";
 import "./styles/global.css";
 
@@ -24,26 +25,35 @@ function ProtectedRoute({ children }) {
 /* Guest Route: ถ้าล็อกอินอยู่แล้ว ห้ามเข้า login/register */
 function GuestRoute({ children }) {
   const { user } = useAuth();
-  if (user) return <Navigate to="/" replace />;
+  if (user) {
+    return <Navigate to={user.role === "sitter" ? "/sitter/dashboard" : "/"} replace />;
+  }
   return children;
+}
+
+/* Sitter Route: เฉพาะพี่เลี้ยงเท่านั้น (ถ้าไม่ใช่ sitter ให้เด้งกลับหน้าแรก /) */
+function SitterRoute({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "sitter") return <Navigate to="/" replace />;
+  return children;
+}
+
+/* Home Route: หน้าแรก '/' สำหรับ Guest แสดง LandingPage, สำหรับ Sitter ดีดไป SitterDashboard, สำหรับ Owner แสดง HomePage */
+function HomeRoute() {
+  const { user } = useAuth();
+  if (!user) return <LandingPage />;
+  if (user.role === "sitter") return <Navigate to="/sitter/dashboard" replace />;
+  return <HomePage />;
 }
 
 // src/App.jsx
 function AppRoutes() {
-  const { user } = useAuth(); // ดึงสถานะ user มาเช็ก
-
   return (
     <div className="app-root">
       <Routes>
         {/* owner → หน้าค้นหาพี่เลี้ยง, sitter → dashboard (ตาม user journey) */}
-        <Route
-          path="/"
-          element={
-            !user ? <LandingPage />
-              : user.role === "sitter" ? <Navigate to="/sitter/dashboard" replace />
-              : <HomePage />
-          }
-        />
+        <Route path="/" element={<HomeRoute />} />
         
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
@@ -53,19 +63,9 @@ function AppRoutes() {
 
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
-
-        <Route
-          path="/sitter"
-          element={<Navigate to="/sitter/bookings" replace />}
-        />
-        <Route
-          path="/sitter/dashboard"
-          element={<Navigate to="/sitter/bookings" replace />}
-        />
-        <Route
-          path="/sitter/bookings"
-          element={<ProtectedRoute><SitterBookingsPage /></ProtectedRoute>}
-        />
+        <Route path="/sitter" element={<Navigate to="/sitter/dashboard" replace />} />
+        <Route path="/sitter/dashboard" element={<SitterRoute><SitterDashboardPage /></SitterRoute>} />
+        <Route path="/sitter/bookings" element={<SitterRoute><SitterBookingsPage /></SitterRoute>} />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
