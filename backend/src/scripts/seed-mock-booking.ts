@@ -20,7 +20,7 @@ async function seedMockBooking() {
     sitters.forEach((s) => console.log(`   - ${s.username} (User ID: ${s.userid}, Email: ${s.email})`))
 
     // 2. ตรวจสอบหรือสร้างเจ้าของสัตว์เลี้ยง (Pet Owner)
-    const ownerEmail = 'owner_mock@gmail.com'
+    const ownerEmail = 'owner_mock@example.com'
     let ownerUser = await prisma.uSER.findUnique({
       where: { email: ownerEmail },
       include: { petowner: true },

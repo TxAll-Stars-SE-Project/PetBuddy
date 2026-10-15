@@ -65,7 +65,7 @@ async function simulateOwnerBooking() {
       ownerUser = await prisma.uSER.create({
         data: {
           username: `owner_somchai_${randomSuffix}`,
-          email: `owner_somchai_${randomSuffix}@gmail.com`,
+          email: `owner_somchai_${randomSuffix}@example.com`,
           password: hashedPassword,
           tel: '0891234567',
           province: 'กรุงเทพมหานคร',
