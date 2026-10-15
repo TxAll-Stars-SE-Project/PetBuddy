@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from './api.js';
 import type { Booking, BookingAction, BookingStatus } from '../types/booking';
 
 export async function getSitterBookings(status?: BookingStatus): Promise<Booking[]> {
