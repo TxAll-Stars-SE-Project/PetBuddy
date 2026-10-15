@@ -55,6 +55,14 @@ function AppRoutes() {
         <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
 
         <Route
+          path="/sitter"
+          element={<Navigate to="/sitter/bookings" replace />}
+        />
+        <Route
+          path="/sitter/dashboard"
+          element={<Navigate to="/sitter/bookings" replace />}
+        />
+        <Route
           path="/sitter/bookings"
           element={<ProtectedRoute><SitterBookingsPage /></ProtectedRoute>}
         />
