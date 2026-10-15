@@ -212,6 +212,9 @@ export const updateBookingStatusBySitter = async (
   const sitterUser = existingBooking.petsitter?.USER
   if (ownerUser?.email) {
     const petNames = existingBooking.bookingdetail.map((bd) => bd.pet.name)
+    const formatThaiDateTime = (date: Date): string =>
+      date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+
     sendBookingStatusNotificationEmail({
       toEmail: ownerUser.email,
       ownerUsername: ownerUser.username,
@@ -219,8 +222,8 @@ export const updateBookingStatusBySitter = async (
       serviceName: existingBooking.services?.servicename || 'บริการสัตว์เลี้ยง',
       action,
       bookingId: existingBooking.bookingid,
-      startTime: existingBooking.starttime.toLocaleString('th-TH'),
-      endTime: existingBooking.endtime.toLocaleString('th-TH'),
+      startTime: formatThaiDateTime(existingBooking.starttime),
+      endTime: formatThaiDateTime(existingBooking.endtime),
       petNames,
       totalPrice: Number(existingBooking.totalprice),
     }).catch((err) => {
