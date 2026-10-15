@@ -2,6 +2,10 @@ import nodemailer from 'nodemailer'
 import { getWelcomeEmailHtml } from '../templates/welcome-email.template.js'
 import { getPasswordResetEmailHtml } from '../templates/password-reset-email.template.js'
 import { getBookingStatusEmailHtml } from '../templates/booking-status-email.template.js'
+import {
+  getPaymentStatusEmailHtml,
+  PaymentStatusEmailParams,
+} from '../templates/payment-status-email.template.js'
 
 interface WelcomeEmailParams {
   email: string
@@ -183,6 +187,52 @@ export const sendBookingStatusNotificationEmail = async (
   } catch (error) {
     console.error(
       `[MailService] Failed to send booking status notification email to ${params.toEmail}:`,
+      error
+    )
+    return false
+  }
+}
+
+/**
+ * ส่งอีเมลแจ้งผลการตรวจสอบสลิปการโอนเงิน (Non-blocking safe dispatch)
+ */
+export const sendPaymentStatusNotificationEmail = async (
+  params: PaymentStatusEmailParams & { toEmail: string }
+): Promise<boolean> => {
+  try {
+    const transporter = getMailTransporter()
+
+    if (!transporter) {
+      console.warn(
+        `[MailService] SMTP credentials are not configured in .env. Skipping payment status email to: ${params.toEmail}`
+      )
+      return false
+    }
+
+    const fromAddress =
+      process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
+
+    const htmlContent = getPaymentStatusEmailHtml(params)
+    const subject =
+      params.action === 'verify'
+        ? `🐾 ยืนยันการชำระเงินเรียบร้อยแล้ว - การจอง #${params.bookingId}`
+        : `⚠️ สลิปการโอนเงินไม่ผ่านการตรวจสอบ - การจอง #${params.bookingId}`
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.toEmail,
+      subject,
+      text: `สวัสดีคุณ ${params.ownerUsername}!\n\nสถานะการชำระเงินสำหรับการจอง #${params.bookingId} (${params.serviceName}): ${params.action === 'verify' ? 'ได้รับการยืนยันแล้ว' : 'ไม่ผ่านการตรวจสอบ'}\nยอดเงิน: ฿${params.amount.toLocaleString('th-TH')}`,
+      ...(htmlContent ? { html: htmlContent } : {}),
+    })
+
+    console.log(
+      `[MailService] Payment status email sent successfully to ${params.toEmail} (Message ID: ${info.messageId})`
+    )
+    return true
+  } catch (error) {
+    console.error(
+      `[MailService] Failed to send payment status email to ${params.toEmail}:`,
       error
     )
     return false

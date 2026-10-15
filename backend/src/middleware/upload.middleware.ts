@@ -86,3 +86,86 @@ export const uploadPetImageMiddleware = (
     next()
   })
 }
+
+const slipUpload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(new AppError(400, 'INVALID_FILE_TYPE', 'Invalid file type or size / missing fields'))
+      return
+    }
+    cb(null, true)
+  },
+}).fields([
+  { name: 'slip_image', maxCount: 1 },
+  { name: 'slip', maxCount: 1 },
+  { name: 'file', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+])
+
+/**
+ * Middleware that parses multipart/form-data for payment slip uploads.
+ * If a file is uploaded under 'slip_image', 'slip', 'file', or 'image', attaches to `req.file`.
+ */
+export const uploadSlipMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const contentType = req.headers['content-type'] || ''
+  if (!contentType.includes('multipart/form-data')) {
+    next()
+    return
+  }
+
+  slipUpload(req, res, (err: unknown) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({
+            status: 'error',
+            message: 'Invalid file type or size / missing fields',
+          })
+          return
+        }
+        res.status(400).json({
+          status: 'error',
+          message: err.message || 'Invalid file type or size / missing fields',
+        })
+        return
+      }
+
+      if (err instanceof AppError) {
+        res.status(err.statusCode).json({
+          status: 'error',
+          message: err.message,
+        })
+        return
+      }
+
+      res.status(400).json({
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Invalid file type or size / missing fields',
+      })
+      return
+    }
+
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined
+    if (files) {
+      const matched =
+        files.slip_image?.[0] ||
+        files.slip?.[0] ||
+        files.file?.[0] ||
+        files.image?.[0]
+      if (matched) {
+        req.file = matched
+      }
+    }
+
+    next()
+  })
+}
+
