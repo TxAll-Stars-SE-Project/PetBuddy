@@ -10,5 +10,9 @@
     "dev:backend": "npm run dev --workspace=backend",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.4"
   }
 }

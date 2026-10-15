@@ -5,9 +5,12 @@ import {
   createPetHandler,
   updatePetHandler,
   deletePet,
+  getMyPets,
 } from '../controllers/pet/pet.controller.js'
 
 const router = Router()
+
+router.get('/my-pets', requireAuth, authorize('owner'), getMyPets)
 
 // Support both POST /api/pets/add and POST /api/pets
 router.post(

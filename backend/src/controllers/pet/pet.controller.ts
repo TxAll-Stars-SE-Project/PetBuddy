@@ -190,3 +190,35 @@ export const deletePet = async (req: AuthenticatedRequest, res: Response): Promi
   }
 }
 
+export const getMyPets = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const ownerId = req.auth?.userId;
+
+    if (!ownerId) {
+      res.status(401).json({ error: 'UNAUTHORIZED', message: 'กรุณาเข้าสู่ระบบ' });
+      return;
+    }
+
+    const pets = await petService.getPetsByOwnerId(ownerId);
+    
+    res.status(200).json({ 
+      status: 'success', 
+      data: pets 
+    });
+
+  } catch (error: unknown) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        error: error.errorCode,
+        message: error.message,
+      });
+      return;
+    }
+
+    console.error('Error getting my pets:', error);
+    res.status(500).json({
+      error: 'INTERNAL_SERVER_ERROR',
+      message: 'Failed to get pet list',
+    });
+  }
+};

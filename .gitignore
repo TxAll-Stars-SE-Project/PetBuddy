@@ -31,9 +31,17 @@ dist-ssr
 
 # Tests & Coverage
 __tests__/
+tests/
 *.test.ts
 *.test.js
 *.spec.ts
 *.spec.js
 coverage/
 .nyc_output/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
