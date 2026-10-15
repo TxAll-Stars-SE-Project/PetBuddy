@@ -10,6 +10,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import OwnerBookingPage from "./pages/OwnerBookingPage.jsx";
 import "./styles/global.css";
 
 /* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

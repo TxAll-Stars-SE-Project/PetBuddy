@@ -41,7 +41,9 @@ export default function Navbar() {
               <div className="overlay" onClick={() => setOpen(false)} />
               <div className="dropdown">
                 <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/profile")}}>โปรไฟล์ของฉัน</button>
-                <button className="dropdown-item" disabled>การจองของฉัน</button>
+                {user?.role !== "sitter" && (
+                  <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/bookings")}}>การจองของฉัน</button>
+                )}
                 <div className="dropdown-divider" />
                 <button className="dropdown-item dropdown-item--danger"
                   onClick={() => { setOpen(false); logout(); }}>

@@ -565,3 +565,44 @@ a.btn{text-decoration:none}
   .filter-actions .btn{width:100%}
   .page-title{font-size:22px}
 }
+
+/* ---------- การจองของฉัน (Owner) + ชำระเงิน (US6-1) ---------- */
+.booking-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.booking-list{display:flex;flex-direction:column;gap:14px}
+.booking-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-card);padding:20px;display:flex;flex-direction:column;gap:10px}
+.booking-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.booking-sitter-name{margin:0;font-size:16px;font-weight:700}
+.booking-service-name{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.booking-datetime{margin:0;font-size:13.5px;color:var(--text-secondary)}
+.booking-pets{display:flex;gap:6px;flex-wrap:wrap}
+.booking-card-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:4px;padding-top:12px;border-top:1px solid var(--border)}
+.booking-price{display:flex;flex-direction:column;line-height:1.3}
+.booking-price small{color:var(--muted);font-size:12px}
+.booking-price strong{font-size:18px;color:var(--text)}
+
+.booking-badge{flex-shrink:0;padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.booking-badge--muted{background:var(--chip);color:var(--text-secondary)}
+.booking-badge--success{background:var(--success-bg);color:var(--success)}
+.booking-badge--warning{background:var(--info-bg);color:var(--info)}
+.booking-badge--error{background:var(--error-bg);color:var(--error)}
+
+/* PaymentModal */
+.payment-modal{max-width:460px}
+.payment-modal-sub{margin:0 0 18px;color:var(--muted);font-size:13.5px}
+.payment-breakdown{display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-input);padding:16px}
+.payment-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--text-secondary)}
+.payment-row--total{padding-top:10px;border-top:1px dashed var(--border);font-size:16px;font-weight:700;color:var(--text)}
+.payment-plan-tag{font-size:12.5px;color:var(--primary);font-weight:600}
+.payment-history{margin-top:18px}
+.payment-history-row{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.payment-history-date{grid-column:1 / -1;color:var(--muted);font-size:12px}
+.payment-status{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px}
+.payment-status--verified{background:var(--success-bg);color:var(--success)}
+.payment-status--pending_verifying{background:var(--info-bg);color:var(--info)}
+.payment-status--rejected{background:var(--error-bg);color:var(--error)}
+
+@media(max-width:560px){
+  .booking-card-top{flex-direction:column}
+  .booking-card-foot{flex-direction:column;align-items:stretch}
+  .booking-card-foot .btn{width:100%}
+}
