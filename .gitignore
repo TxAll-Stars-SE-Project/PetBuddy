@@ -45,7 +45,6 @@ __tests__/
 *.spec.js
 coverage/
 .nyc_output/
-<<<<<<< HEAD
 
 # Playwright
 /test-results/
@@ -53,7 +52,6 @@ coverage/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-=======
 playwright-demo/
 
 
@@ -65,4 +63,3 @@ playwright-demo/
 !**/README.md
 !API.md
 !**/API.md
->>>>>>> cb49bced9e5361f6aafdd0b06d4bccc425945e72
