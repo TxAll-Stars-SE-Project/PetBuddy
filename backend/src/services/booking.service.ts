@@ -20,6 +20,15 @@ export interface CreateBookingInput {
 export const createBooking = async (ownerId: number, input: CreateBookingInput) => {
   const start = new Date(input.starttime);
   const end = new Date(input.endtime);
+  const now = new Date();
+
+  //Past date blocking
+  if (start < now) {
+    throw new AppError(400, 'INVALID_TIME', 'Cannot book in the past');
+  }
+  if (end <= start) {
+    throw new AppError(400, 'INVALID_TIME', 'End time must be after start time');
+  }
 
   // ตรวจสอบว่ามี พี่เลี้ยง และ บริการ นี้อยู่จริงและเปิดให้บริการ
   const service = await prisma.services.findFirst({
