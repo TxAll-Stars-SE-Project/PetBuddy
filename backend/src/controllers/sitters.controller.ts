@@ -103,10 +103,6 @@ export const getSitterBusySlots = async (req: Request, res: Response): Promise<v
 
   } catch (error) {
     if (error instanceof AppError) {
-      if (error.errorCode === 'INVALID_DATE') {
-        res.status(400).json({ status: 'error', message: error.message });
-        return;
-      }
       res.status(error.statusCode).json({ status: 'error', message: error.message });
       return;
     }

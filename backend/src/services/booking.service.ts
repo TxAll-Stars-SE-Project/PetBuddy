@@ -70,23 +70,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     throw new AppError(404, 'PET_NOT_FOUND', 'One or more pets not found or do not belong to you');
   }
 
-  // ตรวจสอบคิวซ้อน (Overlap Prevention)
-  const overlappingBooking = await prisma.booking.findFirst({
-    where: {
-      sitterid: input.sitterId,
-      bookingstatus: {
-        in: ['pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment']
-      },
-      // ลอจิกเช็คเวลาซ้อนทับ: เริ่มก่อนเป้าหมายจบ AND จบหลังเป้าหมายเริ่ม
-      starttime: { lt: end },
-      endtime: { gt: start }
-    }
-  });
-
-  if (overlappingBooking) {
-    throw new AppError(409, 'TIME_OVERLAP', 'Time slot overlaps with an existing booking');
-  }
-
+  
   // คำนวณราคา (Backend Calculation)
   // หาระยะเวลาเป็นชั่วโมง (ปัดเศษขึ้นถ้ามีเศษนาที)
   const durationMs = end.getTime() - start.getTime();
@@ -100,6 +84,21 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
 
   // บันทึกข้อมูลลงฐานข้อมูล (ใช้ Transaction เพื่อรับประกันว่าลงครบทั้ง 2 ตาราง)
   const result = await prisma.$transaction(async (tx) => {
+    // ตรวจสอบคิวซ้อน (Overlap Prevention)
+    const overlappingBooking = await tx.booking.findFirst({
+        where: {
+        sitterid: input.sitterId,
+        bookingstatus: {
+            in: ['pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment']
+        },
+        starttime: { lt: end },
+        endtime: { gt: start }
+        }
+    });
+
+    if (overlappingBooking) {
+        throw new AppError(409, 'TIME_OVERLAP', 'Time slot overlaps with an existing booking');
+    }
     // สร้างบิลจอง
     const booking = await tx.booking.create({
       data: {
