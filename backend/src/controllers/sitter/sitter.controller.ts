@@ -1,7 +1,7 @@
-import { Response } from 'express'
+import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
-import { AppError } from '../../utils/errors.js'
-import * as sitterService from '../../services/sitter.service.js'
+import { AppError } from '../../utils/errors.js';
+import * as sitterService from '../../services/sitter.service.js'; 
 import { validateCreateServiceInput, validateUpdateServiceInput } from '../../validators/service.validator.js'
 
 export const getMyServices = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
