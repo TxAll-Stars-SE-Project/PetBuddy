@@ -75,7 +75,7 @@ export const getSitterReviews = async (req: Request, res: Response): Promise<voi
 
   } catch (error) {
     if (error instanceof AppError) {
-      res.status(error.statusCode).json({ status: 'error', message: error.message });
+       res.status(error.statusCode).json({ error: error.errorCode, message: error.message });
       return;
     }
     console.error('Error getting sitter reviews:', error);
@@ -103,7 +103,7 @@ export const getSitterBusySlots = async (req: Request, res: Response): Promise<v
 
   } catch (error) {
     if (error instanceof AppError) {
-      res.status(error.statusCode).json({ status: 'error', message: error.message });
+       res.status(error.statusCode).json({ error: error.errorCode, message: error.message });
       return;
     }
     console.error('Error getting busy slots:', error);

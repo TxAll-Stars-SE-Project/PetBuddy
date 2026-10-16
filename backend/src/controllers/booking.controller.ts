@@ -11,32 +11,36 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response): P
       return;
     }
 
+    const { starttime, endtime, paymentplan, pets, note } = req.body;
     const sitterId = Number(req.body.sitterId);
     const serviceId = Number(req.body.serviceId);
-    const { starttime, endtime, paymentplan, pets, note } = req.body;
 
-    if (!sitterId || !serviceId) {
-      throw new AppError(400, 'INVALID_INPUT', 'sitterId and serviceId must be valid numbers');
+    // เช็คความถูกต้องของข้อมูลทั้งหมด
+    if (
+      !Number.isInteger(sitterId) || sitterId <= 0 ||
+      !Number.isInteger(serviceId) || serviceId <= 0 ||
+      !starttime || !endtime || !paymentplan ||
+      !Array.isArray(pets) || pets.length === 0
+    ) {
+      throw new AppError(400, 'VALIDATION_FAILED', 'Missing or invalid required fields');
     }
 
-    // Validation
-    if (!sitterId || !serviceId || !starttime || !endtime || !paymentplan || !pets || !Array.isArray(pets) || pets.length === 0) {
-      throw new AppError(400, 'VALIDATION_FAILED', 'Validation failed. Missing required fields.');
-    }
-
-    const data = await bookingService.createBooking(ownerId, req.body);
-
-    res.status(201).json({
-      status: 'success',
-      data: data
+    const data = await bookingService.createBooking(ownerId, {
+      sitterId,
+      serviceId,
+      starttime,
+      endtime,
+      paymentplan,
+      pets,
+      note,
     });
 
+    res.status(201).json({ status: 'success', data });
   } catch (error) {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({ status: 'error', message: error.message });
       return;
     }
-    
     console.error('Error creating booking:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
