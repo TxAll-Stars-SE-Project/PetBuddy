@@ -53,6 +53,7 @@ coverage/
 /playwright/.cache/
 /playwright/.auth/
 playwright-demo/
+playwright.config.ts
 
 
 # Markdown files (ignore all except README and API docs)

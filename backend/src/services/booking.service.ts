@@ -2,6 +2,7 @@ import prisma from '../utils/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { payment_plan } from '../generated/prisma/enums.js';
 import { sendNewBookingToSitterEmail } from './mail.service.js';
+import { Prisma } from '../generated/prisma/client.js'
 
 interface PetBookingInput {
   petId: number;
@@ -59,6 +60,10 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
 
   // ตรวจสอบว่า สัตว์เลี้ยงทั้งหมด เป็นของ Owner คนนี้จริงไหม
   const petIds = input.pets.map(p => p.petId);
+  const uniquePetIds = new Set(petIds);
+  if (uniquePetIds.size !== petIds.length) {
+    throw new AppError(400, 'INVALID_INPUT', 'Duplicate pet IDs are not allowed');
+  }
   const ownedPets = await prisma.pet.findMany({
     where: { 
       ownerid: ownerId,
@@ -126,7 +131,9 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     });
 
     return booking;
-  });
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+});
 
   sendNewBookingToSitterEmail({
     sitterEmail: service.petsitter.USER.email,

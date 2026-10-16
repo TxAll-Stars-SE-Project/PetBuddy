@@ -11,7 +11,13 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    const { sitterId, serviceId, starttime, endtime, paymentplan, pets } = req.body;
+    const sitterId = Number(req.body.sitterId);
+    const serviceId = Number(req.body.serviceId);
+    const { starttime, endtime, paymentplan, pets, note } = req.body;
+
+    if (!sitterId || !serviceId) {
+      throw new AppError(400, 'INVALID_INPUT', 'sitterId and serviceId must be valid numbers');
+    }
 
     // Validation
     if (!sitterId || !serviceId || !starttime || !endtime || !paymentplan || !pets || !Array.isArray(pets) || pets.length === 0) {
