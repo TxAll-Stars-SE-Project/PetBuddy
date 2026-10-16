@@ -7,6 +7,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const isSitter = user?.role === "sitter";
   // ค่าในช่องค้นหาตามพารามิเตอร์ ?q= ปัจจุบัน (key ด้านล่างทำให้ช่องรีเซ็ตเมื่อ q ถูกล้างจากหน้าอื่น)
   const [searchParams] = useSearchParams();
   const currentQ = searchParams.get("q") ?? "";
@@ -40,21 +41,56 @@ export default function Navbar() {
             <>
               <div className="overlay" onClick={() => setOpen(false)} />
               <div className="dropdown">
-                <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/profile")}}>โปรไฟล์ของฉัน</button>
-                {user?.role !== "sitter" && (
-                  <button className="dropdown-item" onClick={() => {setOpen(false); navigate("/bookings")}}>การจองของฉัน</button>
-                )}
-                {user?.role === "sitter" && (
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/profile");
+                  }}
+                >
+                  โปรไฟล์ของฉัน
+                </button>
+
+                {isSitter ? (
+                  <>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/sitter/dashboard");
+                      }}
+                    >
+                      แดชบอร์ดพี่เลี้ยง
+                    </button>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/sitter/bookings");
+                      }}
+                    >
+                      คำขอจองบริการ (Booking Requests)
+                    </button>
+                  </>
+                ) : (
                   <button
                     className="dropdown-item"
-                    onClick={() => { setOpen(false); navigate("/sitter/bookings"); }}
+                    onClick={() => {
+                      setOpen(false);
+                      navigate("/bookings");
+                    }}
                   >
-                    รายการคำขอจอง
+                    การจองของฉัน
                   </button>
                 )}
                 <div className="dropdown-divider" />
-                <button className="dropdown-item dropdown-item--danger"
-                  onClick={() => { setOpen(false); logout(); }}>
+                <button
+                  className="dropdown-item dropdown-item--danger"
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >
                   ออกจากระบบ
                 </button>
               </div>
