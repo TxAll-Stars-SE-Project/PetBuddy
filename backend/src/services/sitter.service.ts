@@ -41,11 +41,19 @@ export const getProfileById = async (sitterId: number) => {
     throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
   }
 
+  const ratingAgg = await prisma.review.aggregate({
+    where: { booking: { sitterid: sitterId } },
+    _avg: { review_score: true }
+  });
+  const avgRating = ratingAgg._avg.review_score 
+    ? Math.round(ratingAgg._avg.review_score * 10) / 10 
+    : 0;
+
   return {
     sitterId: sitter.userid,
     username: sitter.USER.username,
     province: sitter.USER.province || "",
-    rating: 0
+    rating: avgRating
   };
 };
 
@@ -94,8 +102,8 @@ export const getBusySlots = async (sitterId: number, dateString: string) => {
   }
 
   // ขอบเขตเวลาของวันนั้น
-  const startOfDay = new Date(`${dateString}T00:00:00.000Z`);
-  const endOfDay = new Date(`${dateString}T23:59:59.999Z`);
+  const startOfDay = new Date(`${dateString}T00:00:00+07:00`);
+  const endOfDay = new Date(`${dateString}T23:59:59.999+07:00`);
 
   // ดึง Booking ที่มีสถานะยังดำเนินการอยู่ และเวลาคาบเกี่ยวกับวันดังกล่าว
   const bookings = await prisma.booking.findMany({

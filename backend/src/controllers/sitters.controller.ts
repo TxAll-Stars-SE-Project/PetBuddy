@@ -27,7 +27,7 @@ export const getPublicServices =async (req: Request, res: Response): Promise<voi
   try {
     const sitterId = Number(req.params.sitterID)
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found')
+      throw new AppError(400, 'SITTER_NOT_FOUND', 'Sitter not found')
     }
 
     const services = await sitterService.getPublishedServicesBySitter(sitterId)
@@ -87,7 +87,7 @@ export const getSitterBusySlots = async (req: Request, res: Response): Promise<v
   try {
     const sitterId = Number(req.params.sitterID);
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
+      throw new AppError(400, 'SITTER_NOT_FOUND', 'Sitter not found');
     }
 
     const date = req.query.date as string;
