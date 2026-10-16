@@ -7,7 +7,7 @@ export const api = axios.create({
 
 // Interceptor: แปะ Token อัตโนมัติก่อนยิงทุก request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("pb_token");
+  const token = localStorage.getItem("pb_token") || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,7 +22,7 @@ api.interceptors.response.use(
     const reqUrl = error.config?.url || "";
 
     // 👇 401 + มี token อยู่ + ไม่ใช่ request login/register = session หมดอายุจริง
-    const hasToken = !!localStorage.getItem("pb_token");
+    const hasToken = !!(localStorage.getItem("pb_token") || localStorage.getItem("token"));
     const isAuthRequest = reqUrl.includes("/auth/login") || reqUrl.includes("/auth/register");
 
     if (status === 401 && hasToken && !isAuthRequest) {
@@ -33,3 +33,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default api;

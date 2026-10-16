@@ -26,8 +26,16 @@ dist-ssr
 *.sln
 *.sw?
 .pet-api-doc/
+
+# AI Agent directories and files
 .claude/
 .windsurf/
+.gemini/
+.agents/
+SESSION_STATE.md
+PROJECT_OVERVIEW.md
+GEMINI.md
+AGENTS.md
 
 # Tests & Coverage
 __tests__/
@@ -37,6 +45,7 @@ __tests__/
 *.spec.js
 coverage/
 .nyc_output/
+<<<<<<< HEAD
 
 # Playwright
 /test-results/
@@ -44,3 +53,16 @@ coverage/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+=======
+playwright-demo/
+
+
+# Markdown files (ignore all except README and API docs)
+*.md
+!README.md
+!README*.md
+!readme.md
+!**/README.md
+!API.md
+!**/API.md
+>>>>>>> cb49bced9e5361f6aafdd0b06d4bccc425945e72

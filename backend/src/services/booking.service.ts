@@ -1,6 +1,7 @@
 import prisma from '../utils/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { payment_plan } from '../generated/prisma/enums.js';
+import { sendNewBookingToSitterEmail } from './mail.service.js';
 
 interface PetBookingInput {
   petId: number;
@@ -36,12 +37,25 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
       serviceid: input.serviceId, 
       userid: input.sitterId,
       status: 'published' 
+    },
+    include: {
+      petsitter: {
+        include: { 
+          USER: true 
+        }
+      }
     }
   });
 
   if (!service) {
     throw new AppError(404, 'NOT_FOUND', 'Sitter or service not found');
   }
+
+  // ดึงชื่อของ Pet Owner เพื่อใช้ในอีเมลแจ้งเตือน
+  const owner = await prisma.petowner.findUnique({
+    where: { userid: ownerId },
+    include: { USER: true }
+  });
 
   // ตรวจสอบว่า สัตว์เลี้ยงทั้งหมด เป็นของ Owner คนนี้จริงไหม
   const petIds = input.pets.map(p => p.petId);
@@ -82,7 +96,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
   const numberOfPets = input.pets.length;
   
   const totalPrice = service.price * hours * numberOfPets;
-  const depositAmount = totalPrice * 0.3; // มัดจำ 30% ตามตัวอย่าง (1890 / 6300)
+  const depositAmount = totalPrice * 0.3; // มัดจำ 30% 
 
   // บันทึกข้อมูลลงฐานข้อมูล (ใช้ Transaction เพื่อรับประกันว่าลงครบทั้ง 2 ตาราง)
   const result = await prisma.$transaction(async (tx) => {
@@ -114,6 +128,17 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
 
     return booking;
   });
+
+  sendNewBookingToSitterEmail({
+    sitterEmail: service.petsitter.USER.email,
+    sitterUsername: service.petsitter.USER.username,
+    ownerName: owner?.USER.username || 'ลูกค้า',
+    serviceName: service.servicename,
+    bookingId: result.bookingid,
+    startTime: input.starttime,
+    endTime: input.endtime,
+    totalPrice: totalPrice
+  }).catch(err => console.error("Email error:", err));
 
   const responsePets = input.pets.map(inputPet => {
     const petInfo = ownedPets.find(p => p.petid === inputPet.petId);

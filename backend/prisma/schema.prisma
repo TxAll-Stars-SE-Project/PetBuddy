@@ -133,13 +133,13 @@ model services {
   description String?
   price       Int          @default(0)
   status      String       @default("published") @db.VarChar(20)
-  updatedat   DateTime
+  updatedat   DateTime     @updatedAt
   species     String[]     @default([])
   booking     booking[]
   petsitter   petsitter    @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([servicetype, status])
   @@index([status])
+  @@index([servicetype, status])
   @@index([userid])
 }
 

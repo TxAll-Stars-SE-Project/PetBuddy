@@ -4,6 +4,13 @@ import { api } from "../services/api.js";
 import { toast } from "../utils/toast.js";
 
 const AuthContext = createContext(null);
+/**
+ * @returns {{
+ *   user: { username?: string, role?: string } | null,
+ *   login: (email: string, password: string, rememberMe?: boolean) => Promise<unknown>,
+ *   logout: () => Promise<void>
+ * }}
+ */
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
@@ -12,10 +19,11 @@ export function AuthProvider({ children }) {
   });
   const navigate = useNavigate();
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, rememberMe = false) => {
     try {
-      const { data } = await api.post("/auth/login", { email, password });
+      const { data } = await api.post("/auth/login", { email, password, rememberMe });
       localStorage.setItem("pb_token", data.token);
+      localStorage.setItem("token", data.token);
       localStorage.setItem("pb_user", JSON.stringify(data.user));
       setUser(data.user);
       return data;
@@ -29,6 +37,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try { await api.post("/auth/logout"); } catch (e) { /* ไม่สน */ }
     localStorage.removeItem("pb_token");
+    localStorage.removeItem("token");
     localStorage.removeItem("pb_user");
     setUser(null);
     navigate("/");

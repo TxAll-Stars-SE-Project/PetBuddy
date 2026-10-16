@@ -10,6 +10,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import OwnerBookingPage from "./pages/OwnerBookingPage.jsx";
+import SitterBookingsPage from "./pages/sitter/SitterBookingsPage";
 import "./styles/global.css";
 
 /* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
@@ -33,8 +35,15 @@ function AppRoutes() {
   return (
     <div className="app-root">
       <Routes>
-
-        <Route path="/" element={user ? <HomePage /> : <LandingPage />} />
+        {/* owner → หน้าค้นหาพี่เลี้ยง, sitter → dashboard (ตาม user journey) */}
+        <Route
+          path="/"
+          element={
+            !user ? <LandingPage />
+              : user.role === "sitter" ? <Navigate to="/sitter/dashboard" replace />
+              : <HomePage />
+          }
+        />
         
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
@@ -43,6 +52,20 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
+
+        <Route
+          path="/sitter"
+          element={<Navigate to="/sitter/bookings" replace />}
+        />
+        <Route
+          path="/sitter/dashboard"
+          element={<Navigate to="/sitter/bookings" replace />}
+        />
+        <Route
+          path="/sitter/bookings"
+          element={<ProtectedRoute><SitterBookingsPage /></ProtectedRoute>}
+        />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

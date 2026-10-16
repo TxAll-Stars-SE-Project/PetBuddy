@@ -1,10 +1,13 @@
-import { Router } from 'express';
-import { getSitterProfile, getSitterReviews, getSitterBusySlots } from '../controllers/sitter/sitter.controller.js';
+import { Router } from 'express'
+import { requireAuth } from '../middleware/auth.middleware.js'
+import * as sitterController from '../controllers/sitter/sitter.controller.js'
+import { requireRole } from '../middleware/role.middleware.js'
 
 const router = Router();
 
-router.get('/:sitterID', getSitterProfile);
-router.get('/:sitterID/reviews', getSitterReviews);
-router.get('/:sitterID/busy-slots', getSitterBusySlots);
+router.get('/me', requireAuth, requireRole('sitter'), sitterController.getMyServices)
+router.post('/', requireAuth, requireRole('sitter'), sitterController.createService)
+router.patch('/:serviceID', requireAuth, requireRole('sitter'), sitterController.updateService)
+router.delete('/:serviceID', requireAuth, requireRole('sitter'), sitterController.deleteService)
 
-export default router;
+export default router

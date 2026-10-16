@@ -7,7 +7,7 @@ import prisma from '../../utils/prisma.js'
 import { comparePassword, hashPassword } from '../../utils/password.js'
 import { signAuthToken } from '../../utils/jwt.js'
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js'
-import { sendPasswordResetEmail } from '../../utils/email.js'
+import { sendPasswordResetEmail } from '../../services/mail.service.js'
 
 const PASSWORD_RESET_TOKEN_TTL_MINUTES = Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES ?? 15)
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173'
@@ -218,7 +218,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       const resetLink = `${FRONTEND_URL}/reset-password?token=${token}`
 
       try {
-        await sendPasswordResetEmail(user.email, resetLink)
+        await sendPasswordResetEmail(user.email, resetLink, PASSWORD_RESET_TOKEN_TTL_MINUTES)
       } catch (emailError) {
         console.error('Failed to send password reset email:', emailError)
       }
