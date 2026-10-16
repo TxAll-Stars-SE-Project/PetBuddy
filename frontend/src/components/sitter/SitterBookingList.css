@@ -1,0 +1,54 @@
+.sitter-booking-list__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.sitter-booking-list__tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--muted, #6b7280);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sitter-booking-list__tab:hover {
+  color: var(--text, #1f2937);
+  background: var(--chip, #f3f4f6);
+}
+
+.sitter-booking-list__tab.is-active {
+  color: var(--primary-hover, #ea580c);
+  background: var(--primary-soft, #fff3e8);
+  border-color: var(--primary-border, #fed7aa);
+}
+
+.sitter-booking-list__count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: inherit;
+  background: rgba(107, 114, 128, 0.12);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sitter-booking-list__items {
+  display: grid;
+  gap: 16px;
+}
