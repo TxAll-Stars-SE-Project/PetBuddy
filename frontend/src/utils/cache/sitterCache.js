@@ -10,6 +10,7 @@
 
 let cachedProfile = null;
 let cachedServices = null;
+let cachedBookings = null;
 
 /**
  * Retrieves the currently cached sitter profile.
@@ -90,9 +91,26 @@ export const removeCachedService = (targetId) => {
 };
 
 /**
+ * Retrieves the currently cached sitter bookings array.
+ * @returns {Array|null}
+ */
+export const getCachedBookings = () => cachedBookings;
+
+/**
+ * Updates the cached sitter bookings array.
+ * @param {Array} bookings
+ * @returns {Array}
+ */
+export const setCachedBookings = (bookings) => {
+  cachedBookings = Array.isArray(bookings) ? bookings : [];
+  return cachedBookings;
+};
+
+/**
  * Clears the sitter cache (e.g. on logout or session reset).
  */
 export const clearSitterCache = () => {
   cachedProfile = null;
   cachedServices = null;
+  cachedBookings = null;
 };

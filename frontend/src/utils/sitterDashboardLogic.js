@@ -90,3 +90,28 @@ export const updateServiceItem = (list = [], targetId, updatedFields) => {
 export const deleteServiceItem = (list = [], targetId) => {
   return list.filter((item) => (item.serviceid !== targetId && item.serviceId !== targetId));
 };
+
+/**
+ * Counts how many bookings are currently in 'pending' status.
+ * @param {Object[]} bookings
+ * @returns {number}
+ */
+export const countPendingBookings = (bookings = []) => {
+  if (!Array.isArray(bookings)) return 0;
+  return bookings.filter((b) => b && b.bookingstatus === "pending").length;
+};
+
+/**
+ * Filters only 'pending' bookings, sorts by latest bookingId first, and limits the output for the read-only dashboard preview.
+ * @param {Object[]} bookings
+ * @param {number} [limit=3]
+ * @returns {Object[]}
+ */
+export const getRecentPendingBookings = (bookings = [], limit = 3) => {
+  if (!Array.isArray(bookings)) return [];
+
+  return bookings
+    .filter((b) => b && b.bookingstatus === "pending")
+    .sort((a, b) => (Number(b.bookingId) || 0) - (Number(a.bookingId) || 0))
+    .slice(0, limit);
+};

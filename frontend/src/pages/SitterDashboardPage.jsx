@@ -17,6 +17,7 @@ import {
   updateSitterService,
   deleteSitterService,
 } from "../services/sitterService.js";
+import { getSitterBookings } from "../services/booking.api";
 import {
   resolveInitialProfile,
   formatSitterAddress,
@@ -32,18 +33,20 @@ import {
   addCachedService,
   updateCachedService,
   removeCachedService,
+  getCachedBookings,
+  setCachedBookings,
 } from "../utils/cache/sitterCache.js";
 
 /**
  * SitterDashboardPage
- * 
+ *
  * Component-driven Sitter Dashboard:
  * - State and Lifecycle are co-located right here (readable from top to bottom).
  * - Instant page transitions using In-Memory Cache (0ms render on re-entry).
  * - Background revalidation updates cache silently.
- * - Real API calls are handled via `services/sitterService.js`.
+ * - Real API calls are handled via `services/sitterService.js` and `services/booking.api.ts`.
  * - Pure array transformations are handled via `utils/sitterDashboardLogic.js`.
- * - No bloated intermediary hooks or flag explosion.
+ * - Read-only pending bookings preview redirects to `/sitter/bookings` for actions.
  */
 export default function SitterDashboardPage() {
   const navigate = useNavigate();
@@ -71,7 +74,11 @@ export default function SitterDashboardPage() {
   const [services, setServices] = useState(() => getCachedServices() || []);
   const [isLoadingServices, setIsLoadingServices] = useState(() => !getCachedServices());
 
-  // 3. Modals State (Co-located, unified states — no flag explosion!)
+  // 3. Bookings List State (Initialized from cache for instant 0ms transitions)
+  const [bookings, setBookings] = useState(() => getCachedBookings() || []);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(() => !getCachedBookings());
+
+  // 4. Service Modals State (Co-located, unified states — no flag explosion!)
   // null = modal closed, {} = add new, { serviceId: ... } = edit
   const [editingService, setEditingService] = useState(null);
   // null = feedback closed, { type: 'create'|'edit', data: ... } = feedback open
@@ -79,7 +86,7 @@ export default function SitterDashboardPage() {
   // null = confirm modal closed, serviceId = open delete confirmation
   const [serviceToDelete, setServiceToDelete] = useState(null);
 
-  // 4. Fetch Profile & Services on Mount (Background Revalidation)
+  // 5. Fetch Profile, Bookings & Services on Mount (Background Revalidation)
   useEffect(() => {
     let isMounted = true;
 
@@ -107,6 +114,21 @@ export default function SitterDashboardPage() {
         if (isMounted) setIsLoadingProfile(false);
       });
 
+    // Fetch bookings (GET /api/sitter/bookings)
+    getSitterBookings()
+      .then((data) => {
+        if (isMounted && Array.isArray(data)) {
+          setBookings(data);
+          setCachedBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Notice: /api/sitter/bookings unreachable or offline:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingBookings(false);
+      });
+
     // Fetch services (GET /api/sitter/services/me)
     fetchSitterServices()
       .then((data) => {
@@ -127,7 +149,7 @@ export default function SitterDashboardPage() {
     };
   }, []);
 
-  // 5. CRUD Handlers
+  // 6. Service CRUD Handlers
   const handleSaveService = async (payload) => {
     const isEdit = Boolean(editingService?.serviceId || editingService?.serviceid);
     const targetId = editingService?.serviceId || editingService?.serviceid;
@@ -148,7 +170,11 @@ export default function SitterDashboardPage() {
     } else {
       try {
         const savedData = await createSitterService(payload);
-        const newService = { ...payload, ...(savedData || {}), serviceId: savedData?.serviceId || Date.now() };
+        const newService = {
+          ...payload,
+          ...(savedData || {}),
+          serviceId: savedData?.serviceId || Date.now(),
+        };
         setServices((prev) => addServiceItem(prev, newService));
         addCachedService(newService);
         setFeedback({ type: "create", data: newService });
@@ -195,9 +221,11 @@ export default function SitterDashboardPage() {
           onEditProfile={() => navigate("/profile")}
         />
 
-        {/* Section 2: Recent Bookings Section */}
+        {/* Section 2: Recent Pending Bookings Preview Section (Read-Only) */}
         <RecentBookingsSection
-          onViewAll={() => navigate("/siiter/bookings")}
+          bookings={bookings}
+          isLoading={isLoadingBookings}
+          onViewAll={() => navigate("/sitter/bookings")}
         />
 
         {/* Section 3: My Services Section */}
@@ -213,7 +241,11 @@ export default function SitterDashboardPage() {
       {/* Service Form Modal (Rendered only when editingService is not null) */}
       {editingService && (
         <ServiceFormModal
-          serviceToEdit={editingService.serviceId || editingService.serviceid ? editingService : null}
+          serviceToEdit={
+            editingService.serviceId || editingService.serviceid
+              ? editingService
+              : null
+          }
           onClose={() => setEditingService(null)}
           onSave={handleSaveService}
         />
