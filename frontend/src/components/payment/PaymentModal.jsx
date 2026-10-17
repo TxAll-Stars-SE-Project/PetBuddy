@@ -18,6 +18,7 @@ export default function PaymentModal({
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadValidationError, setUploadValidationError] = useState("");
 
   const bookingId = booking?.bookingId || booking?.id;
   const hasPendingPayment = Boolean(summary?.payments?.some(
@@ -38,10 +39,11 @@ export default function PaymentModal({
     const validation = validateSlipFile(file);
     if (!validation.isValid) {
       clearSelectedFile();
-      toast(validation.errorMsg, "error");
+      setUploadValidationError(validation.errorMsg);
       return;
     }
 
+    setUploadValidationError("");
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
@@ -69,10 +71,11 @@ export default function PaymentModal({
         : Number(summary.totalPrice);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast("ไม่พบยอดชำระเงินที่ถูกต้อง กรุณาลองโหลดข้อมูลใหม่", "error");
+      setUploadValidationError("ไม่พบยอดชำระเงินที่ถูกต้อง กรุณาลองโหลดข้อมูลใหม่");
       return;
     }
 
+    setUploadValidationError("");
     const formData = new FormData();
     formData.append("bookingId", String(bookingId));
     formData.append("amount", String(amount));
@@ -123,6 +126,11 @@ export default function PaymentModal({
         <PaymentSummary summary={summary} booking={booking} isError={isError} />
 
         <form onSubmit={handleUpload}>
+          {uploadValidationError && (
+            <p className="payment-load-error" role="alert">
+              {uploadValidationError}
+            </p>
+          )}
           <SlipUploadZone
             selectedFile={selectedFile}
             previewUrl={previewUrl}

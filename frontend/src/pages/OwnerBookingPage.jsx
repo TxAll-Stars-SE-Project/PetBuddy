@@ -3,7 +3,6 @@ import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
 import { MOCK_OWNER_BOOKINGS } from "../data/mockBookings.js";
 import { getBookingPayments } from "../services/payment.api.js";
-import { toast } from "../utils/toast.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -70,7 +69,7 @@ export default function OwnerBookingPage() {
         }
         if (isCurrent) setPaymentSummary(summary);
       })
-      .catch((error) => {
+      .catch(() => {
         if (!isCurrent) return;
         const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
         setPaymentSummaryError(true);
@@ -84,10 +83,6 @@ export default function OwnerBookingPage() {
           payment_stage: "full",
           payments: [],
         });
-        toast(
-          error.response?.data?.message || "ไม่สามารถโหลดข้อมูลการชำระเงินได้ กรุณาลองใหม่อีกครั้ง",
-          "error",
-        );
       })
       .finally(() => {
         if (isCurrent) setIsPaymentSummaryLoading(false);
