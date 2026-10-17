@@ -1,71 +1,28 @@
 import { useEffect, useState } from "react";
-import { getBookingPayments, uploadPaymentSlip } from "../../services/payment.api.js";
+import { uploadPaymentSlip } from "../../services/payment.api.js";
 import { toast } from "../../utils/toast.js";
 import { validateSlipFile } from "../../utils/paymentValidation.js";
 import PaymentSummary from "./PaymentSummary.jsx";
 import SlipUploadZone from "./SlipUploadZone.jsx";
 
-function getResponseData(response) {
-  return response?.data?.data ?? response?.data;
-}
-
-export default function PaymentModal({ isOpen, onClose, booking, onSuccess }) {
+export default function PaymentModal({
+  isOpen,
+  onClose,
+  booking,
+  summary,
+  isLoading = false,
+  isError = false,
+  onRetry,
+  onSuccess,
+}) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [paymentSummary, setPaymentSummary] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [summaryError, setSummaryError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
   const bookingId = booking?.bookingId || booking?.id;
-
-  useEffect(() => {
-    if (!isOpen || !bookingId) {
-      setPaymentSummary(null);
-      return undefined;
-    }
-
-    let isCurrent = true;
-    setIsLoading(true);
-    setSummaryError(false);
-    setPaymentSummary(null);
-
-    getBookingPayments(bookingId)
-      .then((response) => {
-        const data = getResponseData(response);
-        if (!data || typeof data !== "object" || !Array.isArray(data.payments)) {
-          throw new Error("รูปแบบข้อมูลสรุปการชำระเงินไม่ถูกต้อง");
-        }
-        if (isCurrent) setPaymentSummary(data);
-      })
-      .catch((error) => {
-        if (!isCurrent) return;
-        const fallbackAmount = booking?.totalprice || booking?.totalPrice || 0;
-        setSummaryError(true);
-        setPaymentSummary({
-          bookingId,
-          bookingstatus: booking?.bookingstatus,
-          totalPrice: fallbackAmount,
-          depositAmount: fallbackAmount,
-          remainingAmount: fallbackAmount,
-          paymentplan: "full",
-          payment_stage: "full",
-          payments: [],
-        });
-        toast(
-          error.response?.data?.message || "ไม่สามารถโหลดข้อมูลการชำระเงินได้ กรุณาลองใหม่อีกครั้ง",
-          "error",
-        );
-      })
-      .finally(() => {
-        if (isCurrent) setIsLoading(false);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [isOpen, bookingId, booking, reloadKey]);
+  const hasPendingPayment = Boolean(summary?.payments?.some(
+    (payment) => payment.payment_status === "pending_verifying",
+  ));
 
   useEffect(() => {
     if (!previewUrl) return undefined;
@@ -92,25 +49,24 @@ export default function PaymentModal({ isOpen, onClose, booking, onSuccess }) {
   const handleClose = () => {
     if (isUploading) return;
     clearSelectedFile();
-    setPaymentSummary(null);
     onClose();
   };
 
   const handleUpload = async (event) => {
     event.preventDefault();
-    if (!selectedFile || !paymentSummary || !bookingId) return;
+    if (!selectedFile || !summary || !bookingId || isLoading || hasPendingPayment) return;
 
-    const paymentStage = paymentSummary.payment_stage
-      || (paymentSummary.bookingstatus === "waiting_final_payment"
+    const paymentStage = summary.payment_stage
+      || (summary.bookingstatus === "waiting_final_payment"
         ? "final"
-        : paymentSummary.paymentplan === "deposit"
+        : summary.paymentplan === "deposit"
           ? "deposit"
           : "full");
     const amount = paymentStage === "final"
-      ? Number(paymentSummary.remainingAmount)
+      ? Number(summary.remainingAmount)
       : paymentStage === "deposit"
-        ? Number(paymentSummary.depositAmount)
-        : Number(paymentSummary.totalPrice);
+        ? Number(summary.depositAmount)
+        : Number(summary.totalPrice);
 
     if (!Number.isFinite(amount) || amount <= 0) {
       toast("ไม่พบยอดชำระเงินที่ถูกต้อง กรุณาลองโหลดข้อมูลใหม่", "error");
@@ -125,23 +81,19 @@ export default function PaymentModal({ isOpen, onClose, booking, onSuccess }) {
     formData.append("slip_image", selectedFile);
 
     setIsUploading(true);
-    let result;
     try {
-      const response = await uploadPaymentSlip(formData);
-      result = getResponseData(response);
+      await uploadPaymentSlip(formData);
     } catch (error) {
-      toast(
-        error.response?.data?.message || "ไม่สามารถส่งสลิปได้ กรุณาลองใหม่อีกครั้ง",
-        "error",
-      );
+      toast(error.response?.data?.message || "ไม่สามารถอัปโหลดสลิปได้", "error");
       return;
     } finally {
       setIsUploading(false);
     }
 
-    toast("ส่งสลิปการชำระเงินเรียบร้อยแล้ว");
-    onSuccess?.(result);
-    handleClose();
+    clearSelectedFile();
+    onClose();
+    toast("แนบสลิปการโอนเงินสำเร็จ รอพี่เลี้ยงตรวจสอบ", "success");
+    onSuccess?.();
   };
 
   if (!isOpen || !booking) return null;
@@ -159,16 +111,16 @@ export default function PaymentModal({ isOpen, onClose, booking, onSuccess }) {
         <p className="payment-modal-sub">การจอง #{bookingId}</p>
 
         {isLoading && <p className="payment-load-message">กำลังโหลดข้อมูลการชำระเงิน...</p>}
-        {summaryError && (
+        {isError && (
           <div className="payment-load-error" role="alert">
             <span>โหลดข้อมูลการชำระเงินไม่สำเร็จ</span>
-            <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
+            <button type="button" onClick={onRetry}>
               ลองโหลดอีกครั้ง
             </button>
           </div>
         )}
 
-        <PaymentSummary summary={paymentSummary} booking={booking} isError={summaryError} />
+        <PaymentSummary summary={summary} booking={booking} isError={isError} />
 
         <form onSubmit={handleUpload}>
           <SlipUploadZone
@@ -189,7 +141,9 @@ export default function PaymentModal({ isOpen, onClose, booking, onSuccess }) {
             <button
               type="submit"
               className="profile-save-button"
-              disabled={!selectedFile || !paymentSummary || isLoading || isUploading}
+              disabled={
+                !selectedFile || !summary || isLoading || isUploading || hasPendingPayment
+              }
             >
               {isUploading ? "กำลังส่งสลิป..." : "ส่งสลิป"}
             </button>

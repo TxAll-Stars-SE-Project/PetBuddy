@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
 import { MOCK_OWNER_BOOKINGS } from "../data/mockBookings.js";
+import { getBookingPayments } from "../services/payment.api.js";
+import { toast } from "../utils/toast.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -40,6 +42,69 @@ function formatDateRange(start, end) {
 export default function OwnerBookingPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [payingBooking, setPayingBooking] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [isPaymentSummaryLoading, setIsPaymentSummaryLoading] = useState(false);
+  const [paymentSummaryError, setPaymentSummaryError] = useState(false);
+  const [paymentSummaryReloadKey, setPaymentSummaryReloadKey] = useState(0);
+
+  const payingBookingId = payingBooking?.bookingId || payingBooking?.id;
+
+  useEffect(() => {
+    if (!payingBooking) {
+      setPaymentSummary(null);
+      setIsPaymentSummaryLoading(false);
+      setPaymentSummaryError(false);
+      return undefined;
+    }
+
+    let isCurrent = true;
+    setPaymentSummary(null);
+    setIsPaymentSummaryLoading(true);
+    setPaymentSummaryError(false);
+
+    getBookingPayments(payingBookingId)
+      .then((response) => {
+        const summary = response?.data?.data ?? response?.data;
+        if (!summary || typeof summary !== "object" || !Array.isArray(summary.payments)) {
+          throw new Error("รูปแบบข้อมูลสรุปการชำระเงินไม่ถูกต้อง");
+        }
+        if (isCurrent) setPaymentSummary(summary);
+      })
+      .catch((error) => {
+        if (!isCurrent) return;
+        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        setPaymentSummaryError(true);
+        setPaymentSummary({
+          bookingId: payingBookingId,
+          bookingstatus: payingBooking?.bookingstatus,
+          totalPrice: fallbackAmount,
+          depositAmount: fallbackAmount,
+          remainingAmount: fallbackAmount,
+          paymentplan: "full",
+          payment_stage: "full",
+          payments: [],
+        });
+        toast(
+          error.response?.data?.message || "ไม่สามารถโหลดข้อมูลการชำระเงินได้ กรุณาลองใหม่อีกครั้ง",
+          "error",
+        );
+      })
+      .finally(() => {
+        if (isCurrent) setIsPaymentSummaryLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [payingBooking, payingBookingId, paymentSummaryReloadKey]);
+
+  const handlePaymentSuccess = () => {
+    setPayingBooking(null);
+  };
+
+  const handlePaymentClose = () => {
+    setPayingBooking(null);
+  };
 
   const bookings = useMemo(() => {
     if (activeTab === "all") return MOCK_OWNER_BOOKINGS;
@@ -104,7 +169,14 @@ export default function OwnerBookingPage() {
                       <strong>฿{b.totalPrice.toLocaleString("th-TH")}</strong>
                     </div>
                     {canPay && (
-                      <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
+                      <button
+                        type="button"
+                        className="btn btn--small"
+                        onClick={() => {
+                          setPaymentSummary(null);
+                          setPayingBooking(b);
+                        }}
+                      >
                         ชำระเงิน
                       </button>
                     )}
@@ -119,8 +191,12 @@ export default function OwnerBookingPage() {
       <PaymentModal
         isOpen={Boolean(payingBooking)}
         booking={payingBooking}
-        onClose={() => setPayingBooking(null)}
-        onSuccess={() => setPayingBooking(null)}
+        summary={paymentSummary}
+        isLoading={isPaymentSummaryLoading}
+        isError={paymentSummaryError}
+        onRetry={() => setPaymentSummaryReloadKey((key) => key + 1)}
+        onClose={handlePaymentClose}
+        onSuccess={handlePaymentSuccess}
       />
     </div>
   );

@@ -19,6 +19,9 @@ export default function PaymentSummary({ summary, booking, isError }) {
   if (!summary) return null;
 
   const isDeposit = summary.paymentplan === "deposit";
+  const hasPendingPayment = summary.payments?.some(
+    (payment) => payment.payment_status === "pending_verifying",
+  );
   const amountDueNow = summary.payment_stage === "full"
     ? summary.totalPrice
     : summary.bookingstatus === "waiting_final_payment"
@@ -32,6 +35,11 @@ export default function PaymentSummary({ summary, booking, isError }) {
       {isError && (
         <div className="payment-fallback-banner" role="status">
           ไม่สามารถโหลดรายละเอียดการชำระเงินได้ กำลังใช้ยอดจากข้อมูลการจองแทน
+        </div>
+      )}
+      {hasPendingPayment && (
+        <div className="payment-pending-banner" role="status">
+          สลิปอยู่ระหว่างรอพี่เลี้ยงตรวจสอบ
         </div>
       )}
       <p className="payment-summary-booking">

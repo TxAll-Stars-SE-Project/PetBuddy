@@ -604,6 +604,7 @@ a.btn{text-decoration:none}
 .payment-load-error{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--error);margin-bottom:14px}
 .payment-load-error button{border:0;background:transparent;color:var(--primary);font:inherit;font-weight:600;cursor:pointer}
 .payment-fallback-banner{margin-bottom:12px;padding:10px 12px;border:1px solid var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:#C2410C;font-size:13px}
+.payment-pending-banner{margin-bottom:12px;padding:10px 12px;border:1px solid var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:#C2410C;font-size:13px;font-weight:600}
 .payment-summary-booking{margin:0 0 10px;color:var(--muted);font-size:13px}
 .payment-file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .payment-dropzone{width:100%;min-height:130px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:20px;border:2px dashed var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:var(--text-secondary);font:inherit;text-align:center;cursor:pointer}
