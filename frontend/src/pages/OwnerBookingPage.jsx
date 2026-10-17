@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
-import PaymentModal from "../components/PaymentModal.jsx";
-import { MOCK_OWNER_BOOKINGS, buildMockPaymentSummary } from "../data/mockBookings.js";
+import PaymentModal from "../components/payment/PaymentModal.jsx";
+import { MOCK_OWNER_BOOKINGS } from "../data/mockBookings.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -45,8 +45,6 @@ export default function OwnerBookingPage() {
     if (activeTab === "all") return MOCK_OWNER_BOOKINGS;
     return MOCK_OWNER_BOOKINGS.filter((b) => b.bookingstatus === activeTab);
   }, [activeTab]);
-
-  const paymentSummary = payingBooking ? buildMockPaymentSummary(payingBooking) : null;
 
   return (
     <div>
@@ -118,13 +116,12 @@ export default function OwnerBookingPage() {
         )}
       </main>
 
-      {payingBooking && (
-        <PaymentModal
-          booking={payingBooking}
-          summary={paymentSummary}
-          onClose={() => setPayingBooking(null)}
-        />
-      )}
+      <PaymentModal
+        isOpen={Boolean(payingBooking)}
+        booking={payingBooking}
+        onClose={() => setPayingBooking(null)}
+        onSuccess={() => setPayingBooking(null)}
+      />
     </div>
   );
 }
