@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer'
 import { getWelcomeEmailHtml } from '../templates/welcome-email.template.js'
 import { getPasswordResetEmailHtml } from '../templates/password-reset-email.template.js'
 import { getBookingStatusEmailHtml } from '../templates/booking-status-email.template.js'
+import { getNewBookingEmailHtml } from '../templates/new-booking-email.template.js';
 
 interface WelcomeEmailParams {
   email: string
@@ -127,6 +128,56 @@ export interface BookingStatusNotificationParams {
   petNames: string[]
   totalPrice: number | string
 }
+
+// ==========================================
+// แจ้งเตือน Sitter เมื่อมีการจองใหม่จาก Pet Owner
+// ==========================================
+
+export interface NewBookingNotificationParams {
+  sitterEmail: string;
+  sitterUsername: string;
+  ownerName: string;
+  serviceName: string;
+  bookingId: number;
+  startTime: string;
+  endTime: string;
+  totalPrice: number | string;
+}
+
+export const sendNewBookingToSitterEmail = async (
+  params: NewBookingNotificationParams
+): Promise<boolean> => {
+  try {
+    const transporter = getMailTransporter();
+
+    if (!transporter) {
+      console.warn(
+        `[MailService] SMTP credentials are not configured. Skipping new booking email to: ${params.sitterEmail}`
+      );
+      return false;
+    }
+
+    const fromAddress = process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`;
+
+    const htmlContent = getNewBookingEmailHtml(params);
+
+    const textContent = `สวัสดีคุณ ${params.sitterUsername}!\n\nมีคำขอจองคิวใหม่ (รหัส #${params.bookingId}) จากคุณ ${params.ownerName} สำหรับบริการ ${params.serviceName}\nกรุณาเข้าสู่ระบบเพื่อตรวจสอบและยืนยันการรับงานครับ`;
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.sitterEmail,
+      subject: `🐾 แจ้งเตือนคิวใหม่! คำขอจองบริการ PetBuddy (#${params.bookingId})`,
+      text: textContent,
+      html: htmlContent,
+    });
+
+    console.log(`[MailService] New booking email sent successfully to ${params.sitterEmail} (Message ID: ${info.messageId})`);
+    return true;
+  } catch (error) {
+    console.error(`[MailService] Failed to send new booking email to ${params.sitterEmail}:`, error);
+    return false;
+  }
+};
 
 /**
  * ส่งอีเมลแจ้งเตือนการเปลี่ยนสถานะการจอง (Accept / Reject / Complete) ถึง Pet Owner
