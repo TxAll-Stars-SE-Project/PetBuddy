@@ -135,6 +135,56 @@ async function seedBrowserDemo() {
       console.log(`✅ พบสัตว์เลี้ยง: ${pet.name} (${pet.breed})`)
     }
 
+    // 4.5. ตรวจสอบอาร์กิวเมนต์จาก CLI
+    const amountArg = process.argv.find((arg) => arg.startsWith('--amount='))
+    const isCustomAmount = Boolean(amountArg)
+    const customAmount = amountArg ? parseFloat(amountArg.split('=')[1]) : 1500
+
+    // 4.6. ล้างประวัติการจองและชำระเงินเดิมทั้งหมดของคู่ Demo (Clean Slate)
+    console.log('\n🧹 ทำความสะอาดข้อมูล: กำลังล้างรายการจองและประวัติการชำระเงินเดิมทั้งหมดของบัญชี Demo...')
+    const deletedPayments = await prisma.payment.deleteMany({
+      where: {
+        booking: {
+          OR: [
+            { ownerid: ownerUser.userid },
+            { sitterid: sitterUser.userid },
+          ],
+        },
+      },
+    })
+    const deletedReviews = await prisma.review.deleteMany({
+      where: {
+        booking: {
+          OR: [
+            { ownerid: ownerUser.userid },
+            { sitterid: sitterUser.userid },
+          ],
+        },
+      },
+    })
+    const deletedDetails = await prisma.bookingdetail.deleteMany({
+      where: {
+        booking: {
+          OR: [
+            { ownerid: ownerUser.userid },
+            { sitterid: sitterUser.userid },
+          ],
+        },
+      },
+    })
+    const deletedBookings = await prisma.booking.deleteMany({
+      where: {
+        OR: [
+          { ownerid: ownerUser.userid },
+          { sitterid: sitterUser.userid },
+        ],
+      },
+    })
+    console.log(`   ✅ ลบประวัติการชำระเงินเก่า: ${deletedPayments.count} รายการ`)
+    console.log(`   ✅ ลบรีวิวเก่า: ${deletedReviews.count} รายการ`)
+    console.log(`   ✅ ลบรายละเอียดการจองเก่า: ${deletedDetails.count} รายการ`)
+    console.log(`   ✅ ลบรายการจองเก่าทั้งหมด: ${deletedBookings.count} รายการ (ตารางสะอาด 100%!)`)
+
     // 5. Scenario 1: Booking พร้อมสลิปรอตรวจ (สำหรับ Sitter ทดสอบ "ตรวจสอบสลิปการโอน")
     const now = new Date()
     const startTime1 = new Date(now.getTime() + 24 * 60 * 60 * 1000)
@@ -184,6 +234,10 @@ async function seedBrowserDemo() {
     const startTime2 = new Date(now.getTime() + 48 * 60 * 60 * 1000)
     const endTime2 = new Date(startTime2.getTime() + 8 * 60 * 60 * 1000)
 
+    const plan2: 'full' | 'deposit' = isCustomAmount ? 'full' : 'deposit'
+    const totalPrice2 = isCustomAmount ? customAmount : 5000
+    const expectedSlipAmount2 = isCustomAmount ? customAmount : 1500
+
     const bookingWithoutSlip = await prisma.booking.create({
       data: {
         ownerid: ownerUser.userid,
@@ -191,8 +245,8 @@ async function seedBrowserDemo() {
         serviceid: service.serviceid,
         starttime: startTime2,
         endtime: endTime2,
-        totalprice: 5000,
-        paymentplan: 'deposit',
+        totalprice: totalPrice2,
+        paymentplan: plan2,
         bookingstatus: 'waiting_payment',
         note: 'น้องชอบวิ่งเล่นในสวนตอนเช้า',
         bookingdetail: {
@@ -208,7 +262,8 @@ async function seedBrowserDemo() {
 
     console.log(`\n🎉 [ชุดทดสอบที่ 2] สร้างการจอง #${bookingWithoutSlip.bookingid} สำเร็จ!`)
     console.log(`   - สถานะ: waiting_payment (ยังไม่แนบสลิป)`)
-    console.log(`   - ยอดรวม: ฿5,000 (มัดจำ 30%: ฿1,500)`)
+    console.log(`   - แผนการชำระเงิน: ${plan2 === 'full' ? 'ชำระเต็มจำนวน' : 'มัดจำ 30%'}`)
+    console.log(`   - ยอดที่ต้องชำระตามสลิป: ฿${expectedSlipAmount2.toLocaleString('th-TH')}`)
     console.log(`   👉 เหมาะสำหรับ: Owner (${ownerUser.username}) เข้าหน้า /bookings แล้วกด "ชำระเงิน" เพื่อแนบสลิปจริง`)
 
     // 7. Scenario 3: Booking สถานะ pending รอตอบรับ (สำหรับ Sitter ทดสอบกด Accept ในแท็บ "รอดำเนินการ")

@@ -38,11 +38,13 @@ GEMINI.md
 AGENTS.md
 
 # Tests & Coverage
-__tests__/
+# __tests__/
 *.test.ts
 *.test.js
 *.spec.ts
 *.spec.js
+!backend/src/**/__tests__/*.test.ts
+!backend/src/**/__tests__/*.test.js
 coverage/
 .nyc_output/
 playwright-demo/

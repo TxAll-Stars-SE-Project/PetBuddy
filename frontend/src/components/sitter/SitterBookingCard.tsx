@@ -5,9 +5,7 @@ interface SitterBookingCardProps {
   booking: Booking;
   onAction: (bookingId: number, action: BookingAction) => void;
   onRequestConfirm?: (booking: Booking, action: BookingAction) => void;
-  onVerifySlip?: (booking: Booking) => void;
   isUpdating?: boolean;
-  isVerifyingSlip?: boolean;
 }
 
 const statusLabels: Record<BookingStatus, string> = {
@@ -51,9 +49,7 @@ export default function SitterBookingCard({
   booking,
   onAction,
   onRequestConfirm,
-  onVerifySlip,
   isUpdating = false,
-  isVerifyingSlip = false,
 }: SitterBookingCardProps) {
   const b = booking as ExtendedBooking;
   const rawPets = Array.isArray(b.pets) ? (b.pets as ExtendedPet[]) : [];
@@ -81,9 +77,6 @@ export default function SitterBookingCard({
   const ownerPhone = b.owner?.phone || '-';
   const statusKey = (b.bookingstatus || 'pending') as BookingStatus;
   const totalPriceNum = Number(b.totalprice) || 0;
-  const paymentStatus = (b as ExtendedBooking & { payment_status?: string }).payment_status;
-  const canReviewPayment = ['waiting_payment', 'waiting_final_payment'].includes(statusKey)
-    || paymentStatus === 'pending_verifying';
 
   return (
     <article className="sitter-booking-card">
@@ -181,18 +174,6 @@ export default function SitterBookingCard({
             }
           >
             ส่งงานเสร็จสิ้น (Complete Job)
-          </button>
-        </footer>
-      )}
-      {canReviewPayment && onVerifySlip && (
-        <footer className="sitter-booking-card__actions">
-          <button
-            className="sitter-booking-card__button sitter-booking-card__button--verify-payment"
-            type="button"
-            disabled={isVerifyingSlip || isUpdating}
-            onClick={() => onVerifySlip(booking)}
-          >
-            {isVerifyingSlip ? 'กำลังโหลดสลิป...' : 'ตรวจสอบสลิปการโอน'}
           </button>
         </footer>
       )}

@@ -51,10 +51,12 @@ Thumbs.db
 skills-lock.json
 
 # Tests & Coverage
-__tests__/
+# __tests__/
 *.test.ts
 *.test.js
 *.spec.ts
 *.spec.js
+!src/**/__tests__/*.test.ts
+!src/**/__tests__/*.test.js
 coverage/
 .nyc_output/

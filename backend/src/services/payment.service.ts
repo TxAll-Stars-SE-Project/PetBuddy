@@ -4,6 +4,7 @@ import { booking_status, payment_stage, payment_status } from '../generated/pris
 import { SubmitPaymentDTO, VerifyPaymentAction } from '../validators/payment.validator.js'
 import { uploadSlipImage } from '../utils/supabase/storage.js'
 import { sendPaymentStatusNotificationEmail } from './mail.service.js'
+import { verifySlipWithThunder } from './thunder-slip.service.js'
 
 export interface PaymentItemResponse {
   paymentId: number
@@ -28,6 +29,11 @@ export interface PaymentSubmitResponse {
   paymentId: number
   payment_status: payment_status
   slip_image: string | null
+  bookingstatus?: string
+  senderName?: { th?: string; en?: string }
+  receiverName?: { th?: string; en?: string }
+  transRef?: string
+  verifiedBy?: 'thunder_solution' | 'manual'
 }
 
 export interface PaymentVerifyResponse {
@@ -111,7 +117,30 @@ export const submitPaymentSlip = async (
     where: { bookingid: input.bookingId },
     include: {
       payment: true,
-      petowner: true,
+      petowner: {
+        include: {
+          USER: {
+            select: {
+              username: true,
+              email: true,
+            },
+          },
+        },
+      },
+      services: {
+        select: {
+          servicename: true,
+        },
+      },
+      petsitter: {
+        include: {
+          USER: {
+            select: {
+              username: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -196,7 +225,82 @@ export const submitPaymentSlip = async (
   // อัปโหลดไฟล์สลิปขึ้น Cloud Storage (Supabase)
   const slipUrl = await uploadSlipImage(file, existingBooking.bookingid)
 
-  // บันทึกข้อมูล payment
+  // ตรวจสอบสลิปอัตโนมัติด้วย Thunder Solution API
+  const thunderResult = await verifySlipWithThunder(slipUrl, expectedAmount)
+
+  if (!thunderResult.isValid && !thunderResult.isFallback) {
+    // Fail-Fast: สลิปไม่ถูกต้อง / ยอดไม่ตรง / สลิปซ้ำ ปฏิเสธทันทีเพื่อให้ลูกค้าอัปโหลดใหม่
+    throw new AppError(
+      400,
+      'INVALID_PAYMENT_SLIP',
+      thunderResult.errorReason || 'สลิปการโอนเงินไม่ถูกต้อง'
+    )
+  }
+
+  if (thunderResult.isValid) {
+    // Auto-Verify ผ่านการตรวจสอบ 100%
+    let targetBookingStatus: booking_status
+    if (input.payment_stage === 'deposit') {
+      targetBookingStatus = 'deposit_paid'
+    } else if (input.payment_stage === 'final') {
+      targetBookingStatus = 'completed'
+    } else {
+      // stage === 'full'
+      targetBookingStatus = 'confirmed'
+    }
+
+    const [newPayment, updatedBooking] = await prisma.$transaction([
+      prisma.payment.create({
+        data: {
+          bookingid: existingBooking.bookingid,
+          amount: input.amount,
+          paymenttype: input.paymentType,
+          payment_stage: input.payment_stage,
+          payment_status: 'verified',
+          slip_image: slipUrl,
+        },
+      }),
+      prisma.booking.update({
+        where: { bookingid: existingBooking.bookingid },
+        data: {
+          bookingstatus: targetBookingStatus,
+        },
+      }),
+    ])
+
+    // ส่งอีเมลแจ้งเตือนถึงเจ้าของสัตว์เลี้ยง
+    const ownerUser = existingBooking.petowner?.USER
+    const sitterUser = existingBooking.petsitter?.USER
+    if (ownerUser?.email) {
+      sendPaymentStatusNotificationEmail({
+        toEmail: ownerUser.email,
+        ownerUsername: ownerUser.username,
+        sitterUsername: sitterUser?.username || 'พี่เลี้ยง',
+        serviceName: existingBooking.services?.servicename || 'บริการสัตว์เลี้ยง',
+        action: 'verify',
+        paymentStage: input.payment_stage,
+        amount: input.amount,
+        bookingId: existingBooking.bookingid,
+        bookingStatus: targetBookingStatus,
+      }).catch((err) => {
+        console.error('[PaymentService] Error dispatching auto-verify notification email:', err)
+      })
+    }
+
+    return {
+      paymentId: newPayment.paymentid,
+      payment_status: newPayment.payment_status,
+      slip_image: newPayment.slip_image,
+      bookingstatus: updatedBooking.bookingstatus,
+      verifiedBy: 'thunder_solution',
+      senderName: thunderResult.senderName,
+      receiverName: thunderResult.receiverName,
+      transRef: thunderResult.transRef,
+    }
+  }
+
+  // กรณี Fallback (เช่น ยังไม่ได้คอนฟิก THUNDER_API_KEY หรือ Thunder API ขัดข้อง):
+  // บันทึกสถานะ pending_verifying ให้พี่เลี้ยงเป็นผู้ตรวจสอบด้วยตนเอง
   const newPayment = await prisma.payment.create({
     data: {
       bookingid: existingBooking.bookingid,
@@ -212,6 +316,7 @@ export const submitPaymentSlip = async (
     paymentId: newPayment.paymentid,
     payment_status: newPayment.payment_status,
     slip_image: newPayment.slip_image,
+    verifiedBy: 'manual',
   }
 }
 

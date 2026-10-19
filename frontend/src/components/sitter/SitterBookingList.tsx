@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import SitterBookingCard from './SitterBookingCard';
 import BookingConfirmModal from './BookingConfirmModal';
 import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
-import { getBookingPayments } from '../../services/payment.api.js';
-import VerifyPaymentModal from './VerifyPaymentModal.jsx';
 import { toast } from '../../utils/toast';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
 import './SitterBookingList.css';
@@ -35,10 +33,6 @@ export default function SitterBookingList() {
     booking: Booking;
     action: BookingAction;
   } | null>(null);
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [paymentData, setPaymentData] = useState<Record<string, unknown> | null>(null);
-  const [loadingSlipBookingId, setLoadingSlipBookingId] = useState<number | null>(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -148,54 +142,6 @@ export default function SitterBookingList() {
     }
   };
 
-  const handleOpenVerifyModal = async (booking: Booking) => {
-    setLoadingSlipBookingId(booking.bookingId);
-
-    try {
-      const response = await getBookingPayments(booking.bookingId);
-      const result = response?.data?.data ?? response?.data;
-      const payments = result && typeof result === 'object'
-        ? (result as { payments?: Record<string, unknown>[] }).payments
-        : undefined;
-
-      if (!Array.isArray(payments)) {
-        throw new Error('รูปแบบข้อมูลประวัติการชำระเงินไม่ถูกต้อง');
-      }
-
-      const pendingPayments = payments
-        .filter((payment) => payment.payment_status === 'pending_verifying')
-        .sort((first, second) => {
-          const firstDate = new Date(String(first.paid_at || '')).getTime();
-          const secondDate = new Date(String(second.paid_at || '')).getTime();
-          return secondDate - firstDate;
-        });
-      const latestPendingPayment = pendingPayments[0];
-
-      if (!latestPendingPayment) {
-        toast('ไม่พบสลิปที่อยู่ระหว่างรอตรวจสอบ', 'info');
-        return;
-      }
-
-      setSelectedBooking(booking);
-      setPaymentData(latestPendingPayment);
-      setIsVerifyModalOpen(true);
-    } catch (err) {
-      toast(
-        (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          || (err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลสลิปได้'),
-        'error',
-      );
-    } finally {
-      setLoadingSlipBookingId(null);
-    }
-  };
-
-  const handleCloseVerifyModal = () => {
-    setIsVerifyModalOpen(false);
-    setSelectedBooking(null);
-    setPaymentData(null);
-  };
-
   return (
     <div className="sitter-booking-list">
       <nav className="sitter-booking-list__tabs" aria-label="กรองรายการจองตามสถานะ">
@@ -234,9 +180,7 @@ export default function SitterBookingList() {
               booking={booking}
               onAction={handleDirectAction}
               onRequestConfirm={handleRequestConfirm}
-              onVerifySlip={handleOpenVerifyModal}
               isUpdating={updatingId === booking.bookingId}
-              isVerifyingSlip={loadingSlipBookingId === booking.bookingId}
             />
           ))}
         </div>
@@ -249,13 +193,6 @@ export default function SitterBookingList() {
         isSubmitting={updatingId !== null}
         onConfirm={() => void handleConfirmAction()}
         onCancel={() => setConfirmTarget(null)}
-      />
-      <VerifyPaymentModal
-        isOpen={isVerifyModalOpen}
-        booking={selectedBooking}
-        paymentData={paymentData}
-        onClose={handleCloseVerifyModal}
-        onVerified={() => void fetchBookings()}
       />
     </div>
   );

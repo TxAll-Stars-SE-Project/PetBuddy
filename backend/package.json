@@ -8,11 +8,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint .",
-    "test": "tsx --test src/validators/__tests__/*.test.ts",
+    "test": "tsx --test \"src/**/__tests__/*.test.ts\"",
     "seed:booking": "tsx src/scripts/seed-mock-booking.ts",
     "simulate:booking": "tsx src/scripts/simulate-owner-booking.ts",
     "demo:payment": "tsx src/scripts/demo-payment-flow.ts",
-    "seed:payment-demo": "tsx src/scripts/seed-browser-demo.ts"
+    "seed:payment-demo": "tsx src/scripts/seed-browser-demo.ts",
+    "clean:mock": "tsx src/scripts/clean-mock-data.ts",
+    "seed:deposit": "tsx src/scripts/add-deposit-bookings.ts"
   },
   "dependencies": {
     "@bilions/thailand-address": "^2.0.1",
