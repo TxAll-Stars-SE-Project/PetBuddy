@@ -11,7 +11,8 @@
     "test": "tsx --test src/validators/__tests__/*.test.ts",
     "seed:booking": "tsx src/scripts/seed-mock-booking.ts",
     "simulate:booking": "tsx src/scripts/simulate-owner-booking.ts",
-    "demo:payment": "tsx src/scripts/demo-payment-flow.ts"
+    "demo:payment": "tsx src/scripts/demo-payment-flow.ts",
+    "seed:payment-demo": "tsx src/scripts/seed-browser-demo.ts"
   },
   "dependencies": {
     "@bilions/thailand-address": "^2.0.1",
