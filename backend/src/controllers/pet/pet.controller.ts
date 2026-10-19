@@ -195,7 +195,7 @@ export const getMyPets = async (req: AuthenticatedRequest, res: Response): Promi
     const ownerId = req.auth?.userId;
 
     if (!ownerId) {
-      res.status(401).json({ error: 'UNAUTHORIZED', message: 'กรุณาเข้าสู่ระบบ' });
+      res.status(401).json({ status: 'error', error: 'UNAUTHORIZED', message: 'Unauthorized' });
       return;
     }
 
@@ -209,6 +209,7 @@ export const getMyPets = async (req: AuthenticatedRequest, res: Response): Promi
   } catch (error: unknown) {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
+        status: 'error',
         error: error.errorCode,
         message: error.message,
       });
@@ -217,8 +218,9 @@ export const getMyPets = async (req: AuthenticatedRequest, res: Response): Promi
 
     console.error('Error getting my pets:', error);
     res.status(500).json({
+      status: 'error',
       error: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to get pet list',
     });
   }
-};
+};

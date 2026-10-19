@@ -37,9 +37,10 @@ export const getProfileById = async (sitterId: number) => {
     include: { USER: true },
   });
 
-  if (!sitter) {
+  if (!sitter || sitter.USER?.is_active === false) {
     throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
   }
+
 
   const ratingAgg = await prisma.review.aggregate({
     where: { booking: { sitterid: sitterId } },

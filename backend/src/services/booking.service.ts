@@ -2,6 +2,8 @@ import prisma from '../utils/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { payment_plan } from '../generated/prisma/enums.js';
 import { sendNewBookingToSitterEmail } from './mail.service.js';
+import { DEPOSIT_RATE } from './payment.service.js';
+import { calculateBookingAmounts } from '../validators/booking.validator.js';
 import { Prisma } from '../generated/prisma/client.js'
 
 interface PetBookingInput {
@@ -24,7 +26,11 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
   const end = new Date(input.endtime);
   const now = new Date();
 
-  //Past date blocking
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new AppError(400, 'INVALID_TIME', 'Invalid start or end time format');
+  }
+
+  // Past date blocking
   if (start < now) {
     throw new AppError(400, 'INVALID_TIME', 'Cannot book in the past');
   }
@@ -48,7 +54,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     }
   });
 
-  if (!service) {
+  if (!service || service.petsitter?.USER?.is_active === false) {
     throw new AppError(404, 'NOT_FOUND', 'Sitter or service not found');
   }
 
@@ -59,7 +65,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
   });
 
   // ตรวจสอบว่า สัตว์เลี้ยงทั้งหมด เป็นของ Owner คนนี้จริงไหม
-  const petIds = input.pets.map(p => p.petId);
+  const petIds = input.pets.map(p => Number(p.petId));
   const uniquePetIds = new Set(petIds);
   if (uniquePetIds.size !== petIds.length) {
     throw new AppError(400, 'INVALID_INPUT', 'Duplicate pet IDs are not allowed');
@@ -75,17 +81,14 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     throw new AppError(404, 'PET_NOT_FOUND', 'One or more pets not found or do not belong to you');
   }
 
-  
-  // คำนวณราคา (Backend Calculation)
-  // หาระยะเวลาเป็นชั่วโมง (ปัดเศษขึ้นถ้ามีเศษนาที)
-  const durationMs = end.getTime() - start.getTime();
-  if (durationMs <= 0) throw new AppError(400, 'INVALID_TIME', 'End time must be after start time');
-  
-  const hours = Math.ceil(durationMs / (1000 * 60 * 60));
-  const numberOfPets = input.pets.length;
-  
-  const totalPrice = service.price * hours * numberOfPets;
-  const depositAmount = totalPrice * 0.3; // มัดจำ 30% 
+  // คำนวณราคา (Backend Calculation) ใช้ DEPOSIT_RATE เดียวกับ payment.service.ts
+  const { totalPrice, depositAmount } = calculateBookingAmounts(
+    Number(service.price),
+    start,
+    end,
+    input.pets.length,
+    DEPOSIT_RATE
+  );
 
   // บันทึกข้อมูลลงฐานข้อมูล (ใช้ Transaction เพื่อรับประกันว่าลงครบทั้ง 2 ตาราง)
   const result = await prisma.$transaction(async (tx) => {

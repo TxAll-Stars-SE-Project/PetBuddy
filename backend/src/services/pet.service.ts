@@ -234,6 +234,8 @@ export const getPetsByOwnerId = async (ownerId: number) => {
     
     return {
       petId: p.petid,
+      petName: p.name,
+      petType: p.species ?? '',
       name: p.name,
       species: p.species ?? '',
       breed: p.breed ?? '',
@@ -246,5 +248,6 @@ export const getPetsByOwnerId = async (ownerId: number) => {
     };
   });
 };
+
 
 

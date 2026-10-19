@@ -9,9 +9,14 @@ export interface NewBookingEmailParams {
 }
 
 export const getNewBookingEmailHtml = (params: NewBookingEmailParams): string => {
-  const options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' };
-  const formattedStart = new Date(params.startTime).toLocaleString('th-TH');
-  const formattedEnd = new Date(params.endTime).toLocaleString('th-TH');
+  const options: Intl.DateTimeFormatOptions = {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Bangkok',
+  };
+  const formattedStart = new Date(params.startTime).toLocaleString('th-TH', options);
+  const formattedEnd = new Date(params.endTime).toLocaleString('th-TH', options);
+
 
   return `
     <div style="background-color: #FAF5F0; padding: 40px 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #1F2937;">

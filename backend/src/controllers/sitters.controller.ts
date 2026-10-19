@@ -23,11 +23,11 @@ export const searchSitters = async (req: Request, res: Response): Promise<void> 
   }
 }
 
-export const getPublicServices =async (req: Request, res: Response): Promise<void> => {
+export const getPublicServices = async (req: Request, res: Response): Promise<void> => {
   try {
     const sitterId = Number(req.params.sitterID)
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(400, 'SITTER_NOT_FOUND', 'Sitter not found')
+      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found')
     }
 
     const services = await sitterService.getPublishedServicesBySitter(sitterId)
@@ -46,16 +46,15 @@ export const getSitterProfile = async (req: Request, res: Response): Promise<voi
   try {
     const sitterId = Number(req.params.sitterID);
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(400, 'INVALID_ID', 'Invalid Sitter ID');
+      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
     }
 
     const profile = await sitterService.getProfileById(sitterId);
 
     res.status(200).json({ status: 'success', data: profile });
   } catch (error) {
-    // แพทเทิร์นจัดการ Error ของทีม
     if (error instanceof AppError) {
-      res.status(error.statusCode).json({ error: error.errorCode, message: error.message });
+      res.status(error.statusCode).json({ status: 'error', error: error.errorCode, message: error.message });
       return;
     }
     console.error('Error getting sitter profile:', error);
@@ -67,7 +66,7 @@ export const getSitterReviews = async (req: Request, res: Response): Promise<voi
   try {
     const sitterId = Number(req.params.sitterID);
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(400, 'INVALID_ID', 'Invalid Sitter ID');
+      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
     }
 
     const reviews = await sitterService.getSitterReviewsById(sitterId);
@@ -75,7 +74,7 @@ export const getSitterReviews = async (req: Request, res: Response): Promise<voi
 
   } catch (error) {
     if (error instanceof AppError) {
-       res.status(error.statusCode).json({ error: error.errorCode, message: error.message });
+      res.status(error.statusCode).json({ status: 'error', error: error.errorCode, message: error.message });
       return;
     }
     console.error('Error getting sitter reviews:', error);
@@ -87,10 +86,10 @@ export const getSitterBusySlots = async (req: Request, res: Response): Promise<v
   try {
     const sitterId = Number(req.params.sitterID);
     if (!Number.isInteger(sitterId) || sitterId <= 0) {
-      throw new AppError(400, 'SITTER_NOT_FOUND', 'Sitter not found');
+      throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
     }
 
-    const date = req.query.date as string;
+    const date = typeof req.query.date === 'string' ? req.query.date.trim() : '';
     
     // Validate ในรูปแบบ YYYY-MM-DD
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -103,10 +102,10 @@ export const getSitterBusySlots = async (req: Request, res: Response): Promise<v
 
   } catch (error) {
     if (error instanceof AppError) {
-       res.status(error.statusCode).json({ error: error.errorCode, message: error.message });
+      res.status(error.statusCode).json({ status: 'error', error: error.errorCode, message: error.message });
       return;
     }
     console.error('Error getting busy slots:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
-};
+};
