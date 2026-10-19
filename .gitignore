@@ -38,9 +38,6 @@ GEMINI.md
 AGENTS.md
 
 # Tests & Coverage
-__tests__/
-*.test.ts
-*.test.js
 *.spec.ts
 *.spec.js
 coverage/
