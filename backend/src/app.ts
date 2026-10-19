@@ -4,6 +4,7 @@ import sitterBookingRoutes from './routes/sitter-booking.routes.js'
 import sittersRoutes from './routes/sitters.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import bookingRoutes from './routes/booking.routes.js'
+import ownerBookingRoutes from './routes/owner-booking.routes.js'
 import cors from 'cors'
 import routes from './routes/routers.js'
 
@@ -19,6 +20,7 @@ app.use('/api/sitter/bookings', sitterBookingRoutes)
 app.use('/api/sitters', sittersRoutes) 
 app.use('/api/payments', paymentRoutes)
 app.use('/api/bookings', bookingRoutes)
+app.use('/api/owner/bookings', ownerBookingRoutes)
 
 export default app
 

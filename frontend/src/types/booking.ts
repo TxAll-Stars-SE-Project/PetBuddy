@@ -55,3 +55,20 @@ export interface Booking {
 }
 
 export type BookingAction = 'accept' | 'reject' | 'complete';
+
+export interface OwnerBookingPet {
+  petId: number;
+  petName: string;
+  petNote: string | null;
+}
+
+export interface OwnerBooking {
+  bookingId: number;
+  sitterName: string;
+  serviceName: string;
+  starttime: string;
+  endtime: string;
+  bookingstatus: BookingStatus;
+  totalPrice: number;
+  pets: OwnerBookingPet[];
+}

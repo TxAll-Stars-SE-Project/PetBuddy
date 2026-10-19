@@ -12,8 +12,8 @@ type BookingTab = 'ALL' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 const statusGroups: Record<Exclude<BookingTab, 'ALL'>, BookingStatus[]> = {
   pending: ['pending'],
-  confirmed: ['waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment'],
-  completed: ['completed'],
+  confirmed: ['waiting_payment', 'waiting_final_payment'],
+  completed: ['confirmed', 'completed', 'deposit_paid'],
   cancelled: ['rejected', 'cancelled'],
 };
 

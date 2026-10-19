@@ -137,16 +137,16 @@ async function seedBrowserDemo() {
 
     // 5. Scenario 1: Booking พร้อมสลิปรอตรวจ (สำหรับ Sitter ทดสอบ "ตรวจสอบสลิปการโอน")
     const now = new Date()
-    const startTime = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-    const endTime = new Date(startTime.getTime() + 12 * 60 * 60 * 1000)
+    const startTime1 = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+    const endTime1 = new Date(startTime1.getTime() + 12 * 60 * 60 * 1000)
 
     const bookingWithSlip = await prisma.booking.create({
       data: {
         ownerid: ownerUser.userid,
         sitterid: sitterUser.userid,
         serviceid: service.serviceid,
-        starttime: startTime,
-        endtime: endTime,
+        starttime: startTime1,
+        endtime: endTime1,
         totalprice: 6000,
         paymentplan: 'deposit',
         bookingstatus: 'waiting_payment',
@@ -178,7 +178,69 @@ async function seedBrowserDemo() {
     console.log(`   - สถานะ: waiting_payment (รอชำระมัดจำ)`)
     console.log(`   - ยอดรวม: ฿6,000 (มัดจำ 30%: ฿1,800)`)
     console.log(`   - แนบสลิปแล้ว: Payment #${payment.paymentid} (สถานะ: pending_verifying)`)
-    console.log(`   👉 เหมาะสำหรับ: Sitter (${sitterUser.username}) เข้าหน้า /sitter/bookings แล้วกด "ตรวจสอบสลิปการโอน"`)
+    console.log(`   👉 เหมาะสำหรับ: Sitter (${sitterUser.username}) เข้าหน้า /sitter/bookings แท็บ "ยืนยันแล้ว" แล้วกด "ตรวจสอบสลิปการโอน" เพื่อเลื่อนไปแท็บ "สำเร็จ"`)
+
+    // 6. Scenario 2: Booking รอชำระเงินที่ยังไม่ได้แนบสลิป (สำหรับ Owner ทดสอบกด "ชำระเงิน" และแนบสลิปจริง)
+    const startTime2 = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+    const endTime2 = new Date(startTime2.getTime() + 8 * 60 * 60 * 1000)
+
+    const bookingWithoutSlip = await prisma.booking.create({
+      data: {
+        ownerid: ownerUser.userid,
+        sitterid: sitterUser.userid,
+        serviceid: service.serviceid,
+        starttime: startTime2,
+        endtime: endTime2,
+        totalprice: 5000,
+        paymentplan: 'deposit',
+        bookingstatus: 'waiting_payment',
+        note: 'น้องชอบวิ่งเล่นในสวนตอนเช้า',
+        bookingdetail: {
+          create: [
+            {
+              petid: pet.petid,
+              pet_note: 'กินอาหารเปียกเช้า-เย็น',
+            },
+          ],
+        },
+      },
+    })
+
+    console.log(`\n🎉 [ชุดทดสอบที่ 2] สร้างการจอง #${bookingWithoutSlip.bookingid} สำเร็จ!`)
+    console.log(`   - สถานะ: waiting_payment (ยังไม่แนบสลิป)`)
+    console.log(`   - ยอดรวม: ฿5,000 (มัดจำ 30%: ฿1,500)`)
+    console.log(`   👉 เหมาะสำหรับ: Owner (${ownerUser.username}) เข้าหน้า /bookings แล้วกด "ชำระเงิน" เพื่อแนบสลิปจริง`)
+
+    // 7. Scenario 3: Booking สถานะ pending รอตอบรับ (สำหรับ Sitter ทดสอบกด Accept ในแท็บ "รอดำเนินการ")
+    const startTime3 = new Date(now.getTime() + 72 * 60 * 60 * 1000)
+    const endTime3 = new Date(startTime3.getTime() + 6 * 60 * 60 * 1000)
+
+    const pendingBooking = await prisma.booking.create({
+      data: {
+        ownerid: ownerUser.userid,
+        sitterid: sitterUser.userid,
+        serviceid: service.serviceid,
+        starttime: startTime3,
+        endtime: endTime3,
+        totalprice: 2000,
+        paymentplan: 'full',
+        bookingstatus: 'pending',
+        note: 'ขอให้พี่เลี้ยงถ่ายรูปอัปเดตน้องวันละ 2 ครั้งครับ',
+        bookingdetail: {
+          create: [
+            {
+              petid: pet.petid,
+              pet_note: 'ชอบนอนกลางวัน',
+            },
+          ],
+        },
+      },
+    })
+
+    console.log(`\n🎉 [ชุดทดสอบที่ 3] สร้างการจอง #${pendingBooking.bookingid} สำเร็จ!`)
+    console.log(`   - สถานะ: pending (รอดำเนินการ)`)
+    console.log(`   - ยอดรวม: ฿2,000 (ชำระเต็มจำนวน)`)
+    console.log(`   👉 เหมาะสำหรับ: Sitter (${sitterUser.username}) เข้าหน้า /sitter/bookings แท็บ "รอดำเนินการ" แล้วกด "รับงาน (Accept)" เพื่อย้ายไปแท็บ "ยืนยันแล้ว"`)
 
     console.log('\n================================================================================')
     console.log('🔑 ข้อมูลบัญชีสำหรับใช้ทดสอบบนหน้าเว็บ (Browser Login):')

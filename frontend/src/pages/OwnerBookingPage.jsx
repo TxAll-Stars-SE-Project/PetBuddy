@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
-import { MOCK_OWNER_BOOKINGS } from "../data/mockBookings.js";
+import { getOwnerBookings } from "../services/booking.api.js";
 import { getBookingPayments } from "../services/payment.api.js";
 
 const STATUS_META = {
@@ -36,10 +36,11 @@ function formatDateRange(start, end) {
   return `${s.toLocaleDateString("th-TH", dateFmt)} - ${e.toLocaleDateString("th-TH", dateFmt)}`;
 }
 
-// Design: OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1)
-// ใช้ mock data ไปก่อน รอ POST /api/bookings (US5-1) แล้วค่อยเปลี่ยนมาเรียก GET /api/owner/bookings จริง
+// Design: OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1 & US6-2)
 export default function OwnerBookingPage() {
   const [activeTab, setActiveTab] = useState("all");
+  const [ownerBookings, setOwnerBookings] = useState([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [payingBooking, setPayingBooking] = useState(null);
   const [paymentSummary, setPaymentSummary] = useState(null);
   const [isPaymentSummaryLoading, setIsPaymentSummaryLoading] = useState(false);
@@ -47,6 +48,23 @@ export default function OwnerBookingPage() {
   const [paymentSummaryReloadKey, setPaymentSummaryReloadKey] = useState(0);
 
   const payingBookingId = payingBooking?.bookingId || payingBooking?.id;
+
+  const fetchBookings = useCallback(async () => {
+    setIsLoadingBookings(true);
+    try {
+      const data = await getOwnerBookings();
+      setOwnerBookings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn("Failed to fetch real owner bookings:", err);
+      setOwnerBookings([]);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchBookings();
+  }, [fetchBookings]);
 
   useEffect(() => {
     if (!payingBooking) {
@@ -95,6 +113,7 @@ export default function OwnerBookingPage() {
 
   const handlePaymentSuccess = () => {
     setPayingBooking(null);
+    void fetchBookings();
   };
 
   const handlePaymentClose = () => {
@@ -102,9 +121,9 @@ export default function OwnerBookingPage() {
   };
 
   const bookings = useMemo(() => {
-    if (activeTab === "all") return MOCK_OWNER_BOOKINGS;
-    return MOCK_OWNER_BOOKINGS.filter((b) => b.bookingstatus === activeTab);
-  }, [activeTab]);
+    if (activeTab === "all") return ownerBookings;
+    return ownerBookings.filter((b) => b.bookingstatus === activeTab);
+  }, [ownerBookings, activeTab]);
 
   return (
     <div>
@@ -126,7 +145,9 @@ export default function OwnerBookingPage() {
           ))}
         </div>
 
-        {bookings.length === 0 ? (
+        {isLoadingBookings ? (
+          <p className="payment-load-message">กำลังโหลดข้อมูลการจอง...</p>
+        ) : bookings.length === 0 ? (
           <div className="state-box">
             <div className="emoji">📅</div>
             <h3>ไม่มีรายการจองในหมวดนี้</h3>

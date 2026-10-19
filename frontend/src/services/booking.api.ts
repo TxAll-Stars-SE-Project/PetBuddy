@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import type { Booking, BookingAction, BookingStatus } from '../types/booking';
+import type { Booking, BookingAction, BookingStatus, OwnerBooking } from '../types/booking';
 
 export async function getSitterBookings(status?: BookingStatus): Promise<Booking[]> {
   const res = await api.get('/sitter/bookings', {
@@ -25,6 +25,34 @@ export async function getSitterBookings(status?: BookingStatus): Promise<Booking
       }
       if (Array.isArray(inner)) {
         return inner as Booking[];
+      }
+    }
+  }
+
+  return [];
+}
+
+export async function getOwnerBookings(status?: BookingStatus): Promise<OwnerBooking[]> {
+  const res = await api.get('/owner/bookings', {
+    params: { status },
+  });
+
+  if (Array.isArray(res)) {
+    return res;
+  }
+
+  if (res && typeof res === 'object') {
+    const raw = res as unknown as Record<string, unknown>;
+    if (Array.isArray(raw.data)) {
+      return raw.data as OwnerBooking[];
+    }
+    if (raw.data && typeof raw.data === 'object') {
+      const inner = raw.data as Record<string, unknown>;
+      if (Array.isArray(inner.data)) {
+        return inner.data as OwnerBooking[];
+      }
+      if (Array.isArray(inner)) {
+        return inner as OwnerBooking[];
       }
     }
   }
