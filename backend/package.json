@@ -14,7 +14,8 @@
     "demo:payment": "tsx src/scripts/demo-payment-flow.ts",
     "seed:payment-demo": "tsx src/scripts/seed-browser-demo.ts",
     "clean:mock": "tsx src/scripts/clean-mock-data.ts",
-    "seed:deposit": "tsx src/scripts/add-deposit-bookings.ts"
+    "seed:deposit": "tsx src/scripts/add-deposit-bookings.ts",
+    "demo:professor": "tsx src/scripts/seed-professor-demo.ts"
   },
   "dependencies": {
     "@bilions/thailand-address": "^2.0.1",
