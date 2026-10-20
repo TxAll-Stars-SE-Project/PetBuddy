@@ -61,7 +61,7 @@ export async function updateBookingStatus(
 export async function createBooking(payload: {
   sitterId: number;
   serviceId: number;
-  petIds: number[];
+  pets: { petId: number; petNote?: string | null }[];
   starttime: string;
   endtime: string;
   paymentplan: 'full' | 'deposit';
