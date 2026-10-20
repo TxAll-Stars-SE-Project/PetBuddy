@@ -569,6 +569,7 @@ a.btn{text-decoration:none}
 /* ---------- การจองของฉัน (Owner) + ชำระเงิน (US6-1) ---------- */
 .booking-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .booking-list{display:flex;flex-direction:column;gap:14px}
+.booking-list.is-loading{opacity:.5;pointer-events:none}
 .booking-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-card);padding:20px;display:flex;flex-direction:column;gap:10px}
 .booking-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .booking-sitter-name{margin:0;font-size:16px;font-weight:700}
@@ -600,6 +601,10 @@ a.btn{text-decoration:none}
 .payment-status--verified{background:var(--success-bg);color:var(--success)}
 .payment-status--pending_verifying{background:var(--info-bg);color:var(--info)}
 .payment-status--rejected{background:var(--error-bg);color:var(--error)}
+.payment-modal-state{margin:0;padding:28px 0;text-align:center;color:var(--muted);font-size:14px}
+.payment-modal-state--error p{margin:0 0 12px;color:var(--error)}
+.payment-modal-state--error .btn{width:auto}
+.payment-modal-note{margin:12px 0 0;padding:10px 12px;border-radius:var(--r-input);background:var(--info-bg);color:var(--info);font-size:13px}
 
 @media(max-width:560px){
   .booking-card-top{flex-direction:column}

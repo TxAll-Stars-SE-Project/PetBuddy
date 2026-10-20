@@ -35,11 +35,15 @@ export default function LoginPage() {
 
     setStatus("submitting");
     try {
-      await login(values.email, values.password, values.rememberMe);
+      const data = await login(values.email, values.password, values.rememberMe);
       toast("เข้าสู่ระบบสำเร็จ");
-      navigate("/");
+      if (data?.user?.role === "sitter") {
+        navigate("/sitter/dashboard");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
-      const statusCode = err.response?.status;
+      const statusCode = err.status || err.response?.status;
 
       if (statusCode === 401) {
         // Backend ส่ง INVALID_CREDENTIALS ทั้ง email ไม่มี และ รหัสผิด

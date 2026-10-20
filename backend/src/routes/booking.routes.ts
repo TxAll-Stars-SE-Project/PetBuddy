@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import { requireAuth } from '../middleware/auth.middleware.js'
-import { createBooking } from '../controllers/booking.controller.js'
+import { Router } from 'express';
+import { requireAuth, authorize } from '../middleware/auth.middleware.js';
+import { createBooking } from '../controllers/booking.controller.js';
 
-const router = Router()
+const router = Router();
 
 // POST /api/bookings
-router.post('/', requireAuth, createBooking)
+router.post('/', requireAuth, authorize('owner'), createBooking);
 
-export default router
+export default router;

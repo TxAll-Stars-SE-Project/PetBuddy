@@ -27,12 +27,10 @@ export default function HomePage() {
   // ช่องราคาพิมพ์ทีละตัวอักษร → หน่วงก่อนยิง API; ตัวกรองอื่นกดแล้วยิงทันที
   const debouncedMin = useDebouncedValue(filters.min);
   const debouncedMax = useDebouncedValue(filters.max);
-  const query = useMemo(
-    () => ({ ...filters, q, min: debouncedMin, max: debouncedMax }),
-    [filters, q, debouncedMin, debouncedMax]
-  );
+  const queryKey = JSON.stringify({ ...filters, q, min: debouncedMin, max: debouncedMax });
+  // object เดิมตราบใดที่ค่าเท่าเดิม → effect ไม่รันซ้ำทุกครั้งที่พิมพ์ช่องราคา (ก่อน debounce เสร็จ)
+  const query = useMemo(() => JSON.parse(queryKey), [queryKey]);
   // หน้าปัจจุบันผูกกับชุดตัวกรอง: ตัวกรอง/คำค้นเปลี่ยนเมื่อไหร่ก็กลับไปหน้า 1 อัตโนมัติ
-  const queryKey = JSON.stringify(query);
   const [pageState, setPageState] = useState({ key: queryKey, page: 1 });
   const page = pageState.key === queryKey ? pageState.page : 1;
   const setPage = (p) => setPageState({ key: queryKey, page: p });

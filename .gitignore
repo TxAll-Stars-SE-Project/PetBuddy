@@ -38,9 +38,6 @@ GEMINI.md
 AGENTS.md
 
 # Tests & Coverage
-__tests__/
-*.test.ts
-*.test.js
 *.spec.ts
 *.spec.js
 coverage/
@@ -56,3 +53,10 @@ playwright-demo/
 !**/README.md
 !API.md
 !**/API.md
+
+# Local Prototype & Interactive React Documentation (Untracked references)
+docs/react_fundamentals_interactive_docs.html
+docs/sitter_dashboard_prototype.html
+
+mocks/
+tests/

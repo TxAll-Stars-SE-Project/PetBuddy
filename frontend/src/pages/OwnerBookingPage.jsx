@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/PaymentModal.jsx";
-import { MOCK_OWNER_BOOKINGS, buildMockPaymentSummary } from "../data/mockBookings.js";
+import { getOwnerBookings } from "../services/bookings.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -35,18 +35,27 @@ function formatDateRange(start, end) {
   return `${s.toLocaleDateString("th-TH", dateFmt)} - ${e.toLocaleDateString("th-TH", dateFmt)}`;
 }
 
-// Design: OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1)
-// ใช้ mock data ไปก่อน รอ POST /api/bookings (US5-1) แล้วค่อยเปลี่ยนมาเรียก GET /api/owner/bookings จริง
+// OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1)
+// ดึงจาก GET /api/owner/bookings โดยให้ backend กรองตามแท็บ (?status=)
 export default function OwnerBookingPage() {
   const [activeTab, setActiveTab] = useState("all");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [result, setResult] = useState({ status: "loading", bookings: [] });
   const [payingBooking, setPayingBooking] = useState(null);
 
-  const bookings = useMemo(() => {
-    if (activeTab === "all") return MOCK_OWNER_BOOKINGS;
-    return MOCK_OWNER_BOOKINGS.filter((b) => b.bookingstatus === activeTab);
-  }, [activeTab]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setResult((r) => ({ ...r, status: "loading" }));
+    getOwnerBookings(activeTab === "all" ? "" : activeTab, { signal: controller.signal })
+      .then((bookings) => setResult({ status: "success", bookings }))
+      .catch(() => {
+        if (controller.signal.aborted) return; // เปลี่ยนแท็บระหว่างโหลด
+        setResult((r) => ({ ...r, status: "error" }));
+      });
+    return () => controller.abort();
+  }, [activeTab, reloadKey]);
 
-  const paymentSummary = payingBooking ? buildMockPaymentSummary(payingBooking) : null;
+  const { status, bookings } = result;
 
   return (
     <div>
@@ -68,14 +77,33 @@ export default function OwnerBookingPage() {
           ))}
         </div>
 
-        {bookings.length === 0 ? (
+        {status === "loading" && bookings.length === 0 && (
+          <div className="state-box">
+            <div className="emoji">⏳</div>
+            <h3>กำลังโหลดรายการจอง…</h3>
+          </div>
+        )}
+
+        {status === "error" && (
+          <div className="state-box state-box--error">
+            <div className="emoji">⚠️</div>
+            <h3>โหลดรายการจองไม่สำเร็จ</h3>
+            <p>เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง</p>
+            <button type="button" className="btn" onClick={() => setReloadKey((k) => k + 1)}>ลองใหม่</button>
+          </div>
+        )}
+
+        {status === "success" && bookings.length === 0 && (
           <div className="state-box">
             <div className="emoji">📅</div>
             <h3>ไม่มีรายการจองในหมวดนี้</h3>
             <p>ลองเลือกแท็บอื่น หรือเริ่มค้นหาพี่เลี้ยงเพื่อจองใหม่</p>
           </div>
-        ) : (
-          <div className="booking-list">
+        )}
+
+        {/* ระหว่างเปลี่ยนแท็บยังแสดงรายการเดิมแบบจาง ๆ แทนการกระพริบ */}
+        {bookings.length > 0 && status !== "error" && (
+          <div className={`booking-list${status === "loading" ? " is-loading" : ""}`}>
             {bookings.map((b) => {
               const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
               const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
@@ -103,7 +131,7 @@ export default function OwnerBookingPage() {
                   <div className="booking-card-foot">
                     <div className="booking-price">
                       <small>ราคารวม</small>
-                      <strong>฿{b.totalPrice.toLocaleString("th-TH")}</strong>
+                      <strong>฿{Number(b.totalPrice).toLocaleString("th-TH")}</strong>
                     </div>
                     {canPay && (
                       <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
@@ -119,11 +147,7 @@ export default function OwnerBookingPage() {
       </main>
 
       {payingBooking && (
-        <PaymentModal
-          booking={payingBooking}
-          summary={paymentSummary}
-          onClose={() => setPayingBooking(null)}
-        />
+        <PaymentModal booking={payingBooking} onClose={() => setPayingBooking(null)} />
       )}
     </div>
   );
