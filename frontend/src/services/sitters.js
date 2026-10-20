@@ -30,14 +30,3 @@ export async function searchSitters(filters, page = 1, { signal } = {}) {
   const res = await api.get("/sitters", { params, signal });
   return { sitters: res.data.data, pagination: res.data.pagination };
 }
-
-// 👈 เติม 2 ฟังก์ชันนี้เพื่อให้ BookingModal เรียกใช้ได้
-export async function getSitterServices(sitterId) {
-  const res = await api.get(`/sitters/${sitterId}/services`);
-  return res.data?.data || res.data;
-}
-
-export async function getSitterBusySlots(sitterId, date) {
-  const res = await api.get(`/sitters/${sitterId}/busy-slots`, { params: { date } });
-  return res.data?.data || res.data;
-}

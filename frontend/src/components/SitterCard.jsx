@@ -11,8 +11,7 @@ function Stars({ rating }) {
   );
 }
 
-// 1. 👈 [เพิ่มส่วนนี้: รับ prop onBook เพิ่มเข้ามา]
-export default function SitterCard({ sitter, onBook }) {
+export default function SitterCard({ sitter }) {
   const { sitterId, username, province, district, services, minPrice, rating, reviewCount } = sitter;
   // API คืน service ที่ตรงเงื่อนไขทุกรายการ (ชื่อซ้ำได้) → แสดงเป็นประเภทที่ไม่ซ้ำกัน
   const serviceTypes = [...new Set(services.map((s) => s.serviceType))];
@@ -63,23 +62,7 @@ export default function SitterCard({ sitter, onBook }) {
           <small>เริ่มต้น</small>
           <strong>฿{minPrice.toLocaleString()}</strong> <span>บาท</span>
         </div>
-
-        {/* 2. 👈 [เพิ่มส่วนนี้: ใส่ container คลุมปุ่มดูโปรไฟล์และเพิ่มปุ่มจองบริการ] */}
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Link className="btn btn--small btn--ghost" to={`/sitters/${sitterId}`}>
-            ดูโปรไฟล์
-          </Link>
-
-          {onBook && (
-            <button
-              type="button"
-              className="btn btn--small"
-              onClick={() => onBook(sitter)}
-            >
-              จองบริการ
-            </button>
-          )}
-        </div>
+        <Link className="btn btn--small" to={`/sitters/${sitterId}`}>ดูโปรไฟล์</Link>
       </div>
     </article>
   );
