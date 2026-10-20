@@ -28,4 +28,4 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response): P
     console.error('Error creating booking:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
-};
+};
