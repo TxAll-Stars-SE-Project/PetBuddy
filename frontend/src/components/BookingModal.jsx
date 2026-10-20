@@ -133,7 +133,7 @@ export default function BookingModal({ sitter, services: initialServices = [], i
       await createBooking({
         sitterId: Number(sitterId),
         serviceId: Number(selectedServiceId),
-        petIds: selectedPetIds,
+        pets: selectedPetIds.map((petId) => ({ petId: Number(petId) })),
         starttime: new Date(starttime).toISOString(),
         endtime: new Date(endtime).toISOString(),
         paymentplan,
