@@ -16,7 +16,7 @@
 - **payment_plan:** `full` | `deposit`
 - **payment_stage:** `deposit` | `final` | `full`
 - **payment_status:** `pending_verifying` | `verified` | `rejected`
-- **service_status_action:** `start` | `complete`
+- **service_status_action / booking_action:** `accept` | `reject` | `start` | `complete`
 
 ---
 
@@ -349,14 +349,15 @@ GET /api/bookings/{bookingID}
 
 ## 5.1 Update service status (Start & Complete Service)
 
-พี่เลี้ยงกดเริ่มงาน (`start`) หรือกดจบงาน (`complete`) พร้อมระบบตรวจสอบเงื่อนไขเวลาและแผนการชำระเงิน
+พี่เลี้ยงกดเริ่มงาน (`start`) หรือกดจบงาน (`complete`) พร้อมระบบตรวจสอบเงื่อนไขเวลาและแผนการชำระเงิน (ใช้งานผ่าน endpoint เดิม `PATCH /api/sitter/bookings/{bookingID}`)
 
 ```http
-PATCH /api/sitter/bookings/{bookingID}/service-status
+PATCH /api/sitter/bookings/{bookingID}
 ```
 
 * **Header:** `Authorization: Bearer <token>` (role: `sitter` ของการจองนี้)
 * **Path Variables:** `bookingID` (integer)
+* **หมายเหตุ:** อัปเกรดจาก endpoint จัดการสถานะเดิมใน Sprint 2 โดยเพิ่ม `action: "start"` และปรับปรุง flow ของ `action: "complete"` ให้รองรับ `in_progress` และแผนการชำระเงินแบบ Deposit vs Full
 
 ### Request Body:
 ```json
