@@ -53,6 +53,7 @@ playwright-demo/
 !**/README.md
 !API.md
 !**/API.md
+!docs/API*.md
 
 # Local Prototype & Interactive React Documentation (Untracked references)
 docs/react_fundamentals_interactive_docs.html
