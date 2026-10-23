@@ -43,6 +43,7 @@ model booking {
   bookingdetail bookingdetail[]
   payment       payment[]
   review        review[]
+  report        report[]
 
   @@index([sitterid])
 }
@@ -97,7 +98,9 @@ model petowner {
 model petsitter {
   userid     Int        @id
   thaiid     String     @unique @db.VarChar(13)
-  experience String?
+  experience   String?
+  qr_code_url  String?    @db.VarChar(500)
+  account_name String?    @db.VarChar(100)
   booking    booking[]
   USER       USER       @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
   report     report[]
@@ -106,11 +109,17 @@ model petsitter {
 
 model report {
   reportid      Int       @id @default(autoincrement())
+  bookingid     Int
   ownerid       Int
   sitterid      Int
-  report_detail String?   @db.VarChar(200)
+  report_detail String?   @db.Text
+  photo_url     String?   @db.VarChar(500)
+  created_at    DateTime  @default(now()) @db.Timestamp(6)
+  booking       booking   @relation(fields: [bookingid], references: [bookingid], onDelete: Cascade, onUpdate: NoAction)
   petowner      petowner  @relation(fields: [ownerid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_report_owner")
   petsitter     petsitter @relation(fields: [sitterid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_report_sitter")
+
+  @@index([bookingid])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -162,6 +171,7 @@ enum booking_status {
   waiting_payment
   deposit_paid
   confirmed
+  in_progress
   rejected
   cancelled
   waiting_final_payment
