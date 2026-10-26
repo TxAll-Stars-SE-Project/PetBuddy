@@ -96,15 +96,15 @@ model petowner {
 }
 
 model petsitter {
-  userid     Int        @id
-  thaiid     String     @unique @db.VarChar(13)
+  userid       Int        @id
+  thaiid       String     @unique @db.VarChar(13)
   experience   String?
   qr_code_url  String?    @db.VarChar(500)
   account_name String?    @db.VarChar(100)
-  booking    booking[]
-  USER       USER       @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
-  report     report[]
-  services   services[]
+  booking      booking[]
+  USER         USER       @relation(fields: [userid], references: [userid], onDelete: Cascade, onUpdate: NoAction)
+  report       report[]
+  services     services[]
 }
 
 model report {

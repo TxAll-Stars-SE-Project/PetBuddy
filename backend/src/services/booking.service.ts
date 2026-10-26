@@ -5,6 +5,7 @@ import { sendNewBookingToSitterEmail } from './mail.service.js';
 import { DEPOSIT_RATE } from './payment.service.js';
 import { calculateBookingAmounts } from '../validators/booking.validator.js';
 import { Prisma } from '../generated/prisma/client.js'
+import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js';
 
 interface PetBookingInput {
   petId: number;
@@ -97,7 +98,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
         where: {
         sitterid: input.sitterId,
         bookingstatus: {
-            in: ['pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment']
+            in: [...ACTIVE_BOOKING_STATUSES]
         },
         starttime: { lt: end },
         endtime: { gt: start }

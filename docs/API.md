@@ -1384,7 +1384,8 @@ PATCH /api/bookings/{bookingID}/verify-payment
 *(action: `"verify"` | `"reject"`)*
 
 ### ผลข้างเคียง (Side Effects):
-- verify `deposit` ➔ booking เป็น `deposit_paid` แล้ว `confirmed` อัตโนมัติ
+- verify `deposit` ➔ booking เป็น `deposit_paid` (ล็อกคิวงาน รอกดเริ่มงาน)
+- verify `full` ➔ booking เป็น `confirmed` (ชำระเต็มจำนวน ล็อกคิวงาน)
 - verify `final` ➔ booking เป็น `completed`
 
 ### Response 200 OK
@@ -1726,7 +1727,7 @@ GET /api/sitter/bookings?status=pending
 
 ---
 
-## 4.6 Update booking status (accept / reject / complete)
+## 4.6 Update booking status (accept / reject / start / complete)
 
 พี่เลี้ยงตอบรับคำขอ ปฏิเสธ หรือกดจบงาน
 
@@ -1744,7 +1745,7 @@ PATCH /api/sitter/bookings/{bookingID}
   "action": "accept"
 }
 ```
-*(action: `"accept"` | `"reject"` | `"complete"`)*
+*(action: `"accept"` | `"reject"` | `"start"` | `"complete"`)*
 
 ### ผลของ action:
 - `accept`: `pending` ➔ `waiting_payment`
@@ -2029,7 +2030,7 @@ POST /api/payments
 - `amount`: (number, required) ยอดเงินที่ต้องชำระ (ต้องตรงกับยอดคำนวณของ Backend)
 - `payment_stage`: (string, required) `"deposit"` | `"final"` | `"full"`
 - `paymentType`: (string, required) `"bank_transfer"`
-- `slip_image`: (file, required) ไฟล์สลิปโอนเงิน (`.jpg`, `.jpeg`, `.png`, ไม่เกิน 5MB)
+- `slip_image`: (file, required) ไฟล์สลิปโอนเงิน (`.jpg`, `.jpeg`, `.png`, `.webp`, ไม่เกิน 5MB)
 
 ### Response 201 Created (Auto-Verified หรือ รอตรวจ)
 ```json
@@ -2060,7 +2061,7 @@ POST /api/payments
 
 ## 3.1 Cancel booking (Owner)
 
-เจ้าของสัตว์เลี้ยงกดยกเลิกการจองก่อนได้รับการยืนยัน (ยกเลิกได้เฉพาะสถานะ `pending` หรือ `waiting_payment`)
+เจ้าของสัตว์เลี้ยงกดยกเลิกการจองก่อนได้รับการยืนยัน (ยกเลิกได้เฉพาะสถานะ `pending` หรือ `waiting_payment` เท่านั้น โดยไม่มีนโยบายคืนเงินเมื่อเข้าสู่สถานะ `deposit_paid` หรือ `confirmed` แล้ว)
 
 ```http
 PATCH /api/bookings/{bookingID}/cancel
