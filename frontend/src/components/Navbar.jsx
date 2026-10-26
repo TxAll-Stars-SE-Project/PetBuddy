@@ -8,6 +8,8 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const isSitter = user?.role === "sitter";
+  // หน้าหลักของพี่เลี้ยงคือ dashboard (ตรงกับที่ HomeRoute ส่งไป)
+  const homePath = isSitter ? "/sitter/dashboard" : "/";
   const { pathname } = useLocation();
   // ช่องค้นหาแสดงเฉพาะหน้าแรกของเจ้าของสัตว์เลี้ยง
   const showSearch = !isSitter && pathname === "/";
@@ -24,13 +26,9 @@ export default function Navbar() {
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        {isSitter ? (
+        <Link to={homePath} className="navbar-logo-link" aria-label="กลับหน้าหลัก">
           <Logo />
-        ) : (
-          <Link to="/" className="navbar-logo-link" aria-label="กลับหน้าหลัก">
-            <Logo />
-          </Link>
-        )}
+        </Link>
         {/* หน้าค้นหาเป็นของเจ้าของสัตว์เลี้ยง — แสดงเฉพาะหน้าแรก (พี่เลี้ยงไม่เห็นช่องนี้) */}
         {showSearch && (
           <form className="navbar-search-form" role="search" onSubmit={handleSearch}>
@@ -50,17 +48,15 @@ export default function Navbar() {
             <>
               <div className="overlay" onClick={() => setOpen(false)} />
               <div className="dropdown">
-                {!isSitter && (
-                  <button
-                    className="dropdown-item"
-                    onClick={() => {
-                      setOpen(false);
-                      navigate("/");
-                    }}
-                  >
-                    กลับหน้าหลัก
-                  </button>
-                )}
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate(homePath);
+                  }}
+                >
+                  กลับหน้าหลัก
+                </button>
                 <button
                   className="dropdown-item"
                   onClick={() => {
@@ -72,26 +68,15 @@ export default function Navbar() {
                 </button>
 
                 {isSitter ? (
-                  <>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => {
-                        setOpen(false);
-                        navigate("/sitter/dashboard");
-                      }}
-                    >
-                      แดชบอร์ดพี่เลี้ยง
-                    </button>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => {
-                        setOpen(false);
-                        navigate("/sitter/bookings");
-                      }}
-                    >
-                      คำขอจองบริการ (Booking Requests)
-                    </button>
-                  </>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate("/sitter/bookings");
+                    }}
+                  >
+                    คำขอจองบริการ (Booking Requests)
+                  </button>
                 ) : (
                   <button
                     className="dropdown-item"
