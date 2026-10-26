@@ -114,6 +114,7 @@ body{margin:0;background:var(--bg)}
 /* ---------- navbar + dropdown (logout) ---------- */
 .navbar{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
 .navbar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 20px}
+.navbar-logo-link{text-decoration:none;color:inherit}
 .navbar-search-form{flex:1;max-width:420px}
 .navbar-search{flex:1;max-width:420px}
 .navbar-search-form .navbar-search{max-width:none}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import Logo from "./ui/Logo.jsx";
 
@@ -8,6 +8,9 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const isSitter = user?.role === "sitter";
+  const { pathname } = useLocation();
+  // ช่องค้นหาแสดงเฉพาะหน้าแรกของเจ้าของสัตว์เลี้ยง
+  const showSearch = !isSitter && pathname === "/";
   // ค่าในช่องค้นหาตามพารามิเตอร์ ?q= ปัจจุบัน (key ด้านล่างทำให้ช่องรีเซ็ตเมื่อ q ถูกล้างจากหน้าอื่น)
   const [searchParams] = useSearchParams();
   const currentQ = searchParams.get("q") ?? "";
@@ -21,9 +24,15 @@ export default function Navbar() {
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        <Logo />
-        {/* หน้าค้นหาเป็นของเจ้าของสัตว์เลี้ยง — พี่เลี้ยงไม่เห็นช่องนี้ (ถูกส่งไป dashboard) */}
-        {user?.role !== "sitter" && (
+        {isSitter ? (
+          <Logo />
+        ) : (
+          <Link to="/" className="navbar-logo-link" aria-label="กลับหน้าหลัก">
+            <Logo />
+          </Link>
+        )}
+        {/* หน้าค้นหาเป็นของเจ้าของสัตว์เลี้ยง — แสดงเฉพาะหน้าแรก (พี่เลี้ยงไม่เห็นช่องนี้) */}
+        {showSearch && (
           <form className="navbar-search-form" role="search" onSubmit={handleSearch}>
             <input
               key={currentQ} name="q" type="search" className="input navbar-search"
@@ -41,6 +50,17 @@ export default function Navbar() {
             <>
               <div className="overlay" onClick={() => setOpen(false)} />
               <div className="dropdown">
+                {!isSitter && (
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate("/");
+                    }}
+                  >
+                    กลับหน้าหลัก
+                  </button>
+                )}
                 <button
                   className="dropdown-item"
                   onClick={() => {
