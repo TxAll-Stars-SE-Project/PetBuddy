@@ -110,7 +110,7 @@ export const getBusySlots = async (sitterId: number, dateString: string) => {
     where: {
       sitterid: sitterId,
       bookingstatus: {
-        in: [...ACTIVE_BOOKING_STATUSES],
+        in: ACTIVE_BOOKING_STATUSES,
       },
       // เช็คเวลาที่เหลื่อมกัน
       starttime: { lte: endOfDay },

@@ -98,7 +98,7 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
         where: {
         sitterid: input.sitterId,
         bookingstatus: {
-            in: [...ACTIVE_BOOKING_STATUSES]
+            in: ACTIVE_BOOKING_STATUSES
         },
         starttime: { lt: end },
         endtime: { gt: start }
