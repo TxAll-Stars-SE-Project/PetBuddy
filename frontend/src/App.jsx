@@ -8,6 +8,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
+import SitterDetailPage from "./pages/SitterDetailPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import OwnerBookingPage from "./pages/OwnerBookingPage.jsx";
@@ -63,6 +64,7 @@ function AppRoutes() {
 
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
+        <Route path="/sitters/:sitterId" element={<ProtectedRoute><SitterDetailPage /></ProtectedRoute>} />
         <Route path="/sitter" element={<Navigate to="/sitter/dashboard" replace />} />
         <Route path="/sitter/dashboard" element={<SitterRoute><SitterDashboardPage /></SitterRoute>} />
         <Route path="/sitter/bookings" element={<SitterRoute><SitterBookingsPage /></SitterRoute>} />

@@ -276,7 +276,18 @@ function ProfilePage() {
   const openAddPetModal = () => {
     setCurrentPetIndex(null);
     setModalMode("add");
-    setActivePetForm({ petId: null, name: "", species: "", breed: "", age: "", photo: "", notes: "", gender: "", weight: "", photoFile: null });
+    setActivePetForm({
+      petId: null,
+      name: "",
+      species: "สุนัข", // Default to สุนัข
+      breed: "",
+      age: "",
+      photo: "",
+      notes: "",
+      gender: "",
+      weight: "",
+      photoFile: null,
+    });
     setPetError("");
     setShowPetModal(true);
   };
