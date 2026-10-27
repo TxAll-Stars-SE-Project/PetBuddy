@@ -3,7 +3,7 @@ import './SitterBookingCard.css';
 
 interface SitterBookingCardProps {
   booking: Booking;
-  onAction: (bookingId: number, action: BookingAction) => void;
+  onAction?: (bookingId: number, action: BookingAction) => void;
   onRequestConfirm?: (booking: Booking, action: BookingAction) => void;
   onVerifySlip?: (booking: Booking) => void;
   isUpdating?: boolean;
@@ -140,7 +140,7 @@ export default function SitterBookingCard({
         </div>
       </dl>
 
-      {booking.bookingstatus === 'pending' && (
+      {booking.bookingstatus === 'pending' && (onAction || onRequestConfirm) && (
         <footer className="sitter-booking-card__actions">
           <button
             className="sitter-booking-card__button sitter-booking-card__button--reject"
@@ -149,7 +149,7 @@ export default function SitterBookingCard({
             onClick={() =>
               onRequestConfirm
                 ? onRequestConfirm(booking, 'reject')
-                : onAction(booking.bookingId, 'reject')
+                : onAction?.(booking.bookingId, 'reject')
             }
           >
             ปฏิเสธ (Reject)
@@ -161,14 +161,14 @@ export default function SitterBookingCard({
             onClick={() =>
               onRequestConfirm
                 ? onRequestConfirm(booking, 'accept')
-                : onAction(booking.bookingId, 'accept')
+                : onAction?.(booking.bookingId, 'accept')
             }
           >
             รับงาน (Accept)
           </button>
         </footer>
       )}
-      {booking.bookingstatus === 'confirmed' && (
+      {booking.bookingstatus === 'confirmed' && (onAction || onRequestConfirm) && (
         <footer className="sitter-booking-card__actions">
           <button
             className="sitter-booking-card__button sitter-booking-card__button--complete"
@@ -177,7 +177,7 @@ export default function SitterBookingCard({
             onClick={() =>
               onRequestConfirm
                 ? onRequestConfirm(booking, 'complete')
-                : onAction(booking.bookingId, 'complete')
+                : onAction?.(booking.bookingId, 'complete')
             }
           >
             ส่งงานเสร็จสิ้น (Complete Job)

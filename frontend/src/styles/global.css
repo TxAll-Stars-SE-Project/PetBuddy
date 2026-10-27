@@ -114,6 +114,7 @@ body{margin:0;background:var(--bg)}
 /* ---------- navbar + dropdown (logout) ---------- */
 .navbar{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
 .navbar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 20px}
+.navbar-logo-link{text-decoration:none;color:inherit}
 .navbar-search-form{flex:1;max-width:420px}
 .navbar-search{flex:1;max-width:420px}
 .navbar-search-form .navbar-search{max-width:none}
@@ -569,6 +570,7 @@ a.btn{text-decoration:none}
 /* ---------- การจองของฉัน (Owner) + ชำระเงิน (US6-1) ---------- */
 .booking-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .booking-list{display:flex;flex-direction:column;gap:14px}
+.booking-list.is-loading{opacity:.5;pointer-events:none}
 .booking-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-card);padding:20px;display:flex;flex-direction:column;gap:10px}
 .booking-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .booking-sitter-name{margin:0;font-size:16px;font-weight:700}
@@ -618,6 +620,10 @@ a.btn{text-decoration:none}
 .payment-remove-button{border:1px solid var(--border);background:#fff;color:var(--text-secondary)}
 .payment-modal-actions button{font:inherit}
 .payment-modal-actions button:disabled{opacity:.6;cursor:not-allowed}
+.payment-modal-state{margin:0;padding:28px 0;text-align:center;color:var(--muted);font-size:14px}
+.payment-modal-state--error p{margin:0 0 12px;color:var(--error)}
+.payment-modal-state--error .btn{width:auto}
+.payment-modal-note{margin:12px 0 0;padding:10px 12px;border-radius:var(--r-input);background:var(--info-bg);color:var(--info);font-size:13px}
 
 @media(max-width:560px){
   .booking-card-top{flex-direction:column}

@@ -57,3 +57,16 @@ export async function updateBookingStatus(
 
   return res as BookingStatusUpdate;
 }
+
+export async function createBooking(payload: {
+  sitterId: number;
+  serviceId: number;
+  pets: { petId: number; petNote?: string | null }[];
+  starttime: string;
+  endtime: string;
+  paymentplan: 'full' | 'deposit';
+  note?: string;
+}) {
+  const res = await api.post('/bookings', payload);
+  return res.data;
+}

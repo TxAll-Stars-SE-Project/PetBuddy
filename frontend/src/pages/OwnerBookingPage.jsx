@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
-import { MOCK_OWNER_BOOKINGS } from "../data/mockBookings.js";
 import { getBookingPayments } from "../services/payment.api.js";
+import { getOwnerBookings } from "../services/bookings.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -25,21 +25,21 @@ const FILTER_TABS = [
 const PAYABLE_STATUSES = ["waiting_payment", "waiting_final_payment"];
 
 function formatDateRange(start, end) {
-  const s = new Date(start);
-  const e = new Date(end);
-  const dateFmt = { day: "numeric", month: "short", year: "numeric" };
-  const timeFmt = { hour: "2-digit", minute: "2-digit" };
-  const sameDay = s.toDateString() === e.toDateString();
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const dateFormat = { day: "numeric", month: "short", year: "numeric" };
+  const timeFormat = { hour: "2-digit", minute: "2-digit" };
+  const sameDay = startDate.toDateString() === endDate.toDateString();
   if (sameDay) {
-    return `${s.toLocaleDateString("th-TH", dateFmt)} · ${s.toLocaleTimeString("th-TH", timeFmt)} - ${e.toLocaleTimeString("th-TH", timeFmt)}`;
+    return `${startDate.toLocaleDateString("th-TH", dateFormat)} · ${startDate.toLocaleTimeString("th-TH", timeFormat)} - ${endDate.toLocaleTimeString("th-TH", timeFormat)}`;
   }
-  return `${s.toLocaleDateString("th-TH", dateFmt)} - ${e.toLocaleDateString("th-TH", dateFmt)}`;
+  return `${startDate.toLocaleDateString("th-TH", dateFormat)} - ${endDate.toLocaleDateString("th-TH", dateFormat)}`;
 }
 
-// Design: OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1)
-// ใช้ mock data ไปก่อน รอ POST /api/bookings (US5-1) แล้วค่อยเปลี่ยนมาเรียก GET /api/owner/bookings จริง
 export default function OwnerBookingPage() {
   const [activeTab, setActiveTab] = useState("all");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [result, setResult] = useState({ status: "loading", bookings: [] });
   const [payingBooking, setPayingBooking] = useState(null);
   const [paymentSummary, setPaymentSummary] = useState(null);
   const [isPaymentSummaryLoading, setIsPaymentSummaryLoading] = useState(false);
@@ -70,19 +70,7 @@ export default function OwnerBookingPage() {
         if (isCurrent) setPaymentSummary(summary);
       })
       .catch(() => {
-        if (!isCurrent) return;
-        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
-        setPaymentSummaryError(true);
-        setPaymentSummary({
-          bookingId: payingBookingId,
-          bookingstatus: payingBooking?.bookingstatus,
-          totalPrice: fallbackAmount,
-          depositAmount: fallbackAmount,
-          remainingAmount: fallbackAmount,
-          paymentplan: "full",
-          payment_stage: "full",
-          payments: [],
-        });
+        if (isCurrent) setPaymentSummaryError(true);
       })
       .finally(() => {
         if (isCurrent) setIsPaymentSummaryLoading(false);
@@ -93,18 +81,27 @@ export default function OwnerBookingPage() {
     };
   }, [payingBooking, payingBookingId, paymentSummaryReloadKey]);
 
-  const handlePaymentSuccess = () => {
-    setPayingBooking(null);
-  };
-
   const handlePaymentClose = () => {
     setPayingBooking(null);
   };
 
-  const bookings = useMemo(() => {
-    if (activeTab === "all") return MOCK_OWNER_BOOKINGS;
-    return MOCK_OWNER_BOOKINGS.filter((b) => b.bookingstatus === activeTab);
-  }, [activeTab]);
+  const handlePaymentSuccess = () => {
+    setPayingBooking(null);
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setResult((current) => ({ ...current, status: "loading" }));
+    getOwnerBookings(activeTab === "all" ? "" : activeTab, { signal: controller.signal })
+      .then((bookings) => setResult({ status: "success", bookings }))
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setResult((current) => ({ ...current, status: "error" }));
+      });
+    return () => controller.abort();
+  }, [activeTab, reloadKey]);
+
+  const { status, bookings } = result;
 
   return (
     <div>
@@ -114,46 +111,68 @@ export default function OwnerBookingPage() {
         <p className="section-sub">ติดตามสถานะการจองและชำระเงินให้พี่เลี้ยงที่คุณเลือกไว้</p>
 
         <div className="booking-tabs">
-          {FILTER_TABS.map((t) => (
+          {FILTER_TABS.map((tab) => (
             <button
-              key={t.key}
+              key={tab.key}
               type="button"
-              className={`chip-btn${activeTab === t.key ? " active" : ""}`}
-              onClick={() => setActiveTab(t.key)}
+              className={`chip-btn${activeTab === tab.key ? " active" : ""}`}
+              onClick={() => setActiveTab(tab.key)}
             >
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {bookings.length === 0 ? (
+        {status === "loading" && bookings.length === 0 && (
+          <div className="state-box" role="status">
+            <h3>กำลังโหลดรายการจอง…</h3>
+          </div>
+        )}
+
+        {status === "error" && (
+          <div className="state-box state-box--error" role="alert">
+            <h3>โหลดรายการจองไม่สำเร็จ</h3>
+            <p>เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง</p>
+            <button type="button" className="btn" onClick={() => setReloadKey((key) => key + 1)}>
+              ลองใหม่
+            </button>
+          </div>
+        )}
+
+        {status === "success" && bookings.length === 0 && (
           <div className="state-box">
-            <div className="emoji">📅</div>
             <h3>ไม่มีรายการจองในหมวดนี้</h3>
             <p>ลองเลือกแท็บอื่น หรือเริ่มค้นหาพี่เลี้ยงเพื่อจองใหม่</p>
           </div>
-        ) : (
-          <div className="booking-list">
-            {bookings.map((b) => {
-              const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
-              const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
+        )}
+
+        {bookings.length > 0 && status !== "error" && (
+          <div className={`booking-list${status === "loading" ? " is-loading" : ""}`}>
+            {bookings.map((booking) => {
+              const meta = STATUS_META[booking.bookingstatus]
+                ?? { label: booking.bookingstatus, tone: "muted" };
+              const canPay = PAYABLE_STATUSES.includes(booking.bookingstatus);
               return (
-                <article key={b.bookingId} className="booking-card">
+                <article key={booking.bookingId} className="booking-card">
                   <div className="booking-card-top">
                     <div>
-                      <h3 className="booking-sitter-name">{b.sitterName}</h3>
-                      <p className="booking-service-name">{b.serviceName}</p>
+                      <h3 className="booking-sitter-name">{booking.sitterName}</h3>
+                      <p className="booking-service-name">{booking.serviceName}</p>
                     </div>
-                    <span className={`booking-badge booking-badge--${meta.tone}`}>{meta.label}</span>
+                    <span className={`booking-badge booking-badge--${meta.tone}`}>
+                      {meta.label}
+                    </span>
                   </div>
 
-                  <p className="booking-datetime">🗓️ {formatDateRange(b.starttime, b.endtime)}</p>
+                  <p className="booking-datetime">
+                    วันที่: {formatDateRange(booking.starttime, booking.endtime)}
+                  </p>
 
                   <div className="booking-pets">
-                    {b.pets.map((p) => (
-                      <span key={p.petId} className="tag">
-                        🐾 {p.petName}
-                        {p.petNote ? ` · ${p.petNote}` : ""}
+                    {booking.pets.map((pet) => (
+                      <span key={pet.petId} className="tag">
+                        {pet.petName}
+                        {pet.petNote ? ` · ${pet.petNote}` : ""}
                       </span>
                     ))}
                   </div>
@@ -161,7 +180,7 @@ export default function OwnerBookingPage() {
                   <div className="booking-card-foot">
                     <div className="booking-price">
                       <small>ราคารวม</small>
-                      <strong>฿{b.totalPrice.toLocaleString("th-TH")}</strong>
+                      <strong>฿{Number(booking.totalPrice).toLocaleString("th-TH")}</strong>
                     </div>
                     {canPay && (
                       <button
@@ -169,7 +188,7 @@ export default function OwnerBookingPage() {
                         className="btn btn--small"
                         onClick={() => {
                           setPaymentSummary(null);
-                          setPayingBooking(b);
+                          setPayingBooking(booking);
                         }}
                       >
                         ชำระเงิน

@@ -21,8 +21,15 @@ export default function PaymentModal({
   const [uploadValidationError, setUploadValidationError] = useState("");
 
   const bookingId = booking?.bookingId || booking?.id;
+  const paymentStage = summary?.payment_stage
+    || (summary?.bookingstatus === "waiting_final_payment"
+      ? "final"
+      : summary?.paymentplan === "deposit"
+        ? "deposit"
+        : "full");
   const hasPendingPayment = Boolean(summary?.payments?.some(
-    (payment) => payment.payment_status === "pending_verifying",
+    (payment) => payment.payment_stage === paymentStage
+      && payment.payment_status === "pending_verifying",
   ));
 
   useEffect(() => {
@@ -56,14 +63,8 @@ export default function PaymentModal({
 
   const handleUpload = async (event) => {
     event.preventDefault();
-    if (!selectedFile || !summary || !bookingId || isLoading || hasPendingPayment) return;
+    if (!selectedFile || !summary || !bookingId || isLoading || isError || hasPendingPayment) return;
 
-    const paymentStage = summary.payment_stage
-      || (summary.bookingstatus === "waiting_final_payment"
-        ? "final"
-        : summary.paymentplan === "deposit"
-          ? "deposit"
-          : "full");
     const amount = paymentStage === "final"
       ? Number(summary.remainingAmount)
       : paymentStage === "deposit"
@@ -150,7 +151,7 @@ export default function PaymentModal({
               type="submit"
               className="profile-save-button"
               disabled={
-                !selectedFile || !summary || isLoading || isUploading || hasPendingPayment
+                !selectedFile || !summary || isLoading || isError || isUploading || hasPendingPayment
               }
             >
               {isUploading ? "กำลังส่งสลิป..." : "ส่งสลิป"}

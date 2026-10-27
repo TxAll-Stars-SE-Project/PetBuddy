@@ -85,7 +85,9 @@ export default function PaymentSummary({ summary, booking, isError }) {
               <span className={`payment-status payment-status--${payment.payment_status}`}>
                 {STATUS_LABEL[payment.payment_status] ?? payment.payment_status}
               </span>
-              <span className="payment-history-date">{formatDateTime(payment.paid_at)}</span>
+              {payment.paid_at && (
+                <span className="payment-history-date">{formatDateTime(payment.paid_at)}</span>
+              )}
             </div>
           ))}
         </div>

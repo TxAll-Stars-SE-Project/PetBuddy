@@ -4,11 +4,11 @@ import { CreateServiceInput, UpdateServiceInput } from '../validators/service.va
 import { SitterSearchInput, SitterSort } from '../validators/sitterSearch.validator.js'
 import { booking_status, service_type } from '../generated/prisma/enums.js'
 import { Prisma } from '../generated/prisma/client.js'
+import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js'
+
 
 const ARCHIVED = 'archived'
-const ACTIVE_BOOKING_STATUSES: booking_status[] = [
-  'pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment',
-]
+// ACTIVE_BOOKING_STATUSES is imported from constants
 
 const mapServiceRow = (s: {
   serviceid: number
@@ -29,6 +29,110 @@ const mapServiceRow = (s: {
   status: s.status,
   createdAt: s.createdat,
 })
+
+export const getProfileById = async (sitterId: number) => {
+  const sitter = await prisma.petsitter.findUnique({
+    where: { userid: sitterId },
+    include: { USER: true },
+  });
+
+  if (!sitter || sitter.USER?.is_active === false) {
+    throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
+  }
+
+
+  const ratingAgg = await prisma.review.aggregate({
+    where: { booking: { sitterid: sitterId } },
+    _avg: { review_score: true }
+  });
+  const avgRating = ratingAgg._avg.review_score 
+    ? Math.round(ratingAgg._avg.review_score * 10) / 10 
+    : 0;
+
+  return {
+    sitterId: sitter.userid,
+    username: sitter.USER.username,
+    province: sitter.USER.province || "",
+    rating: avgRating
+  };
+};
+
+export const getSitterReviewsById = async (sitterId: number) => {
+  const sitter = await prisma.petsitter.findUnique({
+    where: { userid: sitterId },
+  });
+  if (!sitter) throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
+
+  const reviews = await prisma.review.findMany({
+    where: {
+      booking: {
+        sitterid: sitterId,
+      },
+    },
+    include: {
+      booking: {
+        include: {
+          petowner: {
+            include: {
+              USER: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { reviewid: 'desc' },
+  });
+
+  return reviews.map((r) => ({
+    reviewId: r.reviewid,
+    rating: r.review_score ?? 0,
+    comment: r.review_detail ?? '',
+    ownerName: r.booking.petowner.USER.username,
+    createdAt: r.booking.bookingdate, // ใช้ bookingdate แทนเพราะตาราง review ยังไม่มี created_at
+  }));
+};
+
+export const getBusySlots = async (sitterId: number, dateString: string) => {
+  const sitter = await prisma.petsitter.findUnique({
+    where: { userid: sitterId },
+  });
+  
+  if (!sitter) {
+    throw new AppError(404, 'SITTER_NOT_FOUND', 'Sitter not found');
+  }
+
+  // ขอบเขตเวลาของวันนั้น
+  const startOfDay = new Date(`${dateString}T00:00:00+07:00`);
+  const endOfDay = new Date(`${dateString}T23:59:59.999+07:00`);
+
+  // ดึง Booking ที่มีสถานะยังดำเนินการอยู่ และเวลาคาบเกี่ยวกับวันดังกล่าว
+  const bookings = await prisma.booking.findMany({
+    where: {
+      sitterid: sitterId,
+      bookingstatus: {
+        in: ACTIVE_BOOKING_STATUSES,
+      },
+      // เช็คเวลาที่เหลื่อมกัน
+      starttime: { lte: endOfDay },
+      endtime: { gte: startOfDay },
+    },
+    select: {
+      starttime: true,
+      endtime: true,
+    },
+    orderBy: {
+      starttime: 'asc',
+    },
+  });
+
+  return {
+    date: dateString,
+    busySlots: bookings.map((b) => ({
+      starttime: b.starttime,
+      endtime: b.endtime,
+    })),
+  };
+};
 
 export const getServicesBySitter = async (userid: number) => {
   const rows = await prisma.services.findMany({

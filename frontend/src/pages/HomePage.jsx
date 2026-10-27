@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom"; // 👈 [เพิ่มส่วนนี้: useNavigate]
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx";
 import SitterCard, { SitterCardSkeleton } from "../components/SitterCard.jsx";
 import SitterFilters from "../components/SitterFilters.jsx";
+import BookingModal from "../components/BookingModal.jsx"; // 👈 [เพิ่มส่วนนี้: นำเข้า BookingModal]
 import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 import { searchSitters } from "../services/sitters.js";
 import { DEFAULT_FILTERS, getPriceError } from "../utils/sitterOptions.js";
@@ -11,6 +12,9 @@ import { DEFAULT_FILTERS, getPriceError } from "../utils/sitterOptions.js";
 const SKELETON_COUNT = 4;
 
 export default function HomePage() {
+  const navigate = useNavigate(); // 👈 [เพิ่มส่วนนี้: เรียกใช้ navigate]
+  const [selectedSitterForBooking, setSelectedSitterForBooking] = useState(null); // 👈 [เพิ่มส่วนนี้: State เก็บพี่เลี้ยงที่เลือกจอง]
+
   // คำค้นหาจาก Navbar อยู่ใน URL (?q=) เพื่อให้ใช้ได้จากทุกหน้า รีเฟรชแล้วไม่หาย และแชร์ลิงก์ได้
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
@@ -23,12 +27,10 @@ export default function HomePage() {
   // ช่องราคาพิมพ์ทีละตัวอักษร → หน่วงก่อนยิง API; ตัวกรองอื่นกดแล้วยิงทันที
   const debouncedMin = useDebouncedValue(filters.min);
   const debouncedMax = useDebouncedValue(filters.max);
-  const query = useMemo(
-    () => ({ ...filters, q, min: debouncedMin, max: debouncedMax }),
-    [filters, q, debouncedMin, debouncedMax]
-  );
+  const queryKey = JSON.stringify({ ...filters, q, min: debouncedMin, max: debouncedMax });
+  // object เดิมตราบใดที่ค่าเท่าเดิม → effect ไม่รันซ้ำทุกครั้งที่พิมพ์ช่องราคา (ก่อน debounce เสร็จ)
+  const query = useMemo(() => JSON.parse(queryKey), [queryKey]);
   // หน้าปัจจุบันผูกกับชุดตัวกรอง: ตัวกรอง/คำค้นเปลี่ยนเมื่อไหร่ก็กลับไปหน้า 1 อัตโนมัติ
-  const queryKey = JSON.stringify(query);
   const [pageState, setPageState] = useState({ key: queryKey, page: 1 });
   const page = pageState.key === queryKey ? pageState.page : 1;
   const setPage = (p) => setPageState({ key: queryKey, page: p });
@@ -144,7 +146,13 @@ export default function HomePage() {
         {/* ระหว่างโหลดใหม่ยังแสดงผลลัพธ์เดิมแบบจาง ๆ แทนการกระพริบเป็น skeleton */}
         {sitters.length > 0 && status !== "error" && (
           <div className={`sitter-list${status === "loading" ? " is-loading" : ""}`}>
-            {sitters.map((s) => <SitterCard key={s.sitterId} sitter={s} />)}
+            {sitters.map((s) => (
+              <SitterCard
+                key={s.sitterId}
+                sitter={s}
+                onBook={setSelectedSitterForBooking} // 👈 [เพิ่มส่วนนี้: ส่งฟังก์ชันรับพี่เลี้ยงที่ถูกกดจองไปให้ SitterCard]
+              />
+            ))}
           </div>
         )}
 
@@ -157,6 +165,14 @@ export default function HomePage() {
           />
         )}
       </main>
+
+      {/* 👈 [เพิ่มส่วนนี้: Component Pop-up จองบริการ] */}
+      <BookingModal
+        sitter={selectedSitterForBooking}
+        isOpen={!!selectedSitterForBooking}
+        onClose={() => setSelectedSitterForBooking(null)}
+        onSuccess={() => navigate("/bookings")}
+      />
     </div>
   );
 }
