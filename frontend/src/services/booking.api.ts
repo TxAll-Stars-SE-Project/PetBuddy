@@ -1,10 +1,10 @@
 import { api } from './api.js';
 import type { Booking, BookingAction, BookingStatus } from '../types/booking';
 
-interface ApiEnvelope<T> {
-  status: 'success';
-  data: T;
-}
+// interface ApiEnvelope<T> {
+//   status: 'success';
+//   data: T;
+// }
 
 interface BookingStatusUpdate {
   bookingId: number;
@@ -12,24 +12,24 @@ interface BookingStatusUpdate {
 }
 
 export async function getSitterBookings(status?: BookingStatus): Promise<Booking[]> {
-  const res = await api.get<ApiEnvelope<Booking[]>>('/sitter/bookings', {
+  const bookings = await api.get<never, Booking[]>('/sitter/bookings', {
     params: { status },
   });
-  if (!Array.isArray(res.data.data)) {
+  
+  if (!Array.isArray(bookings)) {
     throw new Error('รูปแบบข้อมูลรายการจองไม่ถูกต้อง');
   }
-  return res.data.data;
+  return bookings;
 }
 
 export async function updateBookingStatus(
   bookingId: number,
-  action: BookingAction,
+  action: BookingAction
 ): Promise<BookingStatusUpdate> {
-  const res = await api.patch<ApiEnvelope<BookingStatusUpdate>>(
+  return await api.patch<never, BookingStatusUpdate>(
     `/sitter/bookings/${bookingId}`,
-    { action },
+    { action }
   );
-  return res.data.data;
 }
 
 export async function createBooking(payload: {
