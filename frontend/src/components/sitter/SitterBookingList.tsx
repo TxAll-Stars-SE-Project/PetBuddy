@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import BookingConfirmModal from './BookingConfirmModal';
 import SitterBookingCard from './SitterBookingCard';
 import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
+import { toast } from '../../utils/toast';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
 import './SitterBookingList.css';
 
@@ -27,16 +29,20 @@ export default function SitterBookingList() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<BookingTab>('ALL');
+  const [confirmTarget, setConfirmTarget] = useState<{
+    booking: Booking;
+    action: BookingAction;
+  } | null>(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getSitterBookings();
-      setBookings(result);
+      setBookings(await getSitterBookings());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -70,15 +76,32 @@ export default function SitterBookingList() {
           statusGroups[tab].includes(booking.bookingstatus),
         ).length;
 
-  const handleAction = async (bookingId: number, action: BookingAction) => {
-    setUpdatingId(bookingId);
+  const handleRequestConfirm = (booking: Booking, action: BookingAction) => {
+    setConfirmTarget({ booking, action });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmTarget) return;
+
+    const { booking, action } = confirmTarget;
+    setUpdatingId(booking.bookingId);
     setError(null);
 
     try {
-      await updateBookingStatus(bookingId, action);
+      await updateBookingStatus(booking.bookingId, action);
+      const actionText =
+        action === 'accept'
+          ? 'รับงานคำขอจองเรียบร้อยแล้ว (สถานะ: รอชำระเงิน)'
+          : action === 'reject'
+            ? 'ปฏิเสธคำขอจองเรียบร้อยแล้ว'
+            : 'ส่งมอบงานเสร็จสิ้นเรียบร้อยแล้ว';
+      toast(actionText, 'success');
+      setConfirmTarget(null);
       await fetchBookings();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้');
+      const errMsg = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้';
+      setError(errMsg);
+      toast(errMsg, 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -120,12 +143,21 @@ export default function SitterBookingList() {
             <SitterBookingCard
               key={booking.bookingId}
               booking={booking}
-              onAction={handleAction}
+              onRequestConfirm={handleRequestConfirm}
               isUpdating={updatingId === booking.bookingId}
             />
           ))}
         </div>
       )}
+
+      <BookingConfirmModal
+        isOpen={confirmTarget !== null}
+        booking={confirmTarget?.booking ?? null}
+        action={confirmTarget?.action ?? null}
+        isSubmitting={updatingId !== null}
+        onConfirm={() => void handleConfirmAction()}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

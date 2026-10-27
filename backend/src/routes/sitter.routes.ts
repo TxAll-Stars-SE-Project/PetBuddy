@@ -7,5 +7,7 @@ const router = Router()
 
 router.get('/me', requireAuth, requireRole('sitter'), sitterController.getMyServices)
 router.post('/', requireAuth, requireRole('sitter'), sitterController.createService)
+router.patch('/:serviceID', requireAuth, requireRole('sitter'), sitterController.updateService)
+router.delete('/:serviceID', requireAuth, requireRole('sitter'), sitterController.deleteService)
 
 export default router

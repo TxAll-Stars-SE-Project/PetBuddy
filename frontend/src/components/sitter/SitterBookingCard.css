@@ -148,6 +148,15 @@
   background: var(--primary-hover, #ea580c);
 }
 
+.sitter-booking-card__button--complete {
+  color: #fff;
+  background: #0f766e;
+}
+
+.sitter-booking-card__button--complete:hover:not(:disabled) {
+  background: #0d645e;
+}
+
 .sitter-booking-card__button--reject {
   color: var(--error, #dc2626);
   background: #fff;

@@ -223,4 +223,31 @@ export const updatePet = async (
   }
 }
 
+export const getPetsByOwnerId = async (ownerId: number) => {
+  const pets = await prisma.pet.findMany({
+    where: { ownerid: ownerId },
+    orderBy: { petid: 'asc' },
+  });
+
+  return pets.map((p) => {
+    const age = calculateAge(p.b_date);
+    
+    return {
+      petId: p.petid,
+      petName: p.name,
+      petType: p.species ?? '',
+      name: p.name,
+      species: p.species ?? '',
+      breed: p.breed ?? '',
+      age: age,
+      gender: p.gender ?? '',
+      weight: p.weight ? Number(p.weight) : null,
+      birthDate: p.b_date ? p.b_date.toISOString().split('T')[0] : null,
+      allergy: p.allergy ?? '',
+      imageUrl: p.image_url ?? '',
+    };
+  });
+};
+
+
 

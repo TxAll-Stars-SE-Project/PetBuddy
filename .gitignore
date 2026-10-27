@@ -26,17 +26,23 @@ dist-ssr
 *.sln
 *.sw?
 .pet-api-doc/
+
+# AI Agent directories and files
 .claude/
 .windsurf/
+.gemini/
+.agents/
+SESSION_STATE.md
+PROJECT_OVERVIEW.md
+GEMINI.md
+AGENTS.md
 
 # Tests & Coverage
-__tests__/
-*.test.ts
-*.test.js
 *.spec.ts
 *.spec.js
 coverage/
 .nyc_output/
+playwright-demo/
 
 
 # Markdown files (ignore all except README and API docs)
@@ -47,3 +53,11 @@ coverage/
 !**/README.md
 !API.md
 !**/API.md
+!docs/API*.md
+
+# Local Prototype & Interactive React Documentation (Untracked references)
+docs/react_fundamentals_interactive_docs.html
+docs/sitter_dashboard_prototype.html
+
+mocks/
+tests/

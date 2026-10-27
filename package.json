@@ -9,7 +9,9 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
     "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces",
+    "seed:booking": "npm run seed:booking --workspace=backend",
+    "simulate:booking": "npm run simulate:booking --workspace=backend"
   },
   "devDependencies": {
     "@types/node": "^26.6.4"

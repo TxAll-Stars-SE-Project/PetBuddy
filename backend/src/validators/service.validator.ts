@@ -1,7 +1,7 @@
 import { AppError } from '../utils/errors.js'
 
-const SERVICE_TYPES = ['walking', 'sitting', 'boarding', 'grooming', 'daycare']
-const SPECIES = ['dog', 'cat', 'bird', 'exotic']
+export const SERVICE_TYPES = ['walking', 'sitting', 'boarding', 'grooming', 'daycare']
+export const SPECIES = ['dog', 'cat', 'bird', 'exotic']
 
 export interface CreateServiceInput {
   serviceName: string
@@ -9,6 +9,14 @@ export interface CreateServiceInput {
   species: string[]
   price: number
   description?: string
+}
+
+export interface UpdateServiceInput {
+  serviceName?: string
+  serviceType?: string
+  species?: string[]
+  price?: number
+  description?: string | null
 }
 
 export const validateCreateServiceInput = (body: unknown): CreateServiceInput => {
@@ -56,4 +64,68 @@ export const validateCreateServiceInput = (body: unknown): CreateServiceInput =>
   }
 
   return { serviceName, serviceType, species, price: priceValue, description }   // 👈 ใช้ priceValue
+}
+
+export const validateUpdateServiceInput = (body: unknown): UpdateServiceInput => {
+  const errors: { field: string; message: string }[] = []
+  const b = (body ?? {}) as Record<string, unknown>
+  const result: UpdateServiceInput = {}
+
+  // serviceName (optional)
+  if (b.serviceName !== undefined) {
+    const serviceName = typeof b.serviceName === 'string' ? b.serviceName.trim() : ''
+    if (!serviceName) errors.push({ field: 'serviceName', message: 'Service name cannot be empty' })
+    else if (serviceName.length > 255) errors.push({ field: 'serviceName', message: 'Service name must not exceed 255 characters' })
+    else result.serviceName = serviceName
+  }
+
+  // serviceType (optional)
+  if (b.serviceType !== undefined) {
+    const serviceType = typeof b.serviceType === 'string' ? b.serviceType.trim() : ''
+    if (!serviceType) errors.push({ field: 'serviceType', message: 'Service type cannot be empty' })
+    else if (!SERVICE_TYPES.includes(serviceType))
+      errors.push({ field: 'serviceType', message: `Service type must be one of: ${SERVICE_TYPES.join(', ')}` })
+    else result.serviceType = serviceType
+  }
+
+  // species (optional)
+  if (b.species !== undefined) {
+    if (!Array.isArray(b.species)) errors.push({ field: 'species', message: 'Species must be an array' })
+    else {
+      const invalid = (b.species as unknown[]).find((s) => typeof s !== 'string' || !SPECIES.includes(s))
+      if (invalid !== undefined) errors.push({ field: 'species', message: `Invalid species: ${String(invalid)}` })
+      else result.species = Array.from(new Set(b.species as string[]))
+    }
+  }
+
+  // price (optional)
+  if (b.price !== undefined) {
+    if (typeof b.price !== 'number' || !Number.isInteger(b.price)) errors.push({ field: 'price', message: 'Price must be an integer' })
+    else if (b.price <= 0) errors.push({ field: 'price', message: 'Price must be greater than 0' })
+    else if (b.price > 1_000_000) errors.push({ field: 'price', message: 'Price must not exceed 1,000,000' })
+    else result.price = b.price
+  }
+
+  // description (optional, null = clear)
+  if (b.description !== undefined) {
+    if (b.description === null) {
+      result.description = null
+    } else if (typeof b.description !== 'string') {
+      errors.push({ field: 'description', message: 'Description must be a string' })
+    } else {
+      const description = b.description.trim()
+      if (description.length > 2000) errors.push({ field: 'description', message: 'Description must not exceed 2000 characters' })
+      else result.description = description
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'Validation failed', errors)
+  }
+
+  // กันทั้ง {} และ {"foo":1} — ต้องมี field ที่อัปเดตได้จริงอย่างน้อย 1 ตัว
+  if (Object.keys(result).length === 0) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'At least one updatable field must be provided', [])
+  }
+  return result
 }

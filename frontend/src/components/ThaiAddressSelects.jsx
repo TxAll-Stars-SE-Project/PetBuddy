@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-export default function ThaiAddressSelects({ value, onChange, errors }) {
+export default function ThaiAddressSelects({ value, onChange, errors, mode = "form" }) {
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [subDistricts, setSubDistricts] = useState([]);
@@ -59,6 +59,31 @@ export default function ThaiAddressSelects({ value, onChange, errors }) {
       postalCode: sub?.zip_code ? String(sub.zip_code) : "",
     });
   };
+
+  // mode="filter": ใช้เป็นตัวกรองค้นหา — แสดงแค่จังหวัด + อำเภอ/เขต (ไม่บังคับ) และคืน fragment
+  // เพื่อให้ 2 ช่องอยู่ใน grid ของตัวกรองได้เลย; mode="form" (ค่าเริ่มต้น) คือฟอร์มสมัคร/แก้ไขที่อยู่เดิม
+  if (mode === "filter") {
+    return (
+      <>
+        <div className="filter-field">
+          <label htmlFor="filter-province">จังหวัด</label>
+          <select id="filter-province" className="input" value={provinceId} onChange={handleProvince} disabled={loading}>
+            <option value="">{loading ? "กำลังโหลดข้อมูลที่อยู่..." : "ทุกจังหวัด"}</option>
+            {provinces.map((p) => <option key={p.id} value={p.id}>{p.name_th}</option>)}
+          </select>
+        </div>
+        <div className="filter-field">
+          <label htmlFor="filter-district">
+            อำเภอ/เขต <span className="filter-optional">(ไม่บังคับ)</span>
+          </label>
+          <select id="filter-district" className="input" value={districtId} onChange={handleDistrict} disabled={!provinceId || loading}>
+            <option value="">ทุกอำเภอ/เขต</option>
+            {districtOptions.map((d) => <option key={d.id} value={d.id}>{d.name_th}</option>)}
+          </select>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="grid-2">
