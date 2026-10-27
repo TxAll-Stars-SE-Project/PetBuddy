@@ -10,6 +10,7 @@ import subDistrictsData from "../assets/thai-address/sub_district.json";
 import ProfileField from "../components/ProfileField.jsx";
 import DeleteAccountModal from "../components/DeleteAccountModal.jsx";
 import PetModal from "../components/PetModal.jsx";
+import SitterQrUpload from "../components/SitterQrUpload.jsx";
 import { validateProfile } from "../utils/profileValidation.js";
 import { toast } from "../utils/toast.js";
 
@@ -30,6 +31,8 @@ function ProfilePage() {
     role: user?.role || "owner",
     experience: user?.experience || "",
     thaiId: user?.thaiId || "",
+    accountName: user?.accountName || "",
+    qrCodeUrl: user?.qrCodeUrl || "",
   });
 
   const [originalProfile, setOriginalProfile] = useState(profile);
@@ -58,7 +61,22 @@ function ProfilePage() {
             role: data.role || "owner",
             experience: data.experience || "",
             thaiId: data.thaiId || "",
+            accountName: "",
+            qrCodeUrl: "",
           };
+
+          // ข้อมูลรับเงินของ sitter (ชื่อบัญชี + QR) อยู่คนละ endpoint กับ /users/me
+          if (loadedProfile.role === "sitter") {
+            try {
+              const payRes = await api.get("/sitter/payment-info");
+              const pay = payRes.data?.data;
+              loadedProfile.accountName = pay?.accountName || "";
+              loadedProfile.qrCodeUrl = pay?.qrCodeUrl || "";
+              setHasPaymentInfo(!!pay?.hasPaymentInfo);
+            } catch (payErr) {
+              console.error("ดึงข้อมูลรับเงินไม่สำเร็จ:", payErr);
+            }
+          }
 
           setProfile(loadedProfile);
           setOriginalProfile(loadedProfile);
@@ -182,6 +200,8 @@ function ProfilePage() {
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingSitter, setIsEditingSitter] = useState(false);
+  const [qrFile, setQrFile] = useState(null);
+  const [hasPaymentInfo, setHasPaymentInfo] = useState(false);
 
   const [pets, setPets] = useState(user?.pets || []);
   const [showPetModal, setShowPetModal] = useState(false);
@@ -221,6 +241,16 @@ function ProfilePage() {
       if (allErrors.experience && profile.experience.trim() !== "") {
         sectionErrors.experience = allErrors.experience;
       }
+
+      const accountName = (profile.accountName || "").trim();
+      if (accountName.length > 100) {
+        sectionErrors.accountName = "ชื่อบัญชีต้องไม่เกิน 100 ตัวอักษร";
+      }
+      // POST /sitter/payment-info ต้องมีทั้งชื่อบัญชีและ QR; PATCH ต้องไม่ล้างชื่อบัญชีให้ว่าง
+      if (!hasPaymentInfo ? (qrFile || accountName) : !accountName) {
+        if (!accountName) sectionErrors.accountName = "กรุณากรอกชื่อบัญชีรับเงิน";
+        if (!hasPaymentInfo && !qrFile) sectionErrors.qrCode = "กรุณาอัปโหลดรูป QR Code";
+      }
     }
 
     setErrors(sectionErrors);
@@ -246,9 +276,39 @@ function ProfilePage() {
 
       await api.put("/users/me", payload);
 
-      const updatedUser = { ...user, ...profile, pets };
+      // ชื่อบัญชี + QR ส่งแยก endpoint (multipart) หลังบันทึกข้อมูลหลักสำเร็จ
+      let savedProfile = profile;
+      const accountNameChanged =
+        (profile.accountName || "").trim() !== (originalProfile.accountName || "").trim();
+      if (sectionType === "sitter" && (qrFile || accountNameChanged)) {
+        try {
+          const formData = new FormData();
+          formData.append("accountName", profile.accountName.trim());
+          if (qrFile) formData.append("qrCode", qrFile);
+
+          const payRes = hasPaymentInfo
+            ? await api.patch("/sitter/payment-info", formData)
+            : await api.post("/sitter/payment-info", formData);
+          const pay = payRes.data?.data;
+
+          savedProfile = {
+            ...profile,
+            accountName: pay?.accountName ?? profile.accountName.trim(),
+            qrCodeUrl: pay?.qrCodeUrl || profile.qrCodeUrl,
+          };
+          setProfile(savedProfile);
+          setQrFile(null);
+          setHasPaymentInfo(true);
+        } catch (payError) {
+          console.error("Payment info save error:", payError);
+          toast(payError.response?.data?.message || "บันทึกข้อมูลรับเงินไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "error");
+          return;
+        }
+      }
+
+      const updatedUser = { ...user, ...savedProfile, pets };
       if (setUser) setUser(updatedUser);
-      setOriginalProfile({ ...profile });
+      setOriginalProfile({ ...savedProfile });
       setErrors({});
 
       if (sectionType === "account") setIsEditingAccount(false);
@@ -268,6 +328,7 @@ function ProfilePage() {
   const handleCancelSection = (sectionType) => {
     setProfile({ ...originalProfile });
     setErrors({});
+    if (sectionType === "sitter") setQrFile(null);
     if (sectionType === "account") setIsEditingAccount(false);
     if (sectionType === "address") setIsEditingAddress(false);
     if (sectionType === "sitter") setIsEditingSitter(false);
@@ -590,6 +651,15 @@ function ProfilePage() {
                 <span className="profile-label">เลขบัตรประชาชน</span>
                 <span className="profile-value">{profile.thaiId ? `*********${profile.thaiId.slice(-4)}` : "-"}</span>
               </div>
+              <ProfileField label="ชื่อบัญชีรับเงิน" field="accountName" value={profile.accountName} isEditing={isEditingSitter} error={errors.accountName} onChange={handleChange} />
+              <SitterQrUpload
+                qrCodeUrl={profile.qrCodeUrl}
+                isEditing={isEditingSitter}
+                file={qrFile}
+                error={errors.qrCode}
+                onSelectFile={(f) => { setQrFile(f); setErrors((prev) => ({ ...prev, qrCode: "" })); }}
+                onRemove={() => setQrFile(null)}
+              />
             </section>
           )}
 
