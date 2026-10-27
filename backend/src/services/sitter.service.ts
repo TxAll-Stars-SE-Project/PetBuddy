@@ -4,12 +4,11 @@ import { CreateServiceInput, UpdateServiceInput } from '../validators/service.va
 import { SitterSearchInput, SitterSort } from '../validators/sitterSearch.validator.js'
 import { booking_status, service_type } from '../generated/prisma/enums.js'
 import { Prisma } from '../generated/prisma/client.js'
+import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js'
 
 
 const ARCHIVED = 'archived'
-const ACTIVE_BOOKING_STATUSES: booking_status[] = [
-  'pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment',
-]
+// ACTIVE_BOOKING_STATUSES is imported from constants
 
 const mapServiceRow = (s: {
   serviceid: number
@@ -111,7 +110,7 @@ export const getBusySlots = async (sitterId: number, dateString: string) => {
     where: {
       sitterid: sitterId,
       bookingstatus: {
-        in: ['pending', 'waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment'],
+        in: ACTIVE_BOOKING_STATUSES,
       },
       // เช็คเวลาที่เหลื่อมกัน
       starttime: { lte: endOfDay },
