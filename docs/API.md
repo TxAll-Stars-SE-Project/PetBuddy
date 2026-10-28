@@ -1959,10 +1959,77 @@ PATCH /api/sitter/payment-info
 ```
 
 ### Response 400 Bad Request
+สามารถเกิดขึ้นได้ในกรณี validation ดังต่อไปนี้:
+
+* **ไม่ระบุชื่อบัญชี หรือส่งค่าว่าง (POST):**
+```json
+{
+  "success": false,
+  "message": "กรุณาระบุชื่อบัญชี"
+}
+```
+
+* **ไม่แนบไฟล์รูปภาพ QR Code (POST):**
+```json
+{
+  "success": false,
+  "message": "กรุณาอัปโหลดรูปภาพ QR Code"
+}
+```
+
+* **ระบุชื่อบัญชีเป็นค่าว่าง (PATCH):**
+```json
+{
+  "success": false,
+  "message": "ชื่อบัญชีต้องไม่เป็นค่าว่าง"
+}
+```
+
+* **ชื่อบัญชียาวเกิน 100 ตัวอักษร (POST / PATCH):**
+```json
+{
+  "success": false,
+  "message": "ชื่อบัญชีต้องมีความยาวไม่เกิน 100 ตัวอักษร"
+}
+```
+
+* **ไม่ระบุข้อมูลใด ๆ ที่ต้องการแก้ไข (PATCH):**
+```json
+{
+  "success": false,
+  "message": "กรุณาระบุข้อมูลที่ต้องการแก้ไขอย่างน้อยหนึ่งรายการ"
+}
+```
+
+* **ไฟล์ไม่ใช่รูปภาพ หรือขนาดไฟล์เกิน 5MB:**
 ```json
 {
   "success": false,
   "message": "Invalid file type or size exceeds 5MB limit"
+}
+```
+
+### Response 401 Unauthorized
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+
+### Response 403 Forbidden
+```json
+{
+  "success": false,
+  "message": "Sitter role required"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "success": false,
+  "message": "ไม่พบข้อมูลพี่เลี้ยง"
 }
 ```
 
