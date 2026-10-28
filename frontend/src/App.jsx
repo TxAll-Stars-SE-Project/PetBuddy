@@ -13,6 +13,7 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import OwnerBookingPage from "./pages/OwnerBookingPage.jsx";
 import SitterDashboardPage from "./pages/SitterDashboardPage.jsx";
 import SitterBookingsPage from "./pages/sitter/SitterBookingsPage";
+import CareReportPreviewPage from "./pages/dev/CareReportPreviewPage.jsx"; // TODO(US7-3): ลบพร้อม route /dev/care-report
 import "./styles/global.css";
 
 /* Protected Route: ถ้ายังไม่ล็อกอิน ให้เด้งไป login */
@@ -66,7 +67,11 @@ function AppRoutes() {
         <Route path="/sitter" element={<Navigate to="/sitter/dashboard" replace />} />
         <Route path="/sitter/dashboard" element={<SitterRoute><SitterDashboardPage /></SitterRoute>} />
         <Route path="/sitter/bookings" element={<SitterRoute><SitterBookingsPage /></SitterRoute>} />
-        
+
+        {/* หน้า preview UI ด้วย mock data — มีเฉพาะตอน dev
+            TODO(US7-3 รอบ frontend): ลบ route นี้ + import CareReportPreviewPage ตอนต่อ API จริง */}
+        {import.meta.env.DEV && <Route path="/dev/care-report" element={<CareReportPreviewPage />} />}
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toast />
