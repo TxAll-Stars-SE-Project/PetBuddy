@@ -8,6 +8,9 @@ dotenv.config()
 export const SUPABASE_STORAGE_BUCKET =
   process.env.SUPABASE_STORAGE_BUCKET || 'petbuddy-images'
 
+export const PAY_QR_STORAGE_BUCKET =
+  process.env.PAY_QR_STORAGE_BUCKET || 'Pay_Qr'
+
 let clientInstance: SupabaseClient | null = null
 
 export const getSupabaseClient = (): SupabaseClient => {
