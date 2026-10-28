@@ -1968,6 +1968,56 @@ PATCH /api/sitter/payment-info
 
 ---
 
+
+## 1.3 Delete payment information (Sitter)
+
+ลบข้อมูลบัญชีรับเงินและรูปภาพ QR Code ของพี่เลี้ยง (ล้างค่าในฐานข้อมูลเป็น `null` และลบไฟล์รูปภาพออกจาก Supabase Storage Bucket `Pay_Qr` อัตโนมัติ)
+
+```http
+DELETE /api/sitter/payment-info
+```
+
+* **Header:** `Authorization: Bearer <token>` (role: `sitter`)
+
+### Response 200 OK
+```json
+{
+  "success": true,
+  "message": "ลบข้อมูลการรับเงินสำเร็จ",
+  "data": {
+    "accountName": null,
+    "qrCodeUrl": null,
+    "hasPaymentInfo": false
+  }
+}
+```
+
+### Response 401 Unauthorized
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+
+### Response 403 Forbidden
+```json
+{
+  "success": false,
+  "message": "Sitter role required"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "success": false,
+  "message": "ไม่พบข้อมูลพี่เลี้ยง"
+}
+```
+
+---
+
 # 2. Payment Enhancements & Final Payment (`US 6-2 & US 6-5`)
 
 ---
