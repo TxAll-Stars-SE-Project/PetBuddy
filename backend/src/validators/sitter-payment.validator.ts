@@ -10,15 +10,26 @@ export interface UpdatePaymentInfoInput {
   file?: Express.Multer.File
 }
 
+const isEffectivelyEmpty = (val: string): boolean => {
+  const trimmed = val.trim()
+  if (trimmed === '') return true
+  if (trimmed === '""' || trimmed === "''") return true
+  const lower = trimmed.toLowerCase()
+  if (lower === 'null' || lower === 'undefined') return true
+  return false
+}
+
 export const validateCreatePaymentInfoInput = (
   body: Record<string, unknown> = {},
   file?: Express.Multer.File
 ): CreatePaymentInfoInput => {
-  const accountName = typeof body.accountName === 'string' ? body.accountName.trim() : ''
+  const rawAccountName = typeof body.accountName === 'string' ? body.accountName : ''
 
-  if (!accountName) {
+  if (isEffectivelyEmpty(rawAccountName)) {
     throw new AppError(400, 'MISSING_ACCOUNT_NAME', 'กรุณาระบุชื่อบัญชี')
   }
+
+  const accountName = rawAccountName.trim()
 
   if (accountName.length > 100) {
     throw new AppError(400, 'ACCOUNT_NAME_TOO_LONG', 'ชื่อบัญชีต้องมีความยาวไม่เกิน 100 ตัวอักษร')
@@ -39,7 +50,7 @@ export const validateUpdatePaymentInfoInput = (
 
   let accountName: string | undefined = undefined
   if (hasAccountName) {
-    if (typeof body.accountName !== 'string' || body.accountName.trim() === '') {
+    if (typeof body.accountName !== 'string' || isEffectivelyEmpty(body.accountName)) {
       throw new AppError(400, 'INVALID_ACCOUNT_NAME', 'ชื่อบัญชีต้องไม่เป็นค่าว่าง')
     }
     const trimmed = body.accountName.trim()
