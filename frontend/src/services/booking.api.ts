@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api } from './api';
 import type { Booking, BookingAction, BookingStatus } from '../types/booking';
 
 // interface ApiEnvelope<T> {
@@ -40,7 +40,6 @@ export async function createBooking(payload: {
   endtime: string;
   paymentplan: 'full' | 'deposit';
   note?: string;
-}) {
-  const res = await api.post('/bookings', payload);
-  return res.data;
+}): Promise<Booking> {
+  return await api.post<never, Booking>('/bookings', payload);
 }
