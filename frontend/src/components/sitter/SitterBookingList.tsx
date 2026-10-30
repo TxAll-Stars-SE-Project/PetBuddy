@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import SitterBookingCard from './SitterBookingCard';
 import BookingConfirmModal from './BookingConfirmModal';
+import SitterBookingCard from './SitterBookingCard';
 import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
 import { toast } from '../../utils/toast';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
@@ -39,26 +39,7 @@ export default function SitterBookingList() {
     setError(null);
 
     try {
-      const result = await getSitterBookings();
-      let list: Booking[] = [];
-
-      if (Array.isArray(result)) {
-        list = result;
-      } else if (result && typeof result === 'object') {
-        const raw = result as Record<string, unknown>;
-        if (Array.isArray(raw.data)) {
-          list = raw.data as Booking[];
-        } else if (raw.data && typeof raw.data === 'object') {
-          const inner = raw.data as Record<string, unknown>;
-          if (Array.isArray(inner.data)) {
-            list = inner.data as Booking[];
-          } else if (Array.isArray(inner)) {
-            list = inner as Booking[];
-          }
-        }
-      }
-
-      setBookings(list);
+      setBookings(await getSitterBookings());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
       setBookings([]);
@@ -71,30 +52,28 @@ export default function SitterBookingList() {
     void fetchBookings();
   }, [fetchBookings]);
 
-  const safeBookings = useMemo(() => (Array.isArray(bookings) ? bookings : []), [bookings]);
-
   const sortedBookings = useMemo(
     () =>
-      [...safeBookings].sort(
+      [...bookings].sort(
         (first, second) =>
-          Number(second?.bookingstatus === 'pending') -
-          Number(first?.bookingstatus === 'pending'),
+          Number(second.bookingstatus === 'pending') -
+          Number(first.bookingstatus === 'pending'),
       ),
-    [safeBookings],
+    [bookings],
   );
 
   const filteredBookings =
     activeTab === 'ALL'
       ? sortedBookings
       : sortedBookings.filter((booking) =>
-          booking && statusGroups[activeTab]?.includes(booking.bookingstatus),
+          statusGroups[activeTab].includes(booking.bookingstatus),
         );
 
   const countForTab = (tab: BookingTab) =>
     tab === 'ALL'
-      ? safeBookings.length
-      : safeBookings.filter((booking) =>
-          booking && statusGroups[tab]?.includes(booking.bookingstatus),
+      ? bookings.length
+      : bookings.filter((booking) =>
+          statusGroups[tab].includes(booking.bookingstatus),
         ).length;
 
   const handleRequestConfirm = (booking: Booking, action: BookingAction) => {
@@ -123,20 +102,6 @@ export default function SitterBookingList() {
       const errMsg = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้';
       setError(errMsg);
       toast(errMsg, 'error');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleDirectAction = async (bookingId: number, action: BookingAction) => {
-    setUpdatingId(bookingId);
-    setError(null);
-
-    try {
-      await updateBookingStatus(bookingId, action);
-      await fetchBookings();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้');
     } finally {
       setUpdatingId(null);
     }
@@ -178,7 +143,6 @@ export default function SitterBookingList() {
             <SitterBookingCard
               key={booking.bookingId}
               booking={booking}
-              onAction={handleDirectAction}
               onRequestConfirm={handleRequestConfirm}
               isUpdating={updatingId === booking.bookingId}
             />
