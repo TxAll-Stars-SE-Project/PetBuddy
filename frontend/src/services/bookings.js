@@ -8,6 +8,12 @@ export async function getOwnerBookings(status, { signal } = {}) {
   return res.data.data;
 }
 
+// PATCH /api/bookings/{bookingID} — เจ้าของสัตว์เลี้ยงยกเลิกการจอง (US6-3)
+export async function cancelBooking(bookingId) {
+  const res = await api.patch(`/bookings/${bookingId}`, { action: "cancel" });
+  return res.data.data;
+}
+
 // GET /api/bookings/{bookingID}/payments
 export async function getPaymentSummary(bookingId, { signal } = {}) {
   const res = await api.get(`/bookings/${bookingId}/payments`, { signal });
