@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "../utils/toast.js";
 
 const VALID_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
@@ -20,8 +20,16 @@ function SitterQrUpload({ qrCodeUrl, isEditing, file, error: formError, onSelect
   const [fileError, setFileError] = useState("");
   const [showLightbox, setShowLightbox] = useState(false);
 
-  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
-  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   useEffect(() => { if (!isEditing) setFileError(""); }, [isEditing]);
 
@@ -85,15 +93,7 @@ function SitterQrUpload({ qrCodeUrl, isEditing, file, error: formError, onSelect
           />
           <div
             className={`pet-file-upload-box qr-upload-box${isDragging ? " pet-file-upload-box--dragover" : ""}${error ? " qr-upload-box--error" : ""}`}
-            role="button"
-            tabIndex={0}
             onClick={() => inputRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                inputRef.current?.click();
-              }
-            }}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}

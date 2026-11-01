@@ -246,10 +246,15 @@ function ProfilePage() {
       if (accountName.length > 100) {
         sectionErrors.accountName = "ชื่อบัญชีต้องไม่เกิน 100 ตัวอักษร";
       }
-      // POST /sitter/payment-info ต้องมีทั้งชื่อบัญชีและ QR; PATCH ต้องไม่ล้างชื่อบัญชีให้ว่าง
-      if (!hasPaymentInfo ? (qrFile || accountName) : !accountName) {
-        if (!accountName) sectionErrors.accountName = "กรุณากรอกชื่อบัญชีรับเงิน";
-        if (!hasPaymentInfo && !qrFile) sectionErrors.qrCode = "กรุณาอัปโหลดรูป QR Code";
+      if (!hasPaymentInfo) {
+        // POST /sitter/payment-info ต้องมีทั้งชื่อบัญชีและ QR (ถ้ากรอกอย่างใดอย่างหนึ่งแล้ว)
+        if (qrFile || accountName) {
+          if (!accountName) sectionErrors.accountName = "กรุณากรอกชื่อบัญชีรับเงิน";
+          if (!qrFile) sectionErrors.qrCode = "กรุณาอัปโหลดรูป QR Code";
+        }
+      } else if (!accountName) {
+        // PATCH ต้องไม่ล้างชื่อบัญชีให้ว่าง
+        sectionErrors.accountName = "กรุณากรอกชื่อบัญชีรับเงิน";
       }
     }
 
@@ -275,6 +280,11 @@ function ProfilePage() {
       }
 
       await api.put("/users/me", payload);
+
+      // /users/me บันทึกแล้ว: sync snapshot ทันที เพื่อให้ Cancel ไม่ย้อนกลับเป็นค่าเก่า
+      // ถ้าบันทึกข้อมูลรับเงินล้มเหลวในขั้นถัดไป (ไม่แตะ accountName/qrCodeUrl ที่ใช้เทียบการเปลี่ยนแปลง)
+      setOriginalProfile((prev) => ({ ...prev, ...payload }));
+      if (setUser) setUser({ ...user, ...payload, pets });
 
       // ชื่อบัญชี + QR ส่งแยก endpoint (multipart) หลังบันทึกข้อมูลหลักสำเร็จ
       let savedProfile = profile;
