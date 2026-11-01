@@ -5,7 +5,7 @@ import { sendNewBookingToSitterEmail } from './mail.service.js';
 import { DEPOSIT_RATE } from './payment.service.js';
 import { calculateBookingAmounts } from '../validators/booking.validator.js';
 import { Prisma } from '../generated/prisma/client.js'
-import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js';
+import { ACTIVE_BOOKING_STATUSES, OWNER_CANCELLABLE_BOOKING_STATUSES } from '../constants/booking.constant.js';
 
 interface PetBookingInput {
   petId: number;
@@ -166,4 +166,30 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     depositAmount: depositAmount,
     pets: responsePets
   };
+};
+
+/**
+ * เจ้าของสัตว์เลี้ยงยกเลิกการจองของตัวเอง (US 6-3)
+ * ยกเลิกได้เฉพาะสถานะใน OWNER_CANCELLABLE_BOOKING_STATUSES
+ */
+export const cancelBooking = async (ownerId: number, bookingId: number) => {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    select: { ownerid: true, bookingstatus: true },
+  });
+
+  // ตอบ 404 ทั้งกรณีไม่พบและไม่ใช่เจ้าของ เพื่อไม่เปิดเผยว่ามีการจองนี้อยู่
+  if (!booking || booking.ownerid !== ownerId) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  }
+
+  if (!OWNER_CANCELLABLE_BOOKING_STATUSES.includes(booking.bookingstatus)) {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองปัจจุบันไม่อนุญาตให้ยกเลิก'
+    );
+  }
+
+  return { bookingId, bookingstatus: booking.bookingstatus };
 };
