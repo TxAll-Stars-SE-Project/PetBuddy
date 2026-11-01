@@ -24,7 +24,7 @@ Envelope: สำเร็จ = `{ "status": "success", "data": ... }` หรื�
 |---|---|---|---|
 | `pending` | Sitter Accept | `waiting_payment` | พี่เลี้ยงรับงาน รอการชำระเงิน |
 | `pending` | Sitter Reject | `rejected` | พี่เลี้ยงปฏิเสธคำขอ |
-| `pending` / `waiting_payment` | Owner Cancel (US 6-3) | `cancelled` | ยกเลิกได้ก่อนคอนเฟิร์ม ไม่ต้องคืนเงิน |
+| `pending` / `waiting_payment` / `deposit_paid` | Owner Cancel (US 6-3) | `cancelled` | ยกเลิกได้ก่อนพี่เลี้ยงเริ่มงาน ถ้าจ่ายมัดจำแล้ว (`deposit_paid`) ไม่คืนค่ามัดจำ |
 | `waiting_payment` | Verify สลิป deposit ผ่าน | `deposit_paid` | ชำระมัดจำ 30% ล็อกคิวงานแล้ว |
 | `waiting_payment` | Verify สลิป full ผ่าน | `confirmed` | ชำระเต็มจำนวน 100% ล็อกคิวงานแล้ว |
 | `confirmed` / `deposit_paid` | Sitter Start Service (US 7-2) | `in_progress` | พี่เลี้ยงกด "เริ่มงาน" เมื่อถึงวันนัดหมาย |
@@ -1166,62 +1166,7 @@ GET /api/owner/bookings?status=waiting_payment
 
 ## 2.4 Cancel booking (owner)
 
-เจ้าของสัตว์เลี้ยงกดยกเลิกการจอง
-
-```http
-PATCH /api/owner/bookings/{bookingID}/cancel
-```
-
-* **Header:** `Authorization: Bearer <token>` (role: `owner`)
-* **Path Variables:** `bookingID` (integer)
-
-### Query Examples:
-```http
-PATCH /api/owner/bookings/1/cancel
-```
-
-### Response 200 OK
-```json
-{
-  "status": "success",
-  "data": {
-    "bookingId": 1,
-    "bookingstatus": "cancelled"
-  }
-}
-```
-
-### Response 401 Unauthorized
-```json
-{
-  "status": "error",
-  "message": "Unauthorized"
-}
-```
-
-### Response 403 Forbidden
-```json
-{
-  "status": "error",
-  "message": "Not the owner of this booking"
-}
-```
-
-### Response 404 Not Found
-```json
-{
-  "status": "error",
-  "message": "Booking not found"
-}
-```
-
-### Response 409 Conflict
-```json
-{
-  "status": "error",
-  "message": "Booking cannot be cancelled in current status"
-}
-```
+> **ยกเลิกใช้งาน:** endpoint นี้ถูกแทนที่ด้วย `PATCH /api/bookings/{bookingID}` ดูรายละเอียดที่ **Sprint 3 § 3.1 Cancel booking (Owner)**
 
 ---
 
@@ -2061,29 +2006,29 @@ POST /api/payments
 
 ## 3.1 Cancel booking (Owner)
 
-เจ้าของสัตว์เลี้ยงกดยกเลิกการจองก่อนได้รับการยืนยัน (ยกเลิกได้เฉพาะสถานะ `pending` หรือ `waiting_payment` เท่านั้น โดยไม่มีนโยบายคืนเงินเมื่อเข้าสู่สถานะ `deposit_paid` หรือ `confirmed` แล้ว)
+เจ้าของสัตว์เลี้ยงกดยกเลิกการจองของตัวเองก่อนพี่เลี้ยงเริ่มงาน ยกเลิกได้เฉพาะสถานะ `pending`, `waiting_payment` หรือ `deposit_paid` เท่านั้น
+ถ้ายกเลิกตอน `deposit_paid` จะ **ไม่มีการคืนค่ามัดจำ** เมื่อยกเลิกสำเร็จระบบจะส่งอีเมลแจ้งพี่เลี้ยง
 
 ```http
-PATCH /api/bookings/{bookingID}/cancel
+PATCH /api/bookings/{bookingID}
 ```
-*(หรือ `PATCH /api/owner/bookings/{bookingID}/cancel`)*
 
 * **Header:** `Authorization: Bearer <token>` (role: `owner` ของการจองนี้)
+* **Content-Type:** `application/json`
 * **Path Variables:** `bookingID` (integer)
 
 ### Request Body:
 ```json
 {
-  "reason": "ติดธุระด่วน ไม่สะดวกตามวันเวลาดังกล่าว"
+  "action": "cancel"
 }
 ```
-*(reason: string, optional)*
+*(action: string, required, ต้องเป็น `"cancel"`)*
 
 ### Response 200 OK
 ```json
 {
   "status": "success",
-  "message": "ยกเลิกการจองเรียบร้อยแล้ว",
   "data": {
     "bookingId": 1,
     "bookingstatus": "cancelled"
@@ -2095,15 +2040,45 @@ PATCH /api/bookings/{bookingID}/cancel
 ```json
 {
   "status": "error",
-  "message": "Cannot cancel booking after it has been confirmed or deposit paid"
+  "error": "INVALID_ACTION",
+  "message": "Invalid action"
+}
+```
+*(หรือ `INVALID_BOOKING_ID` เมื่อ `bookingID` ไม่ถูกต้อง)*
+
+### Response 401 Unauthorized
+```json
+{
+  "status": "error",
+  "message": "Unauthorized"
 }
 ```
 
 ### Response 403 Forbidden
+ผู้ใช้ที่ไม่ใช่ role `owner`
+```json
+{
+  "error": "FORBIDDEN"
+}
+```
+
+### Response 404 Not Found
+ไม่พบการจอง หรือการจองนี้ไม่ใช่ของเจ้าของที่ล็อกอินอยู่ (ตอบเหมือนกันเพื่อไม่เปิดเผยว่ามีการจองนี้อยู่)
 ```json
 {
   "status": "error",
-  "message": "You are not the owner of this booking"
+  "error": "BOOKING_NOT_FOUND",
+  "message": "Booking not found"
+}
+```
+
+### Response 409 Conflict
+สถานะปัจจุบันยกเลิกไม่ได้ (เช่น `confirmed`, `in_progress`, `completed`, `rejected`, `cancelled`) หรือสถานะเปลี่ยนไประหว่างดำเนินการ
+```json
+{
+  "status": "error",
+  "error": "INVALID_STATUS_TRANSITION",
+  "message": "ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองปัจจุบันไม่อนุญาตให้ยกเลิก"
 }
 ```
 
