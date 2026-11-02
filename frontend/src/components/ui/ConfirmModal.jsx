@@ -15,6 +15,7 @@ import React from "react";
  * @param {boolean} [props.isLoading=false] - Whether confirmation is currently processing.
  * @param {Function} props.onConfirm - Callback when user confirms.
  * @param {Function} props.onCancel - Callback when user cancels or closes.
+ * @param {React.ReactNode} [props.children] - Optional extra content (e.g. a summary or notice) shown between the message and the buttons.
  */
 export default function ConfirmModal({
   title = "ยืนยันการลบ",
@@ -25,6 +26,7 @@ export default function ConfirmModal({
   isLoading = false,
   onConfirm,
   onCancel,
+  children,
 }) {
   return (
     <div
@@ -77,6 +79,8 @@ export default function ConfirmModal({
             </p>
           </div>
         </div>
+
+        {children}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">

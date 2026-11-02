@@ -3,6 +3,7 @@ import { getWelcomeEmailHtml } from '../templates/welcome-email.template.js'
 import { getPasswordResetEmailHtml } from '../templates/password-reset-email.template.js'
 import { getBookingStatusEmailHtml } from '../templates/booking-status-email.template.js'
 import { getNewBookingEmailHtml } from '../templates/new-booking-email.template.js';
+import { getBookingCancelledEmailHtml } from '../templates/booking-cancelled-email.template.js'
 
 interface WelcomeEmailParams {
   email: string
@@ -234,6 +235,65 @@ export const sendBookingStatusNotificationEmail = async (
   } catch (error) {
     console.error(
       `[MailService] Failed to send booking status notification email to ${params.toEmail}:`,
+      error
+    )
+    return false
+  }
+}
+
+// ==========================================
+// แจ้งเตือน Sitter เมื่อ Pet Owner ยกเลิกการจอง (US 6-3)
+// ==========================================
+
+export interface BookingCancelledNotificationParams {
+  sitterEmail: string
+  sitterUsername: string
+  ownerName: string
+  serviceName: string
+  bookingId: number
+  startTime: string
+  endTime: string
+  petNames: string[]
+  totalPrice: number | string
+  depositPaid: boolean
+}
+
+/**
+ * ส่งอีเมลแจ้งพี่เลี้ยงว่าเจ้าของสัตว์เลี้ยงยกเลิกการจอง
+ * เป็นแบบ Non-blocking พร้อม Safe fallback เพื่อไม่ให้กระทบกระบวนการหลักของ API
+ */
+export const sendBookingCancelledToSitterEmail = async (
+  params: BookingCancelledNotificationParams
+): Promise<boolean> => {
+  try {
+    const transporter = getMailTransporter()
+
+    if (!transporter) {
+      console.warn(
+        `[MailService] SMTP credentials are not configured. Skipping booking cancelled email to: ${params.sitterEmail}`
+      )
+      return false
+    }
+
+    const fromAddress = process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
+
+    const textContent = `สวัสดีคุณ ${params.sitterUsername}!\n\nคุณ ${params.ownerName} ได้ยกเลิกการจอง #${params.bookingId} (${params.serviceName})\n${params.depositPaid ? 'ค่ามัดจำที่ชำระแล้วจะไม่ถูกคืนตามนโยบายของ PetBuddy' : 'การจองนี้ยังไม่มีการชำระเงิน'}\n\nขอบคุณที่ใช้บริการ PetBuddy!`
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.sitterEmail,
+      subject: `🐾 การจองถูกยกเลิก (#${params.bookingId})`,
+      text: textContent,
+      html: getBookingCancelledEmailHtml(params),
+    })
+
+    console.log(
+      `[MailService] Booking cancelled email sent successfully to ${params.sitterEmail} (Message ID: ${info.messageId})`
+    )
+    return true
+  } catch (error) {
+    console.error(
+      `[MailService] Failed to send booking cancelled email to ${params.sitterEmail}:`,
       error
     )
     return false

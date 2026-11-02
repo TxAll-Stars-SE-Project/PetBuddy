@@ -38,10 +38,17 @@ const serviceTypeLabels: Record<Booking['service']['servicetype'], string> = {
   daycare: 'รับดูแลช่วงกลางวัน',
 };
 
+const speciesLabels: Record<string, string> = {
+  dog: 'สุนัข',
+  cat: 'แมว',
+  bird: 'นก',
+  exotic: 'สัตว์พิเศษ',
+};
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return value;
+    return value || '-';
   }
 
   return new Intl.DateTimeFormat('th-TH', {
@@ -50,10 +57,25 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-type ExtendedPet = { name?: string; petName?: string; type?: string; species?: string };
-interface ExtendedBooking extends Booking {
-  serviceName?: string;
-  ownerName?: string;
+function getPetDetails(booking: Booking): string {
+  if (booking.pets?.length) {
+    return booking.pets
+      .map((pet) => {
+        const name = pet.petName || pet.name || 'สัตว์เลี้ยง';
+        const species = pet.species || pet.type;
+        const details = [
+          species ? speciesLabels[species] || species : '',
+          pet.breed || '',
+        ].filter(Boolean);
+        return details.length ? `${name} (${details.join(', ')})` : name;
+      })
+      .join(', ');
+  }
+
+  if (booking.petName) {
+    return `${booking.petName}${booking.petType ? ` (${booking.petType})` : ''}`;
+  }
+  return 'ไม่มีข้อมูลสัตว์เลี้ยง';
 }
 
 export default function SitterBookingCard({
@@ -62,60 +84,48 @@ export default function SitterBookingCard({
   onRequestConfirm,
   isUpdating = false,
 }: SitterBookingCardProps) {
-  const b = booking as ExtendedBooking;
-  const rawPets = Array.isArray(b.pets) ? (b.pets as ExtendedPet[]) : [];
-
-  const petDetails = rawPets.length
-    ? rawPets
-        .map(
-          (pet) =>
-            `${pet.name || pet.petName || 'สัตว์เลี้ยง'}${
-              pet.type || pet.species ? ` (${pet.type || pet.species})` : ''
-            }`
-        )
-        .join(', ')
-    : typeof b.petName === 'string'
-      ? `${b.petName}${typeof b.petType === 'string' ? ` (${b.petType})` : ''}`
-      : 'ไม่มีข้อมูลสัตว์เลี้ยง';
-
-  const serviceTitle = b.service?.title || b.serviceName || 'บริการสัตว์เลี้ยง';
-  const serviceTypeKey = b.service?.servicetype;
-  const serviceTypeLabel = serviceTypeKey && serviceTypeLabels[serviceTypeKey]
-    ? serviceTypeLabels[serviceTypeKey]
-    : serviceTypeKey || 'บริการสัตว์เลี้ยง';
-
-  const ownerName = b.owner?.fullname || b.ownerName || 'ไม่ระบุชื่อ';
-  const ownerPhone = b.owner?.phone || '-';
-  const statusKey = (b.bookingstatus || 'pending') as BookingStatus;
-  const totalPriceNum = Number(b.totalprice) || 0;
+  const serviceTypeLabel =
+    serviceTypeLabels[booking.service.servicetype] || booking.service.servicetype;
+  const totalPrice = Number(booking.totalprice) || 0;
+  const runAction = (action: BookingAction) => {
+    if (onRequestConfirm) {
+      onRequestConfirm(booking, action);
+    } else {
+      onAction?.(booking.bookingId, action);
+    }
+  };
 
   return (
     <article className="sitter-booking-card">
       <header className="sitter-booking-card__header">
         <div>
-          <h2 className="sitter-booking-card__title">{serviceTitle}</h2>
-          <p className="sitter-booking-card__service-type">{serviceTypeLabel}</p>
+          <h2 className="sitter-booking-card__title">
+            {booking.service.title || booking.serviceName || 'บริการสัตว์เลี้ยง'}
+          </h2>
+          <p className="sitter-booking-card__service-type">
+            {serviceTypeLabel || 'บริการสัตว์เลี้ยง'}
+          </p>
         </div>
         <span
-          className={`sitter-booking-card__status sitter-booking-card__status--${statusKey}`}
+          className={`sitter-booking-card__status sitter-booking-card__status--${booking.bookingstatus}`}
         >
           <span className="sitter-booking-card__status-symbol" aria-hidden="true">
-            {statusSymbols[statusKey] || '●'}
+            {statusSymbols[booking.bookingstatus]}
           </span>
-          {statusLabels[statusKey] || statusKey}
+          {statusLabels[booking.bookingstatus]}
         </span>
       </header>
 
       <dl className="sitter-booking-card__details">
         <div className="sitter-booking-card__detail">
           <dt>เจ้าของ</dt>
-          <dd>{ownerName}</dd>
+          <dd>{booking.owner.fullname || booking.ownerName || 'ไม่ระบุชื่อ'}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>เบอร์โทร</dt>
           <dd>
-            {ownerPhone !== '-' ? (
-              <a href={`tel:${ownerPhone}`}>{ownerPhone}</a>
+            {booking.owner.phone ? (
+              <a href={`tel:${booking.owner.phone}`}>{booking.owner.phone}</a>
             ) : (
               '-'
             )}
@@ -123,27 +133,27 @@ export default function SitterBookingCard({
         </div>
         <div className="sitter-booking-card__detail sitter-booking-card__detail--wide">
           <dt>สัตว์เลี้ยง</dt>
-          <dd>{petDetails}</dd>
+          <dd>{getPetDetails(booking)}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>เริ่ม</dt>
-          <dd>{formatDateTime(b.starttime || '')}</dd>
+          <dd>{formatDateTime(booking.starttime)}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>สิ้นสุด</dt>
-          <dd>{formatDateTime(b.endtime || '')}</dd>
+          <dd>{formatDateTime(booking.endtime)}</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>ราคารวม</dt>
-          <dd>{totalPriceNum.toLocaleString('th-TH')} บาท</dd>
+          <dd>{totalPrice.toLocaleString('th-TH')} บาท</dd>
         </div>
         <div className="sitter-booking-card__detail">
           <dt>แผนชำระเงิน</dt>
-          <dd>{b.paymentplan === 'full' ? 'ชำระเต็มจำนวน' : 'ชำระมัดจำ'}</dd>
+          <dd>{booking.paymentplan === 'full' ? 'ชำระเต็มจำนวน' : 'ชำระมัดจำ'}</dd>
         </div>
         <div className="sitter-booking-card__detail sitter-booking-card__detail--wide">
           <dt>หมายเหตุ</dt>
-          <dd>{b.note?.trim() || 'ไม่มีหมายเหตุ'}</dd>
+          <dd>{booking.note?.trim() || 'ไม่มีหมายเหตุ'}</dd>
         </div>
       </dl>
 
@@ -153,11 +163,7 @@ export default function SitterBookingCard({
             className="sitter-booking-card__button sitter-booking-card__button--reject"
             type="button"
             disabled={isUpdating}
-            onClick={() =>
-              onRequestConfirm
-                ? onRequestConfirm(booking, 'reject')
-                : onAction?.(booking.bookingId, 'reject')
-            }
+            onClick={() => runAction('reject')}
           >
             ปฏิเสธ (Reject)
           </button>
@@ -165,11 +171,7 @@ export default function SitterBookingCard({
             className="sitter-booking-card__button sitter-booking-card__button--accept"
             type="button"
             disabled={isUpdating}
-            onClick={() =>
-              onRequestConfirm
-                ? onRequestConfirm(booking, 'accept')
-                : onAction?.(booking.bookingId, 'accept')
-            }
+            onClick={() => runAction('accept')}
           >
             รับงาน (Accept)
           </button>
@@ -181,11 +183,7 @@ export default function SitterBookingCard({
             className="sitter-booking-card__button sitter-booking-card__button--complete"
             type="button"
             disabled={isUpdating}
-            onClick={() =>
-              onRequestConfirm
-                ? onRequestConfirm(booking, 'complete')
-                : onAction?.(booking.bookingId, 'complete')
-            }
+            onClick={() => runAction('complete')}
           >
             ส่งงานเสร็จสิ้น (Complete Job)
           </button>

@@ -12,3 +12,13 @@ export const ACTIVE_BOOKING_STATUSES: booking_status[] = [
   'in_progress',
   'waiting_final_payment',
 ]
+
+/**
+ * Statuses from which a Pet Owner may cancel their own booking (US 6-3).
+ * Cancelling after the deposit is paid (deposit_paid) is allowed but the deposit is not refunded.
+ */
+export const OWNER_CANCELLABLE_BOOKING_STATUSES: booking_status[] = [
+  'pending',
+  'waiting_payment',
+  'deposit_paid',
+]

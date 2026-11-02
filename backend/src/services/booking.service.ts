@@ -1,11 +1,11 @@
 import prisma from '../utils/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { payment_plan } from '../generated/prisma/enums.js';
-import { sendNewBookingToSitterEmail } from './mail.service.js';
+import { sendBookingCancelledToSitterEmail, sendNewBookingToSitterEmail } from './mail.service.js';
 import { DEPOSIT_RATE } from './payment.service.js';
 import { calculateBookingAmounts } from '../validators/booking.validator.js';
 import { Prisma } from '../generated/prisma/client.js'
-import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js';
+import { ACTIVE_BOOKING_STATUSES, OWNER_CANCELLABLE_BOOKING_STATUSES } from '../constants/booking.constant.js';
 
 interface PetBookingInput {
   petId: number;
@@ -166,4 +166,69 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     depositAmount: depositAmount,
     pets: responsePets
   };
+};
+
+/**
+ * เจ้าของสัตว์เลี้ยงยกเลิกการจองของตัวเอง (US 6-3)
+ * ยกเลิกได้เฉพาะสถานะใน OWNER_CANCELLABLE_BOOKING_STATUSES
+ */
+export const cancelBooking = async (ownerId: number, bookingId: number) => {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    include: {
+      services: true,
+      petowner: { include: { USER: true } },
+      petsitter: { include: { USER: true } },
+      bookingdetail: { include: { pet: true } },
+    },
+  });
+
+  // ตอบ 404 ทั้งกรณีไม่พบและไม่ใช่เจ้าของ เพื่อไม่เปิดเผยว่ามีการจองนี้อยู่
+  if (!booking || booking.ownerid !== ownerId) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  }
+
+  if (!OWNER_CANCELLABLE_BOOKING_STATUSES.includes(booking.bookingstatus)) {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองปัจจุบันไม่อนุญาตให้ยกเลิก'
+    );
+  }
+
+  // Atomic conditional update: เปลี่ยนเฉพาะเมื่อสถานะยังเป็นค่าที่อ่านมา ป้องกัน race กับพี่เลี้ยง/การชำระเงิน
+  const result = await prisma.booking.updateMany({
+    where: {
+      bookingid: bookingId,
+      ownerid: ownerId,
+      bookingstatus: booking.bookingstatus,
+    },
+    data: { bookingstatus: 'cancelled' },
+  });
+
+  if (result.count === 0) {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองถูกเปลี่ยนแปลงไปแล้ว'
+    );
+  }
+
+  const sitterUser = booking.petsitter?.USER;
+  if (sitterUser?.email) {
+    sendBookingCancelledToSitterEmail({
+      sitterEmail: sitterUser.email,
+      sitterUsername: sitterUser.username,
+      ownerName: booking.petowner?.USER?.username || 'ลูกค้า',
+      serviceName: booking.services?.servicename || 'บริการสัตว์เลี้ยง',
+      bookingId,
+      startTime: booking.starttime.toISOString(),
+      endTime: booking.endtime.toISOString(),
+      petNames: booking.bookingdetail.map((bd) => bd.pet.name),
+      totalPrice: Number(booking.totalprice),
+      depositPaid: booking.bookingstatus === 'deposit_paid',
+    }).catch(err => console.error('Email error:', err));
+  }
+
+  return { bookingId, bookingstatus: 'cancelled' as const };
 };
