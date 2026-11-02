@@ -1,11 +1,11 @@
 import prisma from '../utils/prisma.js';
 import { AppError } from '../utils/errors.js';
 import { payment_plan } from '../generated/prisma/enums.js';
-import { sendNewBookingToSitterEmail } from './mail.service.js';
+import { sendBookingCancelledToSitterEmail, sendNewBookingToSitterEmail } from './mail.service.js';
 import { DEPOSIT_RATE } from './payment.service.js';
 import { calculateBookingAmounts } from '../validators/booking.validator.js';
 import { Prisma } from '../generated/prisma/client.js'
-import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js';
+import { ACTIVE_BOOKING_STATUSES, OWNER_CANCELLABLE_BOOKING_STATUSES } from '../constants/booking.constant.js';
 
 interface PetBookingInput {
   petId: number;
@@ -168,77 +168,67 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
   };
 };
 
-export const updateServiceStatus = async (sitterId: number, bookingId: number, action: string) => {
-  // 1. หาข้อมูล Booking
+/**
+ * เจ้าของสัตว์เลี้ยงยกเลิกการจองของตัวเอง (US 6-3)
+ * ยกเลิกได้เฉพาะสถานะใน OWNER_CANCELLABLE_BOOKING_STATUSES
+ */
+export const cancelBooking = async (ownerId: number, bookingId: number) => {
   const booking = await prisma.booking.findUnique({
     where: { bookingid: bookingId },
     include: {
+      services: true,
       petowner: { include: { USER: true } },
-      services: true
-    }
+      petsitter: { include: { USER: true } },
+      bookingdetail: { include: { pet: true } },
+    },
   });
 
-  if (!booking) {
+  // ตอบ 404 ทั้งกรณีไม่พบและไม่ใช่เจ้าของ เพื่อไม่เปิดเผยว่ามีการจองนี้อยู่
+  if (!booking || booking.ownerid !== ownerId) {
     throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
   }
 
-  // 2. ตรวจสอบสิทธิ์ (ต้องเป็นพี่เลี้ยงที่รับงานนี้เท่านั้น)
-  if (booking.sitterid !== sitterId) {
-    throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking');
+  if (!OWNER_CANCELLABLE_BOOKING_STATUSES.includes(booking.bookingstatus)) {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองปัจจุบันไม่อนุญาตให้ยกเลิก'
+    );
   }
 
-  let newStatus = '';
-
-  // 3. State Machine Logic ตาม API Doc
-  if (action === 'start') {
-    // 3.1 เช็คสถานะ
-    if (booking.bookingstatus !== 'confirmed' && booking.bookingstatus !== 'deposit_paid') {
-      throw new AppError(400, 'INVALID_STATUS', 'Booking must be confirmed or deposit paid before starting');
-    }
-    
-    // 3.2 เช็คเวลา (ต้องถึงเวลาเริ่มงานแล้ว)
-    const now = new Date();
-    const startDate = new Date(booking.starttime);
-    if (now < startDate) {
-      throw new AppError(400, 'EARLY_START', 'Cannot start service before the scheduled start date');
-    }
-
-    newStatus = 'in_progress';
-
-  } else if (action === 'complete') {
-    // 3.3 เช็คสถานะ
-    if (booking.bookingstatus !== 'in_progress') {
-      // ใช้ข้อความเป๊ะๆ ตามสเปก
-      throw new AppError(400, 'INVALID_STATUS', 'Cannot complete service before starting. Current status must be in_progress.');
-    }
-    
-    // 3.4 เช็คแผนการชำระเงิน
-    newStatus = booking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment';
-    
-  } else {
-    throw new AppError(400, 'INVALID_ACTION', 'Action must be "start" or "complete"');
-  }
-
-  // 4. อัปเดตสถานะลง Database
-  const updatedBooking = await prisma.booking.update({
-    where: { bookingid: bookingId },
-    data: { 
-      bookingstatus: newStatus as any
-    }
+  // Atomic conditional update: เปลี่ยนเฉพาะเมื่อสถานะยังเป็นค่าที่อ่านมา ป้องกัน race กับพี่เลี้ยง/การชำระเงิน
+  const result = await prisma.booking.updateMany({
+    where: {
+      bookingid: bookingId,
+      ownerid: ownerId,
+      bookingstatus: booking.bookingstatus,
+    },
+    data: { bookingstatus: 'cancelled' },
   });
 
-  // 4. ส่งอีเมลแจ้งเตือน Pet Owner (เดี๋ยวเราไปเขียนฟังก์ชันนี้ใน mail.service.ts กันต่อ)
-  /*
-  if (action === 'start') {
-    sendServiceStartedEmail({ ... });
-  } else if (action === 'complete') {
-    sendServiceCompletedEmail({ ... });
+  if (result.count === 0) {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'ไม่สามารถยกเลิกการจองได้ เนื่องจากสถานะการจองถูกเปลี่ยนแปลงไปแล้ว'
+    );
   }
-  */
 
-  return {
-    bookingId: updatedBooking.bookingid,
-    bookingstatus: updatedBooking.bookingstatus,
-    action: action
-  };
+  const sitterUser = booking.petsitter?.USER;
+  if (sitterUser?.email) {
+    sendBookingCancelledToSitterEmail({
+      sitterEmail: sitterUser.email,
+      sitterUsername: sitterUser.username,
+      ownerName: booking.petowner?.USER?.username || 'ลูกค้า',
+      serviceName: booking.services?.servicename || 'บริการสัตว์เลี้ยง',
+      bookingId,
+      startTime: booking.starttime.toISOString(),
+      endTime: booking.endtime.toISOString(),
+      petNames: booking.bookingdetail.map((bd) => bd.pet.name),
+      totalPrice: Number(booking.totalprice),
+      depositPaid: booking.bookingstatus === 'deposit_paid',
+    }).catch(err => console.error('Email error:', err));
+  }
+
+  return { bookingId, bookingstatus: 'cancelled' as const };
 };

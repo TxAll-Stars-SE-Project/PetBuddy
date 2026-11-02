@@ -1,61 +1,35 @@
-import { api } from './api.js';
+import { api } from './api';
 import type { Booking, BookingAction, BookingStatus } from '../types/booking';
 
+// interface ApiEnvelope<T> {
+//   status: 'success';
+//   data: T;
+// }
+
+interface BookingStatusUpdate {
+  bookingId: number;
+  bookingstatus: BookingStatus;
+}
+
 export async function getSitterBookings(status?: BookingStatus): Promise<Booking[]> {
-  const res = await api.get('/sitter/bookings', {
+  const bookings = await api.get<never, Booking[]>('/sitter/bookings', {
     params: { status },
   });
-
-  // รองรับทั้ง Response ที่มาจาก Axios ปกติ (res.data.data) และแบบที่แกะ Envelope แล้ว (res.data หรือ res)
-  if (Array.isArray(res)) {
-    return res;
+  
+  if (!Array.isArray(bookings)) {
+    throw new Error('รูปแบบข้อมูลรายการจองไม่ถูกต้อง');
   }
-
-  if (res && typeof res === 'object') {
-    const raw = res as unknown as Record<string, unknown>;
-    // กรณี res.data เป็น array ตรงๆ
-    if (Array.isArray(raw.data)) {
-      return raw.data as Booking[];
-    }
-    // กรณี res.data เป็น envelope { status: 'success', data: [...] } -> raw.data.data
-    if (raw.data && typeof raw.data === 'object') {
-      const inner = raw.data as Record<string, unknown>;
-      if (Array.isArray(inner.data)) {
-        return inner.data as Booking[];
-      }
-      if (Array.isArray(inner)) {
-        return inner as Booking[];
-      }
-    }
-  }
-
-  return [];
+  return bookings;
 }
 
 export async function updateBookingStatus(
   bookingId: number,
-  action: BookingAction,
-): Promise<{ bookingId: number; bookingstatus: BookingStatus }> {
-  type BookingStatusUpdate = {
-    bookingId: number;
-    bookingstatus: BookingStatus;
-  };
-
-  const res = await api.patch('/sitter/bookings/' + bookingId, { action });
-
-  if (res && typeof res === 'object') {
-    const raw = res as unknown as Record<string, unknown>;
-    if (raw.data && typeof raw.data === 'object') {
-      const inner = raw.data as Record<string, unknown>;
-      if (inner.data && typeof inner.data === 'object') {
-        return inner.data as BookingStatusUpdate;
-      }
-      return inner as BookingStatusUpdate;
-    }
-    return raw as BookingStatusUpdate;
-  }
-
-  return res as BookingStatusUpdate;
+  action: BookingAction
+): Promise<BookingStatusUpdate> {
+  return await api.patch<never, BookingStatusUpdate>(
+    `/sitter/bookings/${bookingId}`,
+    { action }
+  );
 }
 
 export async function createBooking(payload: {
@@ -66,7 +40,6 @@ export async function createBooking(payload: {
   endtime: string;
   paymentplan: 'full' | 'deposit';
   note?: string;
-}) {
-  const res = await api.post('/bookings', payload);
-  return res.data;
+}): Promise<Booking> {
+  return await api.post<never, Booking>('/bookings', payload);
 }

@@ -25,18 +25,26 @@ export interface OwnerInfo {
   ownerId: number;
   fullname: string;
   phone: string;
+  email?: string;
 }
 
 export interface ServiceInfo {
   serviceId: number;
   servicetype: ServiceType;
   title: string;
+  price?: number;
 }
 
 export interface BookingPetInfo {
-  id: number;
-  name: string;
-  type: string;
+  petId: number;
+  petName: string;
+  petNote: string | null;
+  species: Species | null;
+  breed: string | null;
+  imageUrl: string | null;
+  id?: number;
+  name?: string;
+  type?: string;
 }
 
 export interface Booking {
@@ -49,6 +57,8 @@ export interface Booking {
   note?: string;
   petName?: string;
   petType?: string;
+  ownerName?: string;
+  serviceName?: string;
   owner: OwnerInfo;
   pets?: BookingPetInfo[];
   service: ServiceInfo;
