@@ -9,6 +9,25 @@ import {
 import * as paymentService from '../../services/payment.service.js'
 
 /**
+ * Centralized error response handler for payment controller endpoints.
+ */
+const handlePaymentControllerError = (
+  res: Response,
+  error: unknown,
+  context: string
+): void => {
+  if (error instanceof AppError) {
+    res.status(error.statusCode).json({
+      status: 'error',
+      message: error.message,
+    })
+    return
+  }
+  console.error(`[PaymentController] ${context}:`, error)
+  res.status(500).json({ status: 'error', message: 'Internal server error' })
+}
+
+/**
  * GET /api/bookings/:bookingID/payments
  * ดึงสรุปยอดชำระเงินและประวัติสลิปของการจอง
  */
@@ -24,15 +43,7 @@ export const getPaymentSummaryController = async (
 
     res.status(200).json({ status: 'success', data: summary })
   } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({
-        status: 'error',
-        message: error.message,
-      })
-      return
-    }
-    console.error('[PaymentController] Error getting payment summary:', error)
-    res.status(500).json({ status: 'error', message: 'Internal server error' })
+    handlePaymentControllerError(res, error, 'Error getting payment summary')
   }
 }
 
@@ -56,15 +67,7 @@ export const submitPaymentSlipController = async (
 
     res.status(201).json({ status: 'success', data: result })
   } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({
-        status: 'error',
-        message: error.message,
-      })
-      return
-    }
-    console.error('[PaymentController] Error submitting payment slip:', error)
-    res.status(500).json({ status: 'error', message: 'Internal server error' })
+    handlePaymentControllerError(res, error, 'Error submitting payment slip')
   }
 }
 
@@ -90,14 +93,6 @@ export const verifyPaymentSlipController = async (
 
     res.status(200).json({ status: 'success', data: result })
   } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({
-        status: 'error',
-        message: error.message,
-      })
-      return
-    }
-    console.error('[PaymentController] Error verifying payment slip:', error)
-    res.status(500).json({ status: 'error', message: 'Internal server error' })
+    handlePaymentControllerError(res, error, 'Error verifying payment slip')
   }
 }
