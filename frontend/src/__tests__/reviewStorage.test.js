@@ -70,4 +70,15 @@ test('getBookingReviewState', async (t) => {
     assert.equal(res.isUrgent, true);
     assert.ok(res.daysRemaining <= 2);
   });
+
+  await t.test('supports alternative casing for endtime (endTime / end_time)', () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const resCamel = getBookingReviewState({ bookingId: 50, bookingstatus: 'completed', endTime: twoDaysAgo }, {});
+    assert.equal(resCamel.state, 'pending_review');
+    assert.equal(resCamel.canReview, true);
+
+    const resSnake = getBookingReviewState({ bookingId: 51, bookingstatus: 'completed', end_time: twoDaysAgo }, {});
+    assert.equal(resSnake.state, 'pending_review');
+    assert.equal(resSnake.canReview, true);
+  });
 });

@@ -78,9 +78,10 @@ export function getBookingReviewState(booking, savedReviews = null) {
     };
   }
 
-  // 2. ตรวจสอบเงื่อนไขระยะเวลา 14 วัน นับจาก endtime (เวลาสิ้นสุดงาน)
+  // 2. ตรวจสอบเงื่อนไขระยะเวลา 14 วัน นับจาก endtime (รองรับทั้ง endtime, endTime, end_time)
   const now = Date.now();
-  const endTime = new Date(booking.endtime).getTime();
+  const rawEndTime = booking.endtime || booking.endTime || booking.end_time;
+  const endTime = rawEndTime ? new Date(rawEndTime).getTime() : NaN;
   const isValidDate = !Number.isNaN(endTime);
 
   // ถ้าเวลาผ่านไปเกิน 14 วัน

@@ -94,17 +94,17 @@ export default function ReviewModal({
           comment,
         });
       } catch (apiErr) {
-        // หาก backend ส่ง error message กลับมา (เช่น 400 Bad Request, 409 Conflict)
+        const status = apiErr.response?.status;
         const message = apiErr.response?.data?.message;
-        if (message) {
+
+        // กรณี dev mode ที่ backend endpoint ยังไม่ได้เปิดให้บริการ (404 / Route not found)
+        if (status === 404) {
+          console.warn("[ReviewModal] /api/reviews endpoint not found (404), falling back to local review cache");
+        } else if (message) {
+          // หาก backend ส่ง error message กลับมา (เช่น 400 Bad Request, 409 Conflict)
           toast(message, "error");
           setIsSubmitting(false);
           return;
-        }
-
-        // กรณี dev mode ที่ backend endpoint ยังไม่ได้เปิดให้บริการ (404 / Network error)
-        if (apiErr.response?.status === 404) {
-          console.warn("[ReviewModal] /api/reviews not found (404), falling back to local review cache");
         } else {
           throw apiErr;
         }
@@ -179,11 +179,17 @@ export default function ReviewModal({
             <label className="review-section-label">
               {isViewMode ? "คะแนนที่คุณให้" : "คะแนนความพึงพอใจ"}
             </label>
-            <div className={`review-stars-group ${isViewMode ? "review-stars-group--readonly" : ""}`}>
+            <div
+              className={`review-stars-group ${isViewMode ? "review-stars-group--readonly" : ""}`}
+              role="radiogroup"
+              aria-label={isViewMode ? "คะแนนที่คุณให้" : "คะแนนความพึงพอใจ"}
+            >
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   type="button"
+                  role="radio"
+                  aria-checked={star === rating}
                   className={`review-star-btn ${star <= currentScore ? "is-active" : ""}`}
                   onClick={() => !isViewMode && setRating(star)}
                   onMouseEnter={() => !isViewMode && setHoverRating(star)}
