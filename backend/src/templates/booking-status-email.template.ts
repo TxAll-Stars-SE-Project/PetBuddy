@@ -2,7 +2,7 @@ export interface BookingStatusEmailTemplateProps {
   ownerUsername: string
   sitterUsername: string
   serviceName: string
-  action: 'accept' | 'reject' | 'complete'
+  action: 'accept' | 'reject' | 'start' | 'complete'
   bookingId: number
   startTime: string
   endTime: string

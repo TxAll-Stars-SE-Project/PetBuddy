@@ -148,56 +148,74 @@ export const updateBookingStatusBySitter = async (
   sitterUserId: number,
   bookingId: number,
   action: SitterBookingAction
-): Promise<{ bookingId: number; bookingstatus: string }> => {
-  // 1. ตรวจสอบ Action และกำหนด Status Machine ล่วงหน้า
-  let expectedStatus: booking_status
-  let nextStatus: booking_status
+): Promise<{ bookingId: number; bookingstatus: string, action: string }> => {
+  // 1. ดึงข้อมูล Booking ปัจจุบันมาก่อน (เพื่อให้เช็คเงื่อนไขเรื่องเวลา และ paymentplan ได้)
+  const existingBooking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    select: { sitterid: true, bookingstatus: true, starttime: true, paymentplan: true },
+  });
 
-  if (action === 'accept') {
-    expectedStatus = 'pending'
-    nextStatus = 'waiting_payment'
-  } else if (action === 'reject') {
-    expectedStatus = 'pending'
-    nextStatus = 'rejected'
-  } else if (action === 'complete') {
-    expectedStatus = 'confirmed'
-    nextStatus = 'waiting_final_payment'
-  } else {
-    throw new AppError(400, 'INVALID_ACTION', 'Invalid action')
+  if (!existingBooking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
   }
 
-  // 2. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
+  if (existingBooking.sitterid !== sitterUserId) {
+    throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking');
+  }
+
+  // 2. ตรวจสอบ Action และกำหนด Status Machine ตามเงื่อนไข
+  let nextStatus: booking_status;
+
+  if (action === 'accept') {
+    if (existingBooking.bookingstatus !== 'pending') {
+       throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Booking must be pending to accept');
+    }
+    nextStatus = 'waiting_payment';
+
+  } else if (action === 'reject') {
+    if (existingBooking.bookingstatus !== 'pending') {
+       throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Booking must be pending to reject');
+    }
+    nextStatus = 'rejected';
+
+  } else if (action === 'start') {
+    // กฎของ Start: ต้องเป็น confirmed หรือ deposit_paid
+    if (existingBooking.bookingstatus !== 'confirmed' && existingBooking.bookingstatus !== 'deposit_paid') {
+      throw new AppError(400, 'INVALID_STATUS', 'Booking must be confirmed or deposit paid before starting');
+    }
+    // กฎของ Start: ต้องถึงเวลาเริ่มงานแล้ว
+    const now = new Date();
+    if (now < new Date(existingBooking.starttime)) {
+      throw new AppError(400, 'EARLY_START', 'Cannot start service before the scheduled start date');
+    }
+    nextStatus = 'in_progress';
+
+  } else if (action === 'complete') {
+    // กฎของ Complete: ต้องเป็น in_progress
+    if (existingBooking.bookingstatus !== 'in_progress') {
+       // ข้อความ Error ตรงตามเอกสาร API
+       throw new AppError(400, 'INVALID_STATUS', 'Cannot complete service before starting. Current status must be in_progress.');
+    }
+    // กฎของ Complete: เช็คแผนการเงิน
+    nextStatus = existingBooking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment';
+
+  } else {
+    throw new AppError(400, 'INVALID_ACTION', 'Invalid action');
+  }
+  // 3. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
   const result = await prisma.booking.updateMany({
     where: {
       bookingid: bookingId,
       sitterid: sitterUserId,
-      bookingstatus: expectedStatus,
+      bookingstatus: existingBooking.bookingstatus, // เช็คว่าระหว่างที่เราทำ มีใครมาเปลี่ยน status ตัดหน้าไหม
     },
     data: {
       bookingstatus: nextStatus,
     },
-  })
+  });
 
-  // 3. หากไม่มีแถวใดถูกอัปเดต (count === 0) ตรวจสอบหาสาเหตุเพื่อส่ง HTTP Status ที่แม่นยำ
   if (result.count === 0) {
-    const existingBooking = await prisma.booking.findUnique({
-      where: { bookingid: bookingId },
-      select: { sitterid: true, bookingstatus: true },
-    })
-
-    if (!existingBooking) {
-      throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found')
-    }
-
-    if (existingBooking.sitterid !== sitterUserId) {
-      throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking')
-    }
-
-    throw new AppError(
-      409,
-      'INVALID_STATUS_TRANSITION',
-      'ไม่สามารถดำเนินการได้ เนื่องจากสถานะคำขอจองถูกเปลี่ยนแปลงไปแล้ว หรือสถานะปัจจุบันไม่ถูกต้อง'
-    )
+     throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ไม่สามารถดำเนินการได้ เนื่องจากสถานะคำขอจองถูกเปลี่ยนแปลงไปแล้ว หรือสถานะปัจจุบันไม่ถูกต้อง');
   }
 
   // 4. ส่งอีเมลแจ้งเตือนไปยัง Pet Owner (แบบ Non-blocking safe dispatch)
@@ -207,21 +225,9 @@ export const updateBookingStatusBySitter = async (
       where: { bookingid: bookingId },
       include: {
         services: true,
-        petowner: {
-          include: {
-            USER: true,
-          },
-        },
-        petsitter: {
-          include: {
-            USER: true,
-          },
-        },
-        bookingdetail: {
-          include: {
-            pet: true,
-          },
-        },
+        petowner: { include: { USER: true } },
+        petsitter: { include: { USER: true } },
+        bookingdetail: { include: { pet: true } },
       },
     })
     .then((bookingInfo) => {
@@ -229,15 +235,14 @@ export const updateBookingStatusBySitter = async (
       const sitterUser = bookingInfo?.petsitter?.USER
       if (ownerUser?.email) {
         const petNames = bookingInfo?.bookingdetail.map((bd) => bd.pet.name) || []
-        const formatThaiDateTime = (date: Date): string =>
-          date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+        const formatThaiDateTime = (date: Date): string => date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
 
         sendBookingStatusNotificationEmail({
           toEmail: ownerUser.email,
           ownerUsername: ownerUser.username,
           sitterUsername: sitterUser?.username || 'พี่เลี้ยง',
           serviceName: bookingInfo?.services?.servicename || 'บริการสัตว์เลี้ยง',
-          action,
+          action, // action ตรงนี้ส่ง 'start' / 'complete' เข้าไปได้เลย
           bookingId,
           startTime: bookingInfo?.starttime ? formatThaiDateTime(bookingInfo.starttime) : '',
           endTime: bookingInfo?.endtime ? formatThaiDateTime(bookingInfo.endtime) : '',
@@ -255,5 +260,6 @@ export const updateBookingStatusBySitter = async (
   return {
     bookingId,
     bookingstatus: nextStatus,
-  }
+    action: action // ส่ง action กลับไปให้ Controller ด้วย
+  };
 }

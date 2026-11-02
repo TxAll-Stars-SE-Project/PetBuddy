@@ -167,3 +167,78 @@ export const createBooking = async (ownerId: number, input: CreateBookingInput) 
     pets: responsePets
   };
 };
+
+export const updateServiceStatus = async (sitterId: number, bookingId: number, action: string) => {
+  // 1. หาข้อมูล Booking
+  const booking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    include: {
+      petowner: { include: { USER: true } },
+      services: true
+    }
+  });
+
+  if (!booking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  }
+
+  // 2. ตรวจสอบสิทธิ์ (ต้องเป็นพี่เลี้ยงที่รับงานนี้เท่านั้น)
+  if (booking.sitterid !== sitterId) {
+    throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking');
+  }
+
+  let newStatus = '';
+
+  // 3. State Machine Logic ตาม API Doc
+  if (action === 'start') {
+    // 3.1 เช็คสถานะ
+    if (booking.bookingstatus !== 'confirmed' && booking.bookingstatus !== 'deposit_paid') {
+      throw new AppError(400, 'INVALID_STATUS', 'Booking must be confirmed or deposit paid before starting');
+    }
+    
+    // 3.2 เช็คเวลา (ต้องถึงเวลาเริ่มงานแล้ว)
+    const now = new Date();
+    const startDate = new Date(booking.starttime);
+    if (now < startDate) {
+      throw new AppError(400, 'EARLY_START', 'Cannot start service before the scheduled start date');
+    }
+
+    newStatus = 'in_progress';
+
+  } else if (action === 'complete') {
+    // 3.3 เช็คสถานะ
+    if (booking.bookingstatus !== 'in_progress') {
+      // ใช้ข้อความเป๊ะๆ ตามสเปก
+      throw new AppError(400, 'INVALID_STATUS', 'Cannot complete service before starting. Current status must be in_progress.');
+    }
+    
+    // 3.4 เช็คแผนการชำระเงิน
+    newStatus = booking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment';
+    
+  } else {
+    throw new AppError(400, 'INVALID_ACTION', 'Action must be "start" or "complete"');
+  }
+
+  // 4. อัปเดตสถานะลง Database
+  const updatedBooking = await prisma.booking.update({
+    where: { bookingid: bookingId },
+    data: { 
+      bookingstatus: newStatus as any
+    }
+  });
+
+  // 4. ส่งอีเมลแจ้งเตือน Pet Owner (เดี๋ยวเราไปเขียนฟังก์ชันนี้ใน mail.service.ts กันต่อ)
+  /*
+  if (action === 'start') {
+    sendServiceStartedEmail({ ... });
+  } else if (action === 'complete') {
+    sendServiceCompletedEmail({ ... });
+  }
+  */
+
+  return {
+    bookingId: updatedBooking.bookingid,
+    bookingstatus: updatedBooking.bookingstatus,
+    action: action
+  };
+};
