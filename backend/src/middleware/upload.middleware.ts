@@ -1,6 +1,11 @@
 import multer from 'multer'
 import { Request, Response, NextFunction } from 'express'
 import { AppError } from '../utils/errors.js'
+import {
+  INVALID_CARE_REPORT_PHOTO_MESSAGE,
+  MAX_CARE_REPORT_PHOTO_SIZE,
+  isAllowedCareReportPhotoType,
+} from '../validators/careReport.validator.js'
 
 const storage = multer.memoryStorage()
 
@@ -138,6 +143,51 @@ export const uploadQrCodeMiddleware = (
       if (matched) {
         req.file = matched
       }
+    }
+
+    next()
+  })
+}
+
+const uploadCareReport = multer({
+  storage,
+  limits: {
+    fileSize: MAX_CARE_REPORT_PHOTO_SIZE,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!isAllowedCareReportPhotoType(file.mimetype)) {
+      cb(new AppError(400, 'INVALID_PHOTO', INVALID_CARE_REPORT_PHOTO_MESSAGE))
+      return
+    }
+    cb(null, true)
+  },
+}).single('photo')
+
+/**
+ * Middleware that parses multipart/form-data for a pet care report (US7-3).
+ * The optional photo must be sent under the 'photo' field and is exposed as `req.file`.
+ * Formats response on error per docs/API.md §6.1: { status: 'error', error, message }
+ */
+export const uploadCareReportPhotoMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const contentType = req.headers['content-type'] || ''
+  if (!contentType.includes('multipart/form-data')) {
+    next()
+    return
+  }
+
+  uploadCareReport(req, res, (err: unknown) => {
+    if (err) {
+      // ชนิดไฟล์ผิด / ใหญ่เกิน 5MB / ส่งไฟล์ผิดชื่อฟิลด์ ใช้ข้อความเดียวกันตาม AC
+      res.status(400).json({
+        status: 'error',
+        error: 'INVALID_PHOTO',
+        message: INVALID_CARE_REPORT_PHOTO_MESSAGE,
+      })
+      return
     }
 
     next()
