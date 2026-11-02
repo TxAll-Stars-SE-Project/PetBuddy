@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import BookingConfirmModal from './BookingConfirmModal';
+import { Link } from 'react-router-dom';
 import SitterBookingCard from './SitterBookingCard';
-import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
+import BookingConfirmModal from './BookingConfirmModal';
+import {
+  getSitterBookings,
+  getSitterPaymentInfo,
+  updateBookingStatus,
+} from '../../services/booking.api';
 import { toast } from '../../utils/toast';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
 import './SitterBookingList.css';
@@ -10,8 +15,8 @@ type BookingTab = 'ALL' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 const statusGroups: Record<Exclude<BookingTab, 'ALL'>, BookingStatus[]> = {
   pending: ['pending'],
-  confirmed: ['waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment'],
-  completed: ['completed'],
+  confirmed: ['waiting_payment', 'waiting_final_payment'],
+  completed: ['confirmed', 'completed', 'deposit_paid', 'in_progress'],
   cancelled: ['rejected', 'cancelled'],
 };
 
@@ -29,17 +34,26 @@ export default function SitterBookingList() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<BookingTab>('ALL');
+  const [hasPaymentInfo, setHasPaymentInfo] = useState<boolean | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{
     booking: Booking;
     action: BookingAction;
   } | null>(null);
 
-  const fetchBookings = useCallback(async () => {
+  const fetchBookingsAndPaymentInfo = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      setBookings(await getSitterBookings());
+      const [list, paymentInfo] = await Promise.all([
+        getSitterBookings(),
+        getSitterPaymentInfo().catch(() => null),
+      ]);
+
+      setBookings(Array.isArray(list) ? list : []);
+      if (paymentInfo !== null) {
+        setHasPaymentInfo(Boolean(paymentInfo.hasPaymentInfo));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
       setBookings([]);
@@ -49,34 +63,44 @@ export default function SitterBookingList() {
   }, []);
 
   useEffect(() => {
-    void fetchBookings();
-  }, [fetchBookings]);
+    void fetchBookingsAndPaymentInfo();
+  }, [fetchBookingsAndPaymentInfo]);
+
+  const safeBookings = useMemo(() => (Array.isArray(bookings) ? bookings : []), [bookings]);
 
   const sortedBookings = useMemo(
     () =>
-      [...bookings].sort(
+      [...safeBookings].sort(
         (first, second) =>
-          Number(second.bookingstatus === 'pending') -
-          Number(first.bookingstatus === 'pending'),
+          Number(second?.bookingstatus === 'pending') -
+          Number(first?.bookingstatus === 'pending'),
       ),
-    [bookings],
+    [safeBookings],
   );
 
   const filteredBookings =
     activeTab === 'ALL'
       ? sortedBookings
       : sortedBookings.filter((booking) =>
-          statusGroups[activeTab].includes(booking.bookingstatus),
+          booking && statusGroups[activeTab]?.includes(booking.bookingstatus),
         );
 
   const countForTab = (tab: BookingTab) =>
     tab === 'ALL'
-      ? bookings.length
-      : bookings.filter((booking) =>
-          statusGroups[tab].includes(booking.bookingstatus),
+      ? safeBookings.length
+      : safeBookings.filter((booking) =>
+          booking && statusGroups[tab]?.includes(booking.bookingstatus),
         ).length;
 
   const handleRequestConfirm = (booking: Booking, action: BookingAction) => {
+    // บังคับต้องตั้งค่าชื่อบัญชีรับเงินและ QR Code ก่อนกดรับงาน (US 2-2 & US 6-2)
+    if (action === 'accept' && hasPaymentInfo === false) {
+      toast(
+        'กรุณาตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code ในหน้าโปรไฟล์ก่อนกดรับงาน',
+        'error',
+      );
+      return;
+    }
     setConfirmTarget({ booking, action });
   };
 
@@ -97,11 +121,11 @@ export default function SitterBookingList() {
             : 'ส่งมอบงานเสร็จสิ้นเรียบร้อยแล้ว';
       toast(actionText, 'success');
       setConfirmTarget(null);
-      await fetchBookings();
+      await fetchBookingsAndPaymentInfo();
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้';
-      setError(errMsg);
       toast(errMsg, 'error');
+      setConfirmTarget(null);
     } finally {
       setUpdatingId(null);
     }
@@ -109,6 +133,37 @@ export default function SitterBookingList() {
 
   return (
     <div className="sitter-booking-list">
+      {hasPaymentInfo === false && (
+        <div className="sitter-booking-list__payment-warning" role="alert">
+          <div className="sitter-booking-list__payment-warning-body">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div>
+              <strong>คุณยังไม่ได้ตั้งค่าบัญชีรับเงินและ QR Code</strong>
+              <p>
+                จำเป็นต้องระบุชื่อบัญชีผู้รับเงินและอัปโหลดรูป QR Code ก่อน จึงจะสามารถกดรับงานคำขอจองได้
+              </p>
+            </div>
+          </div>
+          <Link to="/profile" className="sitter-booking-list__payment-warning-btn">
+            ไปตั้งค่าที่หน้าโปรไฟล์
+          </Link>
+        </div>
+      )}
+
       <nav className="sitter-booking-list__tabs" aria-label="กรองรายการจองตามสถานะ">
         {tabs.map((tab) => (
           <button
@@ -129,7 +184,7 @@ export default function SitterBookingList() {
       ) : error ? (
         <div role="alert">
           <p>{error}</p>
-          <button type="button" onClick={() => void fetchBookings()}>
+          <button type="button" onClick={() => void fetchBookingsAndPaymentInfo()}>
             ลองใหม่
           </button>
         </div>
