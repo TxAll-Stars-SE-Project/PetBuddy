@@ -13,6 +13,7 @@ const statusLabels: Record<BookingStatus, string> = {
   waiting_payment: 'รอชำระเงิน',
   deposit_paid: 'ชำระมัดจำแล้ว',
   confirmed: 'ยืนยันแล้ว',
+  in_progress: 'กำลังดูแล',
   rejected: 'ปฏิเสธแล้ว',
   cancelled: 'ยกเลิกแล้ว',
   waiting_final_payment: 'รอชำระส่วนที่เหลือ',
@@ -24,6 +25,7 @@ const statusSymbols: Record<BookingStatus, string> = {
   waiting_payment: '●',
   deposit_paid: '●',
   confirmed: '●',
+  in_progress: '●',
   rejected: '×',
   cancelled: '−',
   waiting_final_payment: '●',
@@ -177,7 +179,20 @@ export default function SitterBookingCard({
           </button>
         </footer>
       )}
-      {booking.bookingstatus === 'confirmed' && (onAction || onRequestConfirm) && (
+      {(booking.bookingstatus === 'confirmed' || booking.bookingstatus === 'deposit_paid') &&
+        (onAction || onRequestConfirm) && (
+          <footer className="sitter-booking-card__actions">
+            <button
+              className="sitter-booking-card__button sitter-booking-card__button--start"
+              type="button"
+              disabled={isUpdating}
+              onClick={() => runAction('start')}
+            >
+              เริ่มงานดูแล (Start Service)
+            </button>
+          </footer>
+        )}
+      {booking.bookingstatus === 'in_progress' && (onAction || onRequestConfirm) && (
         <footer className="sitter-booking-card__actions">
           <button
             className="sitter-booking-card__button sitter-booking-card__button--complete"
@@ -185,7 +200,7 @@ export default function SitterBookingCard({
             disabled={isUpdating}
             onClick={() => runAction('complete')}
           >
-            ส่งงานเสร็จสิ้น (Complete Job)
+            ส่งงานเสร็จสิ้น (Complete Service)
           </button>
         </footer>
       )}

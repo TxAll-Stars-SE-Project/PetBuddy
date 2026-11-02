@@ -3,14 +3,19 @@ import BookingConfirmModal from './BookingConfirmModal';
 import SitterBookingCard from './SitterBookingCard';
 import { getSitterBookings, updateBookingStatus } from '../../services/booking.api';
 import { toast } from '../../utils/toast';
-import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
+import {
+  isStartDateReached,
+  type Booking,
+  type BookingAction,
+  type BookingStatus,
+} from '../../types/booking';
 import './SitterBookingList.css';
 
 type BookingTab = 'ALL' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 const statusGroups: Record<Exclude<BookingTab, 'ALL'>, BookingStatus[]> = {
   pending: ['pending'],
-  confirmed: ['waiting_payment', 'deposit_paid', 'confirmed', 'waiting_final_payment'],
+  confirmed: ['waiting_payment', 'deposit_paid', 'confirmed', 'in_progress', 'waiting_final_payment'],
   completed: ['completed'],
   cancelled: ['rejected', 'cancelled'],
 };
@@ -77,6 +82,20 @@ export default function SitterBookingList() {
         ).length;
 
   const handleRequestConfirm = (booking: Booking, action: BookingAction) => {
+    if (
+      action === 'start' &&
+      booking.bookingstatus !== 'confirmed' &&
+      booking.bookingstatus !== 'deposit_paid'
+    ) {
+      toast('สามารถกดเริ่มงานได้เฉพาะรายการที่ชำระมัดจำหรือยืนยันการจองแล้วเท่านั้น', 'error');
+      return;
+    }
+
+    if (action === 'complete' && booking.bookingstatus !== 'in_progress') {
+      toast('ไม่สามารถส่งมอบงานได้ กรุณากดเริ่มงานดูแล (Start Service) ก่อนส่งมอบงาน', 'error');
+      return;
+    }
+
     setConfirmTarget({ booking, action });
   };
 
@@ -84,6 +103,28 @@ export default function SitterBookingList() {
     if (!confirmTarget) return;
 
     const { booking, action } = confirmTarget;
+
+    if (
+      action === 'start' &&
+      booking.bookingstatus !== 'confirmed' &&
+      booking.bookingstatus !== 'deposit_paid'
+    ) {
+      toast('สามารถกดเริ่มงานได้เฉพาะรายการที่ชำระมัดจำหรือยืนยันการจองแล้วเท่านั้น', 'error');
+      setConfirmTarget(null);
+      return;
+    }
+
+    if (action === 'start' && !isStartDateReached(booking.starttime)) {
+      toast('ยังไม่ถึงวันนัดหมายเริ่มบริการ ไม่สามารถเริ่มงานก่อนกำหนดได้', 'error');
+      return;
+    }
+
+    if (action === 'complete' && booking.bookingstatus !== 'in_progress') {
+      toast('ไม่สามารถส่งมอบงานได้ กรุณากดเริ่มงานดูแล (Start Service) ก่อนส่งมอบงาน', 'error');
+      setConfirmTarget(null);
+      return;
+    }
+
     setUpdatingId(booking.bookingId);
     setError(null);
 
@@ -94,7 +135,11 @@ export default function SitterBookingList() {
           ? 'รับงานคำขอจองเรียบร้อยแล้ว (สถานะ: รอชำระเงิน)'
           : action === 'reject'
             ? 'ปฏิเสธคำขอจองเรียบร้อยแล้ว'
-            : 'ส่งมอบงานเสร็จสิ้นเรียบร้อยแล้ว';
+            : action === 'start'
+              ? 'เริ่มงานดูแลสัตว์เลี้ยงเรียบร้อยแล้ว (สถานะ: กำลังดูแล)'
+              : booking.paymentplan === 'full'
+                ? 'ส่งมอบงานเสร็จสิ้นสมบูรณ์เรียบร้อยแล้ว (สถานะ: เสร็จสิ้น)'
+                : 'ส่งมอบงานเรียบร้อยแล้ว (สถานะ: รอชำระส่วนที่เหลือ 70%)';
       toast(actionText, 'success');
       setConfirmTarget(null);
       await fetchBookings();
