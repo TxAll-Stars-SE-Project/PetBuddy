@@ -86,3 +86,60 @@ export const uploadPetImageMiddleware = (
     next()
   })
 }
+
+const QR_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+const uploadQr = multer({
+  storage,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!QR_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(new AppError(400, 'INVALID_FILE_TYPE', 'Invalid file type or size exceeds 5MB limit'))
+      return
+    }
+    cb(null, true)
+  },
+}).fields([
+  { name: 'qrCode', maxCount: 1 },
+  { name: 'image', maxCount: 1 },
+  { name: 'file', maxCount: 1 },
+])
+
+/**
+ * Middleware that parses multipart/form-data with a QR code image for sitter payment info.
+ * Formats response on error per docs/API.md §1.2: { success: false, message: ... }
+ */
+export const uploadQrCodeMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const contentType = req.headers['content-type'] || ''
+  if (!contentType.includes('multipart/form-data')) {
+    next()
+    return
+  }
+
+  uploadQr(req, res, (err: unknown) => {
+    if (err) {
+      const status = err instanceof AppError ? err.statusCode : 400
+      res.status(status).json({
+        success: false,
+        message: 'Invalid file type or size exceeds 5MB limit',
+      })
+      return
+    }
+
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined
+    if (files) {
+      const matched = files.qrCode?.[0] || files.image?.[0] || files.file?.[0]
+      if (matched) {
+        req.file = matched
+      }
+    }
+
+    next()
+  })
+}
