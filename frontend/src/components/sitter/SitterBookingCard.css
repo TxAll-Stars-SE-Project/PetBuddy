@@ -60,6 +60,12 @@
   border-color: #bfdbfe;
 }
 
+.sitter-booking-card__status--in_progress {
+  color: #ea580c;
+  background: #fff3e8;
+  border-color: #fdba74;
+}
+
 .sitter-booking-card__status--completed {
   color: #047857;
   background: #ecfdf5;
@@ -139,12 +145,14 @@
   cursor: not-allowed;
 }
 
-.sitter-booking-card__button--accept {
+.sitter-booking-card__button--accept,
+.sitter-booking-card__button--start {
   color: #fff;
   background: var(--primary, #f97316);
 }
 
-.sitter-booking-card__button--accept:hover:not(:disabled) {
+.sitter-booking-card__button--accept:hover:not(:disabled),
+.sitter-booking-card__button--start:hover:not(:disabled) {
   background: var(--primary-hover, #ea580c);
 }
 

@@ -189,30 +189,51 @@ export default function SitterBookingCard({
         (onAction || onRequestConfirm) && (
           <footer className="sitter-booking-card__actions">
             <button
-              className="sitter-booking-card__button sitter-booking-card__button--complete"
+              className="sitter-booking-card__button sitter-booking-card__button--start"
               type="button"
               disabled={isUpdating}
-              onClick={() => runAction('complete')}
+              onClick={() => runAction('start')}
             >
-              ส่งงานเสร็จสิ้น (Complete Job)
+              เริ่มงานดูแล (Start Service)
             </button>
           </footer>
         )}
-      {hasCareReports && (
+      {booking.bookingstatus === 'in_progress' && (
         <footer className="sitter-booking-card__actions">
           <button
             className="sitter-booking-card__button sitter-booking-card__button--report"
             type="button"
             onClick={() => setIsReportsOpen(true)}
           >
-            📝 รายงานการดูแล
+            รายงานการดูแล
+          </button>
+          {(onAction || onRequestConfirm) && (
+            <button
+              className="sitter-booking-card__button sitter-booking-card__button--complete"
+              type="button"
+              disabled={isUpdating}
+              onClick={() => runAction('complete')}
+            >
+              ส่งงานเสร็จสิ้น (Complete Service)
+            </button>
+          )}
+        </footer>
+      )}
+      {booking.bookingstatus !== 'in_progress' && hasCareReports && (
+        <footer className="sitter-booking-card__actions">
+          <button
+            className="sitter-booking-card__button sitter-booking-card__button--report"
+            type="button"
+            onClick={() => setIsReportsOpen(true)}
+          >
+            รายงานการดูแล
           </button>
         </footer>
       )}
       {isReportsOpen && (
         <CareReportsDialog
           bookingId={booking.bookingId}
-          subtitle={`การจอง #${booking.bookingId} · ${serviceTitle} · 🐾 ${getPetDetails(booking)}`}
+          subtitle={`การจอง #${booking.bookingId} · ${serviceTitle} · ${getPetDetails(booking)}`}
           viewer="sitter"
           canSubmit={booking.bookingstatus === 'in_progress'}
           onClose={() => setIsReportsOpen(false)}
