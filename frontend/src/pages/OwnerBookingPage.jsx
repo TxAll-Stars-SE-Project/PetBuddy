@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/PaymentModal.jsx";
-import { getOwnerBookings } from "../services/bookings.js";
+import ConfirmModal from "../components/ui/ConfirmModal.jsx";
+import { cancelBooking, getOwnerBookings } from "../services/bookings.js";
+import { toast } from "../utils/toast.js";
 
 const STATUS_META = {
   pending: { label: "รอพี่เลี้ยงตอบรับ", tone: "muted" },
@@ -22,6 +24,8 @@ const FILTER_TABS = [
 ];
 
 const PAYABLE_STATUSES = ["waiting_payment", "waiting_final_payment"];
+// ยกเลิกได้ก่อนพี่เลี้ยงเริ่มงาน — ถ้าจ่ายมัดจำแล้ว (deposit_paid) ไม่คืนเงิน (US6-3)
+const CANCELLABLE_STATUSES = ["pending", "waiting_payment", "deposit_paid"];
 
 function formatDateRange(start, end) {
   const s = new Date(start);
@@ -42,6 +46,8 @@ export default function OwnerBookingPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [result, setResult] = useState({ status: "loading", bookings: [] });
   const [payingBooking, setPayingBooking] = useState(null);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,6 +62,26 @@ export default function OwnerBookingPage() {
   }, [activeTab, reloadKey]);
 
   const { status, bookings } = result;
+
+  async function handleConfirmCancel() {
+    setIsCancelling(true);
+    try {
+      await cancelBooking(cancellingBooking.bookingId);
+      toast("ยกเลิกการจองเรียบร้อยแล้ว", "success");
+      setCancellingBooking(null);
+      setReloadKey((k) => k + 1); // โหลดซ้ำเพื่ออัปเดตสถานะ/รายการตามแท็บที่เลือก
+    } catch (err) {
+      const message =
+        err.response?.status === 409
+          ? "ไม่สามารถยกเลิกได้ในสถานะนี้"
+          : err.response?.data?.message || "ยกเลิกการจองไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+      toast(message, "error");
+      setCancellingBooking(null);
+      setReloadKey((k) => k + 1); // สถานะอาจเปลี่ยนไปแล้ว (เช่น พี่เลี้ยงเริ่มงาน) จึงรีเฟรชรายการ
+    } finally {
+      setIsCancelling(false);
+    }
+  }
 
   return (
     <div>
@@ -107,6 +133,7 @@ export default function OwnerBookingPage() {
             {bookings.map((b) => {
               const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
               const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
+              const canCancel = CANCELLABLE_STATUSES.includes(b.bookingstatus);
               return (
                 <article key={b.bookingId} className="booking-card">
                   <div className="booking-card-top">
@@ -133,10 +160,23 @@ export default function OwnerBookingPage() {
                       <small>ราคารวม</small>
                       <strong>฿{Number(b.totalPrice).toLocaleString("th-TH")}</strong>
                     </div>
-                    {canPay && (
-                      <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
-                        ชำระเงิน
-                      </button>
+                    {(canPay || canCancel) && (
+                      <div className="booking-actions">
+                        {canCancel && (
+                          <button
+                            type="button"
+                            className="btn btn--small btn--danger-outline"
+                            onClick={() => setCancellingBooking(b)}
+                          >
+                            ยกเลิกการจอง
+                          </button>
+                        )}
+                        {canPay && (
+                          <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
+                            ชำระเงิน
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </article>
@@ -148,6 +188,37 @@ export default function OwnerBookingPage() {
 
       {payingBooking && (
         <PaymentModal booking={payingBooking} onClose={() => setPayingBooking(null)} />
+      )}
+
+      {cancellingBooking && (
+        <ConfirmModal
+          title="ยืนยันการยกเลิกการจอง"
+          message="คุณต้องการยกเลิกการจองนี้ใช่หรือไม่? ระบบจะแจ้งพี่เลี้ยงทางอีเมล และไม่สามารถย้อนกลับได้"
+          confirmText="ยืนยันยกเลิกการจอง"
+          cancelText="ไม่ยกเลิก"
+          isDanger={true}
+          isLoading={isCancelling}
+          onConfirm={handleConfirmCancel}
+          onCancel={() => !isCancelling && setCancellingBooking(null)}
+        >
+          <div className="cancel-summary">
+            <strong>{cancellingBooking.sitterName}</strong> · {cancellingBooking.serviceName}
+            <br />
+            🗓️ {formatDateRange(cancellingBooking.starttime, cancellingBooking.endtime)}
+            <br />
+            ราคารวม ฿{Number(cancellingBooking.totalPrice).toLocaleString("th-TH")}
+          </div>
+          {cancellingBooking.bookingstatus === "deposit_paid" && (
+            <div className="cancel-notice">
+              <span>⚠️</span>
+              <span>
+                <strong>ค่ามัดจำที่ชำระแล้วจะไม่ได้รับเงินคืน</strong>
+                <br />
+                คุณได้ชำระมัดจำไปแล้ว หากยกเลิกตอนนี้จะไม่มีการคืนเงินส่วนนี้
+              </span>
+            </div>
+          )}
+        </ConfirmModal>
       )}
     </div>
   );
