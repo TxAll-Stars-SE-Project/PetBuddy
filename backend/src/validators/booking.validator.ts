@@ -46,6 +46,20 @@ export const validateUpdateBookingStatusInput = (body: unknown): UpdateBookingSt
 }
 
 /**
+ * ตรวจสอบความถูกต้องของ Request Body สำหรับ PATCH /api/bookings/:bookingId (เจ้าของสัตว์เลี้ยงยกเลิกการจอง)
+ */
+export const validateCancelBookingInput = (body: unknown): { action: 'cancel' } => {
+  const b = (body ?? {}) as Record<string, unknown>
+  const action = typeof b.action === 'string' ? b.action.trim() : undefined
+
+  if (action !== 'cancel') {
+    throw new AppError(400, 'INVALID_ACTION', 'Invalid action')
+  }
+
+  return { action }
+}
+
+/**
  * ตรวจสอบความถูกต้องของ Query param: ?status=...
  */
 export const validateBookingStatusQuery = (queryStatus: unknown): BookingStatusFilter | undefined => {
