@@ -216,17 +216,14 @@ export const cancelBooking = async (ownerId: number, bookingId: number) => {
 
   const sitterUser = booking.petsitter?.USER;
   if (sitterUser?.email) {
-    const formatThaiDateTime = (date: Date): string =>
-      date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
-
     sendBookingCancelledToSitterEmail({
       sitterEmail: sitterUser.email,
       sitterUsername: sitterUser.username,
       ownerName: booking.petowner?.USER?.username || 'ลูกค้า',
       serviceName: booking.services?.servicename || 'บริการสัตว์เลี้ยง',
       bookingId,
-      startTime: formatThaiDateTime(booking.starttime),
-      endTime: formatThaiDateTime(booking.endtime),
+      startTime: booking.starttime.toISOString(),
+      endTime: booking.endtime.toISOString(),
       petNames: booking.bookingdetail.map((bd) => bd.pet.name),
       totalPrice: Number(booking.totalprice),
       depositPaid: booking.bookingstatus === 'deposit_paid',
