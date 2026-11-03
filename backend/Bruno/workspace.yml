@@ -1,0 +1,12 @@
+opencollection: 1.0.0
+info:
+  name: "Bruno"
+  type: workspace
+
+collections:
+  - name: "Create_Review"
+    path: "collections/Create_Review"
+
+specs:
+
+docs: ''

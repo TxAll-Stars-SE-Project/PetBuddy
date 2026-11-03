@@ -19,6 +19,11 @@ export interface OwnerBookingResponse {
     petName: string
     petNote: string | null
   }[]
+  review: {
+    reviewId: number
+    rating: number
+    comment: string
+  } | null
 }
 
 /**
@@ -60,22 +65,33 @@ export const getOwnerBookings = async (
           },
         },
       },
+      review: true,
     },
   })
 
-  return bookings.map((b): OwnerBookingResponse => ({
-    bookingId: b.bookingid,
-    // sitterid เป็น nullable ใน schema: การจองที่ยังไม่มีพี่เลี้ยงจะไม่มีชื่อแสดง
-    sitterName: b.petsitter?.USER?.username || 'Unknown',
-    serviceName: b.services?.servicename || 'Service',
-    starttime: b.starttime.toISOString(),
-    endtime: b.endtime.toISOString(),
-    bookingstatus: b.bookingstatus,
-    totalPrice: Number(b.totalprice),
-    pets: b.bookingdetail.map((bd) => ({
-      petId: bd.petid,
-      petName: bd.pet?.name || '',
-      petNote: bd.pet_note,
-    })),
-  }))
+  return bookings.map((b): OwnerBookingResponse => {
+    const rev = b.review?.[0]
+    return {
+      bookingId: b.bookingid,
+      // sitterid เป็น nullable ใน schema: การจองที่ยังไม่มีพี่เลี้ยงจะไม่มีชื่อแสดง
+      sitterName: b.petsitter?.USER?.username || 'Unknown',
+      serviceName: b.services?.servicename || 'Service',
+      starttime: b.starttime.toISOString(),
+      endtime: b.endtime.toISOString(),
+      bookingstatus: b.bookingstatus,
+      totalPrice: Number(b.totalprice),
+      pets: b.bookingdetail.map((bd) => ({
+        petId: bd.petid,
+        petName: bd.pet?.name || '',
+        petNote: bd.pet_note,
+      })),
+      review: rev
+        ? {
+            reviewId: rev.reviewid,
+            rating: rev.review_score ?? 0,
+            comment: rev.review_detail ?? '',
+          }
+        : null,
+    }
+  })
 }

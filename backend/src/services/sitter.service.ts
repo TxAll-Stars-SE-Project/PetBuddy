@@ -47,7 +47,7 @@ export const getProfileById = async (sitterId: number) => {
   });
   const avgRating = ratingAgg._avg.review_score 
     ? Math.round(ratingAgg._avg.review_score * 10) / 10 
-    : 0;
+    : null;
 
   return {
     sitterId: sitter.userid,
@@ -83,13 +83,25 @@ export const getSitterReviewsById = async (sitterId: number) => {
     orderBy: { reviewid: 'desc' },
   });
 
-  return reviews.map((r) => ({
-    reviewId: r.reviewid,
-    rating: r.review_score ?? 0,
-    comment: r.review_detail ?? '',
-    ownerName: r.booking.petowner.USER.username,
-    createdAt: r.booking.bookingdate, // ใช้ bookingdate แทนเพราะตาราง review ยังไม่มี created_at
-  }));
+  const scored = reviews.filter((r) => typeof r.review_score === 'number');
+  const reviewCount = scored.length;
+  const averageRating =
+    reviewCount > 0
+      ? Math.round((scored.reduce((sum, r) => sum + (r.review_score ?? 0), 0) / reviewCount) * 10) / 10
+      : null;
+
+  return {
+    sitterId,
+    averageRating,
+    reviewCount,
+    reviews: reviews.map((r) => ({
+      reviewId: r.reviewid,
+      rating: r.review_score ?? 0,
+      comment: r.review_detail ?? '',
+      reviewerName: r.booking.petowner.USER.username,
+      createdAt: r.booking.bookingdate, // ใช้ bookingdate แทนเพราะตาราง review ยังไม่มี created_at
+    })),
+  };
 };
 
 export const getBusySlots = async (sitterId: number, dateString: string) => {
