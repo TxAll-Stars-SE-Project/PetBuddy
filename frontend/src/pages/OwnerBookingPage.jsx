@@ -92,15 +92,16 @@ export default function OwnerBookingPage() {
       .catch(() => {
         if (!isCurrent) return;
         const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        const isFinalFallback = payingBooking?.bookingstatus === "waiting_final_payment";
         setPaymentSummaryError(true);
         setPaymentSummary({
           bookingId: payingBookingId,
           bookingstatus: payingBooking?.bookingstatus,
           totalPrice: fallbackAmount,
-          depositAmount: fallbackAmount,
-          remainingAmount: fallbackAmount,
-          paymentplan: "full",
-          payment_stage: "full",
+          depositAmount: isFinalFallback ? Math.round(fallbackAmount * 0.3) : fallbackAmount,
+          remainingAmount: isFinalFallback ? fallbackAmount * 0.7 : fallbackAmount,
+          paymentplan: payingBooking?.paymentplan === "full" ? "full" : "deposit",
+          payment_stage: isFinalFallback ? "final" : payingBooking?.paymentplan === "full" ? "full" : "deposit",
           payments: [],
         });
       })
@@ -186,6 +187,12 @@ export default function OwnerBookingPage() {
               const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
               const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
               const canCancel = CANCELLABLE_STATUSES.includes(b.bookingstatus);
+              const paymentLabel =
+                b.bookingstatus === "waiting_final_payment"
+                  ? "ชำระส่วนที่เหลือ"
+                  : b.paymentplan === "full"
+                    ? "ชำระเงิน"
+                    : "ชำระมัดจำ";
               return (
                 <article key={b.bookingId} className="booking-card">
                   <div className="booking-card-top">
@@ -232,7 +239,7 @@ export default function OwnerBookingPage() {
                               setPayingBooking(b);
                             }}
                           >
-                            ชำระเงิน
+                            {paymentLabel}
                           </button>
                         )}
                       </div>

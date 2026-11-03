@@ -5,6 +5,7 @@ export default function SlipUploadZone({
   previewUrl,
   onFileSelect,
   onRemoveFile,
+  amount,
 }) {
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -26,7 +27,10 @@ export default function SlipUploadZone({
   };
 
   return (
-    <div className="payment-slip-zone">
+    <div
+      className="payment-slip-zone"
+      data-payment-amount={Number.isFinite(Number(amount)) ? String(amount) : undefined}
+    >
       <input
         ref={fileInputRef}
         className="payment-file-input"
