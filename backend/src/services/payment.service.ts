@@ -171,6 +171,36 @@ export const submitPaymentSlip = async (
     throw new AppError(403, 'FORBIDDEN', 'Only pet owner can submit payment for this booking')
   }
 
+  // อนุญาตเฉพาะการชำระงวดแรก/เต็มจำนวน หรือชำระยอดคงเหลือ
+  if (
+    existingBooking.bookingstatus !== 'waiting_payment'
+    && existingBooking.bookingstatus !== 'waiting_final_payment'
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_BOOKING_STATUS',
+      'Booking cannot accept payment in current status'
+    )
+  }
+
+  // สถานะ waiting_final_payment ต้องถูกประมวลผลเป็น payment_type final เสมอ
+  if (existingBooking.bookingstatus === 'waiting_final_payment') {
+    if (input.payment_type && input.payment_type !== 'final') {
+      throw new AppError(400, 'PAYMENT_TYPE_STAGE_MISMATCH', 'Final payment must use payment_type final')
+    }
+    input.payment_stage = 'final'
+    input.payment_type = 'final'
+  } else if (
+    existingBooking.bookingstatus === 'waiting_payment'
+    && (input.payment_stage === 'final' || input.payment_type === 'final')
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_BOOKING_STATUS',
+      'Final payment is only allowed when booking is waiting_final_payment'
+    )
+  }
+
   // ตรวจสอบสถานะการจองตามรอบการชำระเงิน
   if (input.payment_stage === 'deposit' || input.payment_stage === 'full') {
     if (existingBooking.bookingstatus !== 'waiting_payment') {

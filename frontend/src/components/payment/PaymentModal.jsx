@@ -92,7 +92,9 @@ export default function PaymentModal({
     formData.append("bookingId", String(bookingId));
     formData.append("amount", String(amount));
     formData.append("payment_stage", paymentStage);
-    formData.append("payment_type", paymentStage);
+    if (paymentStage === "deposit" || paymentStage === "final") {
+      formData.append("payment_type", paymentStage);
+    }
     formData.append("paymentType", "bank_transfer");
     formData.append("slip_image", selectedFile);
 
