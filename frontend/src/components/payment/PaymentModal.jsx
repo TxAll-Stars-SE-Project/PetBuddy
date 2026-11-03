@@ -27,6 +27,24 @@ export default function PaymentModal({
   const hasSitterPaymentInfo = Boolean(
     summary?.sitterPaymentInfo?.accountName && summary?.sitterPaymentInfo?.qrCodeUrl,
   );
+  const paymentStage =
+    booking?.bookingstatus === "waiting_final_payment" || summary?.bookingstatus === "waiting_final_payment"
+      ? "final"
+      : summary?.payment_stage
+        || (summary?.paymentplan === "deposit" ? "deposit" : "full");
+  const isFinalPayment = paymentStage === "final"
+    || booking?.bookingstatus === "waiting_final_payment"
+    || summary?.bookingstatus === "waiting_final_payment";
+  const paymentModalTitle = isFinalPayment
+    ? "ชำระเงินส่วนที่เหลือ"
+    : summary?.paymentplan === "deposit"
+      ? "ชำระเงินมัดจำ"
+      : "ชำระเงิน";
+  const amountDueNow = isFinalPayment
+    ? Number(summary?.remainingAmount)
+    : paymentStage === "deposit"
+      ? Number(summary?.depositAmount)
+      : Number(summary?.totalPrice);
 
   useEffect(() => {
     if (!previewUrl) return undefined;
@@ -62,17 +80,7 @@ export default function PaymentModal({
     event.preventDefault();
     if (!selectedFile || !summary || !bookingId || isLoading || hasPendingPayment || !hasSitterPaymentInfo) return;
 
-    const paymentStage = summary.payment_stage
-      || (summary.bookingstatus === "waiting_final_payment"
-        ? "final"
-        : summary.paymentplan === "deposit"
-          ? "deposit"
-          : "full");
-    const amount = paymentStage === "final"
-      ? Number(summary.remainingAmount)
-      : paymentStage === "deposit"
-        ? Number(summary.depositAmount)
-        : Number(summary.totalPrice);
+    const amount = amountDueNow;
 
     if (!Number.isFinite(amount) || amount <= 0) {
       setUploadValidationError("ไม่พบยอดชำระเงินที่ถูกต้อง กรุณาลองโหลดข้อมูลใหม่");
@@ -84,6 +92,9 @@ export default function PaymentModal({
     formData.append("bookingId", String(bookingId));
     formData.append("amount", String(amount));
     formData.append("payment_stage", paymentStage);
+    if (paymentStage === "deposit" || paymentStage === "final") {
+      formData.append("payment_type", paymentStage);
+    }
     formData.append("paymentType", "bank_transfer");
     formData.append("slip_image", selectedFile);
 
@@ -122,7 +133,7 @@ export default function PaymentModal({
         aria-labelledby="payment-modal-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="payment-modal-title">แนบสลิปการชำระเงิน</h2>
+        <h2 id="payment-modal-title">{paymentModalTitle}</h2>
         <p className="payment-modal-sub">การจอง #{bookingId}</p>
 
         {isLoading && <p className="payment-load-message">กำลังโหลดข้อมูลการชำระเงิน...</p>}
@@ -143,6 +154,7 @@ export default function PaymentModal({
             previewUrl={previewUrl}
             onFileSelect={handleFileSelect}
             onRemoveFile={clearSelectedFile}
+            amount={amountDueNow}
           />
           {uploadValidationError && (
             <div className="payment-slip-error-alert" role="alert">
