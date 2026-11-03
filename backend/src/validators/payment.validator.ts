@@ -32,21 +32,54 @@ export const validateBookingId = (idParam: unknown): number => {
   return bookingId
 }
 
-/**
- * Checks whether a buffer starts with valid JPEG, PNG, or WebP magic bytes
- * to prevent client-side MIME type spoofing.
- */
-export const hasValidImageMagicBytes = (buffer?: Buffer): boolean => {
-  if (!buffer || buffer.length < 4) return false
+export type CanonicalSlipMimeType = 'image/jpeg' | 'image/png' | 'image/webp'
 
-  // JPEG: FF D8 FF
+const normalizeDeclaredSlipMimeType = (mimetype?: string): CanonicalSlipMimeType | null => {
+  if (!mimetype) return null
+  const normalized = mimetype.trim().toLowerCase()
+  if (normalized === 'image/jpeg' || normalized === 'image/jpg' || normalized === 'image/pjpeg') {
+    return 'image/jpeg'
+  }
+  if (normalized === 'image/png') {
+    return 'image/png'
+  }
+  if (normalized === 'image/webp') {
+    return 'image/webp'
+  }
+  return null
+}
+
+/**
+ * Detects the actual image format from binary magic bytes and validates
+ * structural markers (JPEG SOI+EOI, PNG signature+IHDR+IEND, WebP RIFF+size+VP8*).
+ */
+export const detectAndValidateImageStructure = (
+  buffer?: Buffer
+): CanonicalSlipMimeType | null => {
+  if (!buffer || buffer.length < 12) return null
+
+  // 1. JPEG: starts with SOI (FF D8 FF) and contains/ends with EOI (FF D9)
   if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return true
+    // Trim optional trailing null/whitespace padding and verify EOI marker FF D9 exists
+    let end = buffer.length - 1
+    while (end > 3 && buffer[end] === 0x00) {
+      end--
+    }
+    if (buffer[end - 1] === 0xff && buffer[end] === 0xd9) {
+      return 'image/jpeg'
+    }
+    // Also scan for EOI marker in case metadata/APP trailers follow EOI
+    for (let i = buffer.length - 2; i >= 3; i--) {
+      if (buffer[i] === 0xff && buffer[i + 1] === 0xd9) {
+        return 'image/jpeg'
+      }
+    }
+    return null
   }
 
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  // 2. PNG: 8-byte signature + IHDR chunk (length 13, width > 0, height > 0) + IEND trailer
   if (
-    buffer.length >= 8 &&
+    buffer.length >= 33 &&
     buffer[0] === 0x89 &&
     buffer[1] === 0x50 &&
     buffer[2] === 0x4e &&
@@ -56,19 +89,63 @@ export const hasValidImageMagicBytes = (buffer?: Buffer): boolean => {
     buffer[6] === 0x1a &&
     buffer[7] === 0x0a
   ) {
-    return true
+    const ihdrLength = buffer.readUInt32BE(8)
+    const ihdrType = buffer.subarray(12, 16).toString('ascii')
+    const width = buffer.readUInt32BE(16)
+    const height = buffer.readUInt32BE(20)
+    if (ihdrLength !== 13 || ihdrType !== 'IHDR' || width === 0 || height === 0) {
+      return null
+    }
+
+    // Verify IEND chunk exists near the end of the PNG stream
+    const iendMarker = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
+    if (buffer.indexOf(iendMarker, 29) !== -1) {
+      return 'image/png'
+    }
+    return null
   }
 
-  // WebP: "RIFF" (0..3) ... "WEBP" (8..11)
+  // 3. WebP: "RIFF" (0..3) + 32-bit LE size (4..7) + "WEBP" (8..11) + valid VP8 chunk (12..15)
   if (
-    buffer.length >= 12 &&
+    buffer.length >= 20 &&
     buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
     buffer.subarray(8, 12).toString('ascii') === 'WEBP'
   ) {
-    return true
+    const riffPayloadSize = buffer.readUInt32LE(4)
+    const chunkFourCC = buffer.subarray(12, 16).toString('ascii')
+    const validChunks = ['VP8 ', 'VP8L', 'VP8X']
+    if (
+      riffPayloadSize >= 12 &&
+      riffPayloadSize + 8 <= buffer.length &&
+      validChunks.includes(chunkFourCC)
+    ) {
+      return 'image/webp'
+    }
+    return null
   }
 
-  return false
+  return null
+}
+
+/**
+ * Checks whether a buffer has valid JPEG, PNG, or WebP structure and magic bytes.
+ * If expectedMimeType is provided, also verifies that the declared MIME matches the actual format.
+ */
+export const hasValidImageMagicBytes = (
+  buffer?: Buffer,
+  expectedMimeType?: string
+): boolean => {
+  const detectedMime = detectAndValidateImageStructure(buffer)
+  if (!detectedMime) return false
+
+  if (expectedMimeType !== undefined) {
+    const declaredMime = normalizeDeclaredSlipMimeType(expectedMimeType)
+    if (!declaredMime || declaredMime !== detectedMime) {
+      return false
+    }
+  }
+
+  return true
 }
 
 /**
@@ -78,7 +155,7 @@ export const validateSubmitPaymentInput = (
   body: Record<string, unknown>,
   file?: Express.Multer.File
 ): SubmitPaymentDTO => {
-  if (!file || !hasValidImageMagicBytes(file.buffer)) {
+  if (!file || !hasValidImageMagicBytes(file.buffer, file.mimetype)) {
     throw new AppError(400, 'MISSING_FILE', 'Invalid file type or size / missing fields')
   }
 

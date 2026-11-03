@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { getSupabaseClient, SUPABASE_STORAGE_BUCKET, PAY_QR_STORAGE_BUCKET } from './client.js'
 import { AppError } from '../errors.js'
 
@@ -20,7 +21,7 @@ const uploadToBucket = async (
 ): Promise<string> => {
   const supabase = getSupabaseClient()
   const fileExt = MIME_EXTENSION_MAP[file.mimetype] || defaultExt
-  const randomSuffix = Math.random().toString(36).substring(2, 9)
+  const randomSuffix = randomBytes(8).toString('hex')
   const filePath = `${folder}/${ownerOrSitterId}/${Date.now()}-${randomSuffix}.${fileExt}`
 
   const { error } = await supabase.storage
@@ -104,9 +105,15 @@ export const deleteQrCodeImage = (imageUrlOrPath: string): Promise<void> =>
   deleteFromBucket(PAY_QR_STORAGE_BUCKET, 'qrcodes', imageUrlOrPath)
 
 /**
- * Payment slip image storage helper (Bucket: petbuddy-images, Folder: slips)
+ * Payment slip image storage helpers (Bucket: petbuddy-images, Folder: slips)
  */
 export const uploadSlipImage = (
   file: Express.Multer.File,
   bookingId: number
 ): Promise<string> => uploadToBucket(SUPABASE_STORAGE_BUCKET, 'slips', bookingId, file, 'jpg')
+
+export const extractSlipStoragePath = (imageUrlOrPath: string): string | null =>
+  extractBucketPath(SUPABASE_STORAGE_BUCKET, 'slips', imageUrlOrPath)
+
+export const deleteSlipImage = (imageUrlOrPath: string): Promise<void> =>
+  deleteFromBucket(SUPABASE_STORAGE_BUCKET, 'slips', imageUrlOrPath)

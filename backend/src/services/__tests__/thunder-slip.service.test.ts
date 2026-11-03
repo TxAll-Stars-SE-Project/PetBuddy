@@ -6,6 +6,7 @@ import {
   isReceiverNameMatched,
   ThunderApiResponse,
 } from '../thunder-slip.service.js'
+import { hasValidImageMagicBytes } from '../../validators/payment.validator.js'
 
 describe('Thunder Slip Verification Service Tests', () => {
   const dummySlipUrl = 'https://supabase.co/storage/v1/object/public/petbuddy-images/slips/41/slip.png'
@@ -433,6 +434,53 @@ describe('Thunder Slip Verification Service Tests', () => {
       assert.strictEqual(result.isValid, false)
       assert.strictEqual(result.isFallback, false)
       assert.ok(result.errorReason?.includes('เกิดขึ้นก่อนเวลาทำการจอง'))
+    })
+  })
+
+  describe('Scenario 8: Image Structure & MIME Type Matching Validation', () => {
+    test('should accept structurally valid JPEG, PNG, and WebP buffers with matching MIME types', () => {
+      // Minimal valid JPEG: SOI (FF D8 FF E0) + payload + EOI (FF D9)
+      const validJpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9,
+      ])
+      assert.strictEqual(hasValidImageMagicBytes(validJpeg, 'image/jpeg'), true)
+      assert.strictEqual(hasValidImageMagicBytes(validJpeg, 'image/jpg'), true)
+
+      // Minimal valid PNG: 8B signature + IHDR (len 13, width 1, height 1) + IEND
+      const validPng = Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        Buffer.from([0x00, 0x00, 0x00, 0x0d]), // length 13
+        Buffer.from('IHDR', 'ascii'),
+        Buffer.from([0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00]),
+        Buffer.from([0x90, 0x77, 0x53, 0xde]), // CRC
+        Buffer.from([0x00, 0x00, 0x00, 0x00]),
+        Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]), // IEND + CRC
+      ])
+      assert.strictEqual(hasValidImageMagicBytes(validPng, 'image/png'), true)
+
+      // Minimal valid WebP: RIFF + size (12) + WEBP + VP8 + 4 bytes
+      const validWebp = Buffer.concat([
+        Buffer.from('RIFF', 'ascii'),
+        Buffer.from([0x0c, 0x00, 0x00, 0x00]), // 12 bytes payload
+        Buffer.from('WEBP', 'ascii'),
+        Buffer.from('VP8 ', 'ascii'),
+        Buffer.from([0x00, 0x00, 0x00, 0x00]),
+      ])
+      assert.strictEqual(hasValidImageMagicBytes(validWebp, 'image/webp'), true)
+    })
+
+    test('should reject when declared MIME type does not match actual image format or structure is truncated', () => {
+      const validJpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9,
+      ])
+      // JPEG bytes declared as PNG must be rejected
+      assert.strictEqual(hasValidImageMagicBytes(validJpeg, 'image/png'), false)
+
+      // Truncated JPEG missing EOI marker (FF D9) must be rejected
+      const truncatedJpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      ])
+      assert.strictEqual(hasValidImageMagicBytes(truncatedJpeg, 'image/jpeg'), false)
     })
   })
 })
