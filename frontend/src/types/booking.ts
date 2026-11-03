@@ -4,6 +4,7 @@ export type BookingStatus =
   | 'waiting_payment'
   | 'deposit_paid'
   | 'confirmed'
+  | 'in_progress'
   | 'rejected'
   | 'cancelled'
   | 'waiting_final_payment'
@@ -64,4 +65,25 @@ export interface Booking {
   service: ServiceInfo;
 }
 
-export type BookingAction = 'accept' | 'reject' | 'complete';
+export type BookingAction = 'accept' | 'reject' | 'start' | 'complete';
+
+/**
+ * ตรวจสอบว่าวันที่ปัจจุบัน (โซนเวลา Asia/Bangkok) ถึงวันที่กำหนดเริ่มบริการ (D-Day) แล้วหรือยัง
+ */
+export function isStartDateReached(starttime: string, now: Date = new Date()): boolean {
+  const startDate = new Date(starttime);
+  if (Number.isNaN(startDate.getTime())) {
+    return true;
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const todayStr = formatter.format(now);
+  const startStr = formatter.format(startDate);
+  return todayStr >= startStr;
+}
