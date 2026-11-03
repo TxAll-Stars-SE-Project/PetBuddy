@@ -18,7 +18,7 @@ const handlePaymentControllerError = (
 ): void => {
   if (error instanceof AppError) {
     res.status(error.statusCode).json({
-      status: 'error',
+      success: false,
       message: error.message,
     })
     return
@@ -65,7 +65,24 @@ export const submitPaymentSlipController = async (
 
     const result = await paymentService.submitPaymentSlip(ownerUserId, input, req.file)
 
-    res.status(201).json({ status: 'success', data: result })
+    if (input.payment_stage === 'final') {
+      const isVerified = result.payment_status === 'verified'
+      res.status(201).json({
+        success: true,
+        message: isVerified
+          ? 'ชำระเงินส่วนที่เหลือสำเร็จเรียบร้อยแล้ว'
+          : 'ส่งสลิปชำระเงินส่วนที่เหลือสำเร็จ รอพี่เลี้ยงตรวจสอบ',
+        data: {
+          bookingId: input.bookingId,
+          status: isVerified ? 'completed' : (result.bookingstatus || 'waiting_final_payment'),
+          paymentId: result.paymentId,
+          paymentStatus: result.payment_status,
+        },
+      })
+      return
+    }
+
+    res.status(201).json({ success: true, status: 'success', data: result })
   } catch (error) {
     handlePaymentControllerError(res, error, 'Error submitting payment slip')
   }

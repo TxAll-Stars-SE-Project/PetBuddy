@@ -168,7 +168,15 @@ export const submitPaymentSlip = async (
 
   // ตรวจสอบสิทธิ์ว่าต้องเป็นเจ้าของสัตว์เลี้ยงของ booking นี้
   if (existingBooking.ownerid !== ownerUserId) {
-    throw new AppError(403, 'FORBIDDEN', 'Only pet owner can submit payment for this booking')
+    throw new AppError(403, 'FORBIDDEN', 'คุณไม่มีสิทธิ์ทำรายการสำหรับการจองนี้')
+  }
+
+  if (existingBooking.bookingstatus === 'completed') {
+    throw new AppError(
+      409,
+      'BOOKING_ALREADY_COMPLETED',
+      'การจองนี้ชำระเงินส่วนที่เหลือเรียบร้อยแล้ว'
+    )
   }
 
   // อนุญาตเฉพาะการชำระงวดแรก/เต็มจำนวน หรือชำระยอดคงเหลือ
@@ -247,6 +255,13 @@ export const submitPaymentSlip = async (
   )
 
   if (hasActivePaymentInStage) {
+    if (input.payment_stage === 'final') {
+      throw new AppError(
+        409,
+        'FINAL_PAYMENT_ALREADY_PROCESSING',
+        'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+      )
+    }
     throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
   }
 
@@ -333,6 +348,13 @@ export const submitPaymentSlip = async (
         })
 
         if (concurrentPayment) {
+          if (input.payment_stage === 'final') {
+            throw new AppError(
+              409,
+              'FINAL_PAYMENT_ALREADY_PROCESSING',
+              'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+            )
+          }
           throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
         }
 
@@ -427,6 +449,13 @@ export const submitPaymentSlip = async (
       })
 
       if (concurrentPayment) {
+        if (input.payment_stage === 'final') {
+          throw new AppError(
+            409,
+            'FINAL_PAYMENT_ALREADY_PROCESSING',
+            'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+          )
+        }
         throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
       }
 
@@ -446,6 +475,7 @@ export const submitPaymentSlip = async (
       paymentId: newPayment.paymentid,
       payment_status: newPayment.payment_status,
       slip_image: newPayment.slip_image,
+      bookingstatus: input.payment_stage === 'final' ? 'waiting_final_payment' : 'waiting_payment',
       verifiedBy: 'manual',
     }
   } catch (error) {
