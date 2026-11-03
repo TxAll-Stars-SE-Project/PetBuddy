@@ -2,9 +2,10 @@ import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput, UpdateServiceInput } from '../validators/service.validator.js'
 import { SitterSearchInput, SitterSort } from '../validators/sitterSearch.validator.js'
-import { booking_status, service_type } from '../generated/prisma/enums.js'
+import { service_type } from '../generated/prisma/enums.js'
 import { Prisma } from '../generated/prisma/client.js'
 import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js'
+import { calculateAverageRating } from '../utils/rating.helper.js'
 
 
 const ARCHIVED = 'archived'
@@ -83,12 +84,7 @@ export const getSitterReviewsById = async (sitterId: number) => {
     orderBy: { reviewid: 'desc' },
   });
 
-  const scored = reviews.filter((r) => typeof r.review_score === 'number');
-  const reviewCount = scored.length;
-  const averageRating =
-    reviewCount > 0
-      ? Math.round((scored.reduce((sum, r) => sum + (r.review_score ?? 0), 0) / reviewCount) * 10) / 10
-      : null;
+  const { averageRating, reviewCount } = calculateAverageRating(reviews);
 
   return {
     sitterId,
