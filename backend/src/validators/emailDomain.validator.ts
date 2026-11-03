@@ -85,8 +85,13 @@ export async function validateEmailDomain(email: string): Promise<EmailDomainVal
     return { isValid: true }
   }
 
-  // 4. ในกรณีที่เป็นโดเมนทดสอบในระบบเทส
-  if (domain.endsWith('.test') || domain.endsWith('.example')) {
+  // 4. ในกรณีที่เป็นโดเมนทดสอบในระบบเทส หรือโดเมนของโปรเจกต์
+  if (
+    domain.endsWith('.test') ||
+    domain.endsWith('.example') ||
+    domain === 'petbuddy.com' ||
+    domain === 'example.com'
+  ) {
     return { isValid: true }
   }
 

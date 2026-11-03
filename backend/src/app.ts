@@ -20,8 +20,6 @@ app.use('/api/sitter/bookings', sitterBookingRoutes)
 app.use('/api/sitter/payment-info', sitterPaymentRoutes)
 app.use('/api/sitters', sittersRoutes)
 app.use('/api/owner/bookings', ownerBookingRoutes)
-// §3.1 สรุปยอดชำระ — แยกไฟล์จาก booking.routes.ts ของ US5-1 (POST /api/bookings)
-// ทั้งสองอยู่ใต้ /api/bookings ได้พร้อมกันเพราะคนละ method/path ย่อย
-app.use('/api/bookings', paymentRoutes)
+app.use('/api/payments', paymentRoutes)
 
 export default app

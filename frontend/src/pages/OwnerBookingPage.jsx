@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
-import PaymentModal from "../components/PaymentModal.jsx";
+import PaymentModal from "../components/payment/PaymentModal.jsx";
 import ConfirmModal from "../components/ui/ConfirmModal.jsx";
 import ReviewModal from "../components/ReviewModal.jsx";
 import { cancelBooking, getOwnerBookings } from "../services/bookings.js";
 import { getBookingReviewState, getSavedReviews } from "../utils/reviewStorage.js";
+import { getBookingPayments } from "../services/payment.api.js";
 import { toast } from "../utils/toast.js";
 
 const STATUS_META = {
@@ -48,10 +49,16 @@ export default function OwnerBookingPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [result, setResult] = useState({ status: "loading", bookings: [] });
   const [payingBooking, setPayingBooking] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [isPaymentSummaryLoading, setIsPaymentSummaryLoading] = useState(false);
+  const [paymentSummaryError, setPaymentSummaryError] = useState(false);
+  const [paymentSummaryReloadKey, setPaymentSummaryReloadKey] = useState(0);
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [savedReviews, setSavedReviews] = useState(() => getSavedReviews());
+
+  const payingBookingId = payingBooking?.bookingId || payingBooking?.id;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,6 +71,51 @@ export default function OwnerBookingPage() {
       });
     return () => controller.abort();
   }, [activeTab, reloadKey]);
+
+  useEffect(() => {
+    if (!payingBooking) {
+      setPaymentSummary(null);
+      setIsPaymentSummaryLoading(false);
+      setPaymentSummaryError(false);
+      return undefined;
+    }
+
+    let isCurrent = true;
+    setPaymentSummary(null);
+    setIsPaymentSummaryLoading(true);
+    setPaymentSummaryError(false);
+
+    getBookingPayments(payingBookingId)
+      .then((response) => {
+        const summary = response?.data?.data ?? response?.data;
+        if (!summary || typeof summary !== "object" || !Array.isArray(summary.payments)) {
+          throw new Error("รูปแบบข้อมูลสรุปการชำระเงินไม่ถูกต้อง");
+        }
+        if (isCurrent) setPaymentSummary(summary);
+      })
+      .catch(() => {
+        if (!isCurrent) return;
+        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        setPaymentSummaryError(true);
+        setPaymentSummary({
+          bookingId: payingBookingId,
+          bookingstatus: payingBooking?.bookingstatus,
+          totalPrice: fallbackAmount,
+          depositAmount: fallbackAmount,
+          remainingAmount: fallbackAmount,
+          paymentplan: "full",
+          payment_stage: "full",
+          payments: [],
+        });
+      })
+      .finally(() => {
+        if (isCurrent) setIsPaymentSummaryLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [payingBooking, payingBookingId, paymentSummaryReloadKey]);
 
   const { status, bookings } = result;
 
@@ -182,7 +234,14 @@ export default function OwnerBookingPage() {
                           </button>
                         )}
                         {canPay && (
-                          <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
+                          <button
+                            type="button"
+                            className="btn btn--small"
+                            onClick={() => {
+                              setPaymentSummary(null);
+                              setPayingBooking(b);
+                            }}
+                          >
                             ชำระเงิน
                           </button>
                         )}
@@ -246,9 +305,20 @@ export default function OwnerBookingPage() {
       </main>
 
       {/* Modal ชำระเงิน */}
-      {payingBooking && (
-        <PaymentModal booking={payingBooking} onClose={() => setPayingBooking(null)} />
-      )}
+      <PaymentModal
+        isOpen={Boolean(payingBooking)}
+        booking={payingBooking}
+        summary={paymentSummary}
+        isLoading={isPaymentSummaryLoading}
+        isError={paymentSummaryError}
+        onRetry={() => setPaymentSummaryReloadKey((key) => key + 1)}
+        onClose={() => setPayingBooking(null)}
+        onSuccess={() => {
+          setPayingBooking(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
+
 
       {/* Modal ยกเลิกการจอง */}
       {cancellingBooking && (

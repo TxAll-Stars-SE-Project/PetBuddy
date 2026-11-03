@@ -597,7 +597,7 @@ a.btn{text-decoration:none}
 .booking-badge--error{background:var(--error-bg);color:var(--error)}
 
 /* PaymentModal */
-.payment-modal{max-width:460px}
+.payment-modal{max-width:520px;max-height:90vh;overflow-y:auto;font-family:'Prompt',ui-sans-serif,system-ui,sans-serif}
 .payment-modal-sub{margin:0 0 18px;color:var(--muted);font-size:13.5px}
 .payment-breakdown{display:flex;flex-direction:column;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-input);padding:16px}
 .payment-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--text-secondary)}
@@ -614,8 +614,62 @@ a.btn{text-decoration:none}
 .payment-modal-state--error p{margin:0 0 12px;color:var(--error)}
 .payment-modal-state--error .btn{width:auto}
 .payment-modal-note{margin:12px 0 0;padding:10px 12px;border-radius:var(--r-input);background:var(--info-bg);color:var(--info);font-size:13px}
+.payment-load-message,.payment-load-error{font-size:13.5px;color:var(--muted)}
+.payment-load-error{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--error);margin-bottom:14px}
+.payment-load-error button{border:0;background:transparent;color:var(--primary);font:inherit;font-weight:600;cursor:pointer}
+.payment-fallback-banner{margin-bottom:12px;padding:10px 12px;border:1px solid var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:#C2410C;font-size:13px}
+.payment-pending-banner{margin-bottom:12px;padding:10px 12px;border:1px solid var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:#C2410C;font-size:13px;font-weight:600}
+.payment-summary-booking{margin:0 0 10px;color:var(--muted);font-size:13px}
+.payment-file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.payment-dropzone{width:100%;min-height:130px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:20px;border:2px dashed var(--primary-border);border-radius:var(--r-input);background:var(--primary-soft);color:var(--text-secondary);font:inherit;text-align:center;cursor:pointer}
+.payment-dropzone:hover,.payment-dropzone--dragging{border-color:var(--primary);background:#FFF7EF}
+.payment-dropzone small{color:var(--muted);font-size:12px}
+.payment-slip-preview{display:flex;flex-direction:column;align-items:center;gap:12px}
+.payment-slip-preview img{display:block;max-width:100%;max-height:300px;object-fit:contain;border:1px solid var(--border);border-radius:var(--r-input)}
+.payment-slip-actions{display:flex;gap:10px}
+.payment-slip-actions button{padding:7px 14px;border-radius:var(--r-btn);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.payment-secondary-button{border:1px solid var(--primary);background:#fff;color:var(--primary)}
+.payment-remove-button{border:1px solid var(--border);background:#fff;color:var(--text-secondary)}
+.payment-modal-actions button{font:inherit}
+.payment-modal-actions button:disabled{opacity:.6;cursor:not-allowed}
+
+/* Sitter QR Code Card in PaymentModal (Sprint 3 US6-2) */
+.payment-qr-card{margin-top:14px;margin-bottom:14px;background:#fff;border:1px solid var(--primary-border);border-left:6px solid var(--primary);border-radius:16px;padding:14px 16px;box-shadow:0 6px 18px rgba(31,41,55,.05)}
+.payment-qr-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.payment-qr-title{font-size:13.5px;font-weight:700;color:var(--text)}
+.payment-qr-badge{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-border)}
+.payment-qr-body{display:flex;align-items:center;gap:16px}
+.payment-qr-image-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer;flex-shrink:0;transition:border-color .15s,transform .15s}
+.payment-qr-image-btn:hover{border-color:var(--primary);transform:translateY(-1px)}
+.payment-qr-image{width:116px;height:116px;object-fit:contain;display:block;border-radius:8px}
+.payment-qr-zoom-hint{font-size:11px;color:var(--link);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.payment-qr-details{display:flex;flex-direction:column;gap:4px;min-width:0}
+.payment-qr-account-label{font-size:12px;color:var(--muted)}
+.payment-qr-account-name{font-size:16px;font-weight:700;color:var(--text);word-break:break-word}
+.payment-qr-amount-chip{align-self:flex-start;margin-top:2px;padding:3px 10px;border-radius:999px;background:var(--primary-soft);color:#EA580C;font-size:12.5px;font-weight:700}
+.payment-qr-verify-note{margin:4px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}
+
+.payment-missing-qr-banner{margin-top:14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #FECACA;border-left:6px solid var(--error);border-radius:12px;background:var(--error-bg);color:var(--error);font-size:13px}
+.payment-missing-qr-banner svg{flex-shrink:0;margin-top:2px}
+.payment-missing-qr-banner strong{display:block;font-size:13.5px;margin-bottom:2px}
+.payment-missing-qr-banner p{margin:0;font-size:12.5px;color:#991B1B}
+
+.payment-slip-error-alert{margin-top:14px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #FECACA;border-left:6px solid var(--error);border-radius:12px;background:#FEF2F2;color:var(--error);font-size:13px;box-shadow:0 4px 12px rgba(220,38,38,.08)}
+.payment-slip-error-alert svg{flex-shrink:0;margin-top:2px;color:var(--error)}
+.payment-slip-error-content{display:flex;flex-direction:column;gap:2px;min-width:0}
+.payment-slip-error-content strong{display:block;font-size:13.5px;font-weight:700;color:#991B1B}
+.payment-slip-error-content p{margin:0;font-size:13px;line-height:1.45;color:#B91C1C;word-break:break-word}
+
+.payment-qr-lightbox{position:fixed;inset:0;z-index:1100;background:rgba(17,24,39,.65);display:flex;align-items:center;justify-content:center;padding:20px}
+.payment-qr-lightbox-content{background:#fff;border-radius:20px;padding:20px;max-width:360px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+.payment-qr-lightbox-content img{width:100%;max-height:300px;object-fit:contain;border:1px solid var(--border);border-radius:12px;padding:8px}
+.payment-qr-lightbox-meta{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.payment-qr-lightbox-meta strong{font-size:16px;color:var(--text)}
+.payment-qr-lightbox-meta span{font-size:14px;font-weight:600;color:var(--primary)}
 
 @media(max-width:560px){
+  .payment-qr-body{flex-direction:column;align-items:stretch;text-align:center}
+  .payment-qr-amount-chip{align-self:center}
   .booking-card-top{flex-direction:column}
   .booking-card-foot{flex-direction:column;align-items:stretch}
   .booking-card-foot .btn{width:100%}

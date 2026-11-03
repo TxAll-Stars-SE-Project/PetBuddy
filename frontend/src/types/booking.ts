@@ -4,6 +4,7 @@ export type BookingStatus =
   | 'waiting_payment'
   | 'deposit_paid'
   | 'confirmed'
+  | 'in_progress'
   | 'rejected'
   | 'cancelled'
   | 'waiting_final_payment'
@@ -62,6 +63,18 @@ export interface Booking {
   owner: OwnerInfo;
   pets?: BookingPetInfo[];
   service: ServiceInfo;
+}
+
+export interface OwnerBooking {
+  bookingId: number;
+  bookingstatus: BookingStatus;
+  sitterName: string;
+  serviceName: string;
+  serviceType: ServiceType;
+  starttime: string;
+  endtime: string;
+  totalPrice: number;
+  pets: PetInfo[];
 }
 
 export type BookingAction = 'accept' | 'reject' | 'complete';
