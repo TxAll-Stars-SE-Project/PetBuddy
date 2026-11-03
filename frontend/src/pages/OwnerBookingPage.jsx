@@ -140,6 +140,7 @@ export default function OwnerBookingPage() {
               const canCancel = CANCELLABLE_STATUSES.includes(b.bookingstatus);
               const isCompleted = b.bookingstatus === "completed";
               const reviewState = isCompleted ? getBookingReviewState(b, savedReviews) : null;
+              const hasActions = canCancel || canPay || isCompleted;
 
               return (
                 <article key={b.bookingId} className="booking-card">
@@ -169,71 +170,73 @@ export default function OwnerBookingPage() {
                       <strong>฿{Number(b.totalPrice).toLocaleString("th-TH")}</strong>
                     </div>
 
-                    <div className="booking-actions">
-                      {canCancel && (
-                        <button
-                          type="button"
-                          className="btn btn--small btn--danger-outline"
-                          onClick={() => setCancellingBooking(b)}
-                        >
-                          ยกเลิกการจอง
-                        </button>
-                      )}
-                      {canPay && (
-                        <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
-                          ชำระเงิน
-                        </button>
-                      )}
+                    {hasActions && (
+                      <div className="booking-actions">
+                        {canCancel && (
+                          <button
+                            type="button"
+                            className="btn btn--small btn--danger-outline"
+                            onClick={() => setCancellingBooking(b)}
+                          >
+                            ยกเลิกการจอง
+                          </button>
+                        )}
+                        {canPay && (
+                          <button type="button" className="btn btn--small" onClick={() => setPayingBooking(b)}>
+                            ชำระเงิน
+                          </button>
+                        )}
 
-                      {/* ส่วนการรีวิวสำหรับงานที่เสร็จสิ้น (Completed) */}
-                      {isCompleted && reviewState && (
-                        <>
-                          {/* 1. ยังไม่เคยรีวิว และยังไม่เกิน 14 วัน -> แสดงปุ่มให้กดรีวิว พร้อมเตือนเมื่อใกล้หมดเวลา */}
-                          {reviewState.canReview && (
-                            <div className="booking-review-action-wrap">
-                              <span
-                                className={`booking-review-time-hint ${
-                                  reviewState.isUrgent ? "booking-review-time-hint--urgent" : ""
-                                }`}
-                              >
-                                {reviewState.isUrgent
-                                  ? `⚠️ เหลือเวลาอีก ${reviewState.daysRemaining} วันสุดท้าย!`
-                                  : `⏳ เหลือเวลารีวิว ${reviewState.daysRemaining} วัน`}
-                              </span>
+                        {/* ส่วนการรีวิวสำหรับงานที่เสร็จสิ้น (Completed) */}
+                        {isCompleted && reviewState && (
+                          <>
+                            {/* 1. ยังไม่เคยรีวิว และยังไม่เกิน 14 วัน -> แสดงปุ่มให้กดรีวิว พร้อมเตือนเมื่อใกล้หมดเวลา */}
+                            {reviewState.canReview && (
+                              <div className="booking-review-action-wrap">
+                                <span
+                                  className={`booking-review-time-hint ${
+                                    reviewState.isUrgent ? "booking-review-time-hint--urgent" : ""
+                                  }`}
+                                >
+                                  {reviewState.isUrgent
+                                    ? `⚠️ เหลือเวลาอีก ${reviewState.daysRemaining} วันสุดท้าย!`
+                                    : `⏳ เหลือเวลารีวิว ${reviewState.daysRemaining} วัน`}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn--small"
+                                  onClick={() => setReviewingBooking(b)}
+                                >
+                                  ⭐ ให้คะแนนและรีวิว
+                                </button>
+                              </div>
+                            )}
+
+                            {/* 2. ถ้า review แล้ว -> แสดงป้ายสถานะรีวิวแล้ว และคลิกเพื่อดูรีวิวที่เคยเขียนได้ */}
+                            {reviewState.state === "reviewed" && (
                               <button
                                 type="button"
-                                className="btn btn--small"
+                                className="booking-badge booking-badge--review-done booking-badge--clickable"
+                                title="คลิกเพื่อดูรีวิวที่คุณส่งไว้"
                                 onClick={() => setReviewingBooking(b)}
                               >
-                                ⭐ ให้คะแนนและรีวิว
+                                ✓ รีวิวแล้ว ({reviewState.rating} ★) · ดูรีวิว
                               </button>
-                            </div>
-                          )}
+                            )}
 
-                          {/* 2. ถ้า review แล้ว -> แสดงป้ายสถานะรีวิวแล้ว และคลิกเพื่อดูรีวิวที่เคยเขียนได้ */}
-                          {reviewState.state === "reviewed" && (
-                            <button
-                              type="button"
-                              className="booking-badge booking-badge--review-done booking-badge--clickable"
-                              title="คลิกเพื่อดูรีวิวที่คุณส่งไว้"
-                              onClick={() => setReviewingBooking(b)}
-                            >
-                              ✓ รีวิวแล้ว ({reviewState.rating} ★) · ดูรีวิว
-                            </button>
-                          )}
-
-                          {/* 3. ถ้าเวลาผ่านไปเกิน 14 วัน -> แสดงป้ายหมดเวลารีวิว ไม่ให้ปุ่มหายไปดื้อๆ */}
-                          {reviewState.state === "expired_auto_reviewed" && (
-                            <span
-                              className="booking-badge booking-badge--review-expired"
-                              title="สามารถส่งรีวิวได้ภายใน 14 วันหลังเสร็จสิ้นบริการ เพื่อความแม่นยำของข้อมูล"
-                            >
-                              ⏳ หมดเวลารีวิว (เกิน 14 วัน)
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
+                            {/* 3. ถ้าเวลาผ่านไปเกิน 14 วัน -> แสดงป้ายหมดเวลารีวิว ไม่ให้ปุ่มหายไปดื้อๆ */}
+                            {reviewState.state === "expired_auto_reviewed" && (
+                              <span
+                                className="booking-badge booking-badge--review-expired"
+                                title="สามารถส่งรีวิวได้ภายใน 14 วันหลังเสร็จสิ้นบริการ เพื่อความแม่นยำของข้อมูล"
+                              >
+                                ⏳ หมดเวลารีวิว (เกิน 14 วัน)
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </article>
               );
@@ -284,10 +287,11 @@ export default function OwnerBookingPage() {
         <ReviewModal
           booking={reviewingBooking}
           isOpen={!!reviewingBooking}
-          existingReview={savedReviews[reviewingBooking.bookingId] || null}
+          existingReview={reviewingBooking.review || savedReviews[reviewingBooking.bookingId] || null}
           onClose={() => setReviewingBooking(null)}
           onSubmitSuccess={() => {
             setSavedReviews(getSavedReviews());
+            setReloadKey((k) => k + 1); // รีเฟรชรายการจองเพื่อดึง booking.review ล่าสุดจาก Server
             setReviewingBooking(null);
           }}
         />

@@ -77,40 +77,17 @@ export default function ReviewModal({
       return;
     }
 
-    if (rating < 1 || rating > 5) {
-      toast("กรุณาเลือกคะแนนดาวอย่างน้อย 1 ดาว", "error");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      let apiResult = null;
-      try {
-        // ยิง POST /api/reviews ตาม docs/API.md § 7.1 (US 7-1)
-        apiResult = await createBookingReview({
-          bookingId: booking.bookingId,
-          rating,
-          comment,
-        });
-      } catch (apiErr) {
-        const status = apiErr.response?.status;
-        const message = apiErr.response?.data?.message;
+      // ยิง POST /api/reviews ตาม docs/API.md § 7.1 (US 7-1)
+      const apiResult = await createBookingReview({
+        bookingId: booking.bookingId,
+        rating,
+        comment,
+      });
 
-        // กรณี dev mode ที่ backend endpoint ยังไม่ได้เปิดให้บริการ (404 / Route not found)
-        if (status === 404) {
-          console.warn("[ReviewModal] /api/reviews endpoint not found (404), falling back to local review cache");
-        } else if (message) {
-          // หาก backend ส่ง error message กลับมา (เช่น 400 Bad Request, 409 Conflict)
-          toast(message, "error");
-          setIsSubmitting(false);
-          return;
-        } else {
-          throw apiErr;
-        }
-      }
-
-      // บันทึกลง local cache เพื่อให้ UI ฝั่ง Frontend อัปเดตสถานะการรีวิวทันที
+      // แคชผลลัพธ์ลง local cache เพื่อให้ UI อัปเดตทันที
       const saved = saveBookingReview(booking.bookingId, {
         rating,
         comment,
@@ -129,7 +106,9 @@ export default function ReviewModal({
       }
     } catch (err) {
       console.error("Submit review error:", err);
-      toast("เกิดข้อผิดพลาดในการส่งรีวิว กรุณาลองใหม่อีกครั้ง", "error");
+      const message =
+        err.response?.data?.message || "เกิดข้อผิดพลาดในการส่งรีวิว กรุณาลองใหม่อีกครั้ง";
+      toast(message, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -281,7 +260,7 @@ export default function ReviewModal({
                 <button
                   type="submit"
                   className="profile-save-button review-submit-button"
-                  disabled={isSubmitting || rating === 0}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? "กำลังส่งรีวิว..." : "ส่งรีวิว"}
                 </button>

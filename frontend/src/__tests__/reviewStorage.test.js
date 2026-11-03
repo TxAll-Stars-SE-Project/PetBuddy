@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getBookingReviewState, REVIEW_WINDOW_MS, REVIEW_WINDOW_DAYS } from '../utils/reviewStorage.js';
+import { getBookingReviewState, REVIEW_WINDOW_DAYS } from '../utils/reviewStorage.js';
 
 test('getBookingReviewState', async (t) => {
   await t.test('returns not_completed when bookingstatus is not completed', () => {
@@ -8,6 +8,25 @@ test('getBookingReviewState', async (t) => {
     const res = getBookingReviewState(booking, {});
     assert.equal(res.state, 'not_completed');
     assert.equal(res.canReview, false);
+  });
+
+  await t.test('returns reviewed when booking has review object from server', () => {
+    const booking = {
+      bookingId: 15,
+      bookingstatus: 'completed',
+      endtime: new Date().toISOString(),
+      review: {
+        reviewId: 101,
+        rating: 4,
+        comment: 'Nice sitter!',
+      },
+    };
+    const res = getBookingReviewState(booking, {});
+    assert.equal(res.state, 'reviewed');
+    assert.equal(res.canReview, false);
+    assert.equal(res.rating, 4);
+    assert.equal(res.comment, 'Nice sitter!');
+    assert.equal(res.reviewId, 101);
   });
 
   await t.test('returns reviewed when review is already saved', () => {

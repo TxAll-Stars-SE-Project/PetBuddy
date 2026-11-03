@@ -64,10 +64,20 @@ export function getBookingReviewState(booking, savedReviews = null) {
     return { state: 'not_completed', canReview: false };
   }
 
+  // 1. ถ้ามีข้อมูลรีวิวจาก Server โดยตรง (booking.review จาก GET /api/owner/bookings)
+  if (booking.review && (booking.review.reviewId || typeof booking.review.rating === 'number')) {
+    return {
+      state: 'reviewed',
+      canReview: false,
+      rating: booking.review.rating,
+      comment: booking.review.comment ?? '',
+      reviewId: booking.review.reviewId,
+    };
+  }
+
+  // 2. ถ้ามีบันทึกใน localStorage (fallback / optimistic cache)
   const reviews = savedReviews || getSavedReviews();
   const reviewRecord = reviews[booking.bookingId];
-
-  // 1. ถ้ามีบันทึกว่ารีวิวแล้วจริง
   if (reviewRecord && reviewRecord.status === 'reviewed') {
     return {
       state: 'reviewed',
@@ -75,10 +85,11 @@ export function getBookingReviewState(booking, savedReviews = null) {
       rating: reviewRecord.rating,
       comment: reviewRecord.comment,
       reviewedAt: reviewRecord.reviewedAt,
+      reviewId: reviewRecord.reviewId,
     };
   }
 
-  // 2. ตรวจสอบเงื่อนไขระยะเวลา 14 วัน นับจาก endtime (รองรับทั้ง endtime, endTime, end_time)
+  // 3. ตรวจสอบเงื่อนไขระยะเวลา 14 วัน นับจาก endtime (รองรับทั้ง endtime, endTime, end_time)
   const now = Date.now();
   const rawEndTime = booking.endtime || booking.endTime || booking.end_time;
   const endTime = rawEndTime ? new Date(rawEndTime).getTime() : NaN;
@@ -93,7 +104,7 @@ export function getBookingReviewState(booking, savedReviews = null) {
     };
   }
 
-  // 3. ยังไม่เกิน 14 วัน และยังไม่ได้รีวิว -> สามารถกดรีวิวได้
+  // 4. ยังไม่เกิน 14 วัน และยังไม่ได้รีวิว -> สามารถกดรีวิวได้
   const msRemaining = isValidDate ? Math.max(0, endTime + REVIEW_WINDOW_MS - now) : REVIEW_WINDOW_MS;
   const daysRemaining = Math.max(1, Math.ceil(msRemaining / (24 * 60 * 60 * 1000)));
 
