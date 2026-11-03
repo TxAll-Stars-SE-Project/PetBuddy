@@ -1,13 +1,21 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.middleware.js'
-import { getPaymentSummary } from '../controllers/payment.controller.js'
+import { requireRole } from '../middleware/role.middleware.js'
+import { uploadSlipMiddleware } from '../middleware/upload.middleware.js'
+import { submitPaymentSlipController } from '../controllers/payment/payment.controller.js'
 
 const router = Router()
 
 /**
- * ไม่ใส่ requireRole เพราะ API.md § 3.1 เปิดให้ทั้งเจ้าของสัตว์เลี้ยงและพี่เลี้ยงเรียกได้
- * การตรวจสอบว่าเป็นคู่สัญญาของการจองนั้นจริงหรือไม่ ทำที่ชั้น service (403)
+ * POST /api/payments
+ * เจ้าของสัตว์เลี้ยงอัปโหลดสลิปโอนเงิน (multipart/form-data)
  */
-router.get('/:bookingId/payments', requireAuth, getPaymentSummary)
+router.post(
+  '/',
+  requireAuth,
+  requireRole('owner'),
+  uploadSlipMiddleware,
+  submitPaymentSlipController
+)
 
 export default router
