@@ -2400,7 +2400,8 @@ POST /api/bookings/{bookingID}/reports
 | `INVALID_BOOKING_ID` | `bookingID` ไม่ใช่จำนวนเต็มบวก | `Invalid booking ID` |
 | `REPORT_DETAIL_REQUIRED` | `reportDetail` ว่าง / มีแต่ช่องว่าง | `Please enter the required activity notes.` |
 | `REPORT_DETAIL_TOO_LONG` | `reportDetail` เกิน 1000 ตัวอักษร | `Activity notes must not exceed 1000 characters.` |
-| `INVALID_PHOTO` | รูปผิดชนิด, เกิน 5MB หรือส่งผิดชื่อฟิลด์ | `Invalid photo format or size limit exceeded.` |
+| `INVALID_PHOTO` | รูปผิดชนิด, เกิน 5MB, เนื้อไฟล์ไม่ใช่รูปจริง/ไม่ตรงกับชนิดที่ระบุ หรือส่งผิดชื่อฟิลด์ | `Invalid photo format or size limit exceeded.` |
+| `INVALID_FORM_DATA` | multipart/form-data เสียหรือส่งมาไม่ครบ | `Invalid multipart form data` |
 | `BOOKING_NOT_IN_PROGRESS` | สถานะการจองไม่ใช่ `in_progress` | `Care report can only be submitted during active service (status: in_progress)` |
 
 ### Response 403 Forbidden

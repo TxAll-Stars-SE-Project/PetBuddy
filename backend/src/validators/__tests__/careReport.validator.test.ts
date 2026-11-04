@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   MAX_REPORT_DETAIL_LENGTH,
   REPORT_DETAIL_REQUIRED_MESSAGE,
+  hasValidCareReportPhotoContent,
   isAllowedCareReportPhotoType,
   validateCreateCareReportInput,
 } from '../careReport.validator.js'
@@ -67,5 +68,43 @@ describe('isAllowedCareReportPhotoType', () => {
     for (const type of ['image/gif', 'image/svg+xml', 'application/pdf', 'text/plain', '']) {
       assert.equal(isAllowedCareReportPhotoType(type), false, type)
     }
+  })
+})
+
+describe('hasValidCareReportPhotoContent', () => {
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  )
+  const jpeg = Buffer.from([
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9,
+  ])
+  const webp = Buffer.concat([
+    Buffer.from('RIFF', 'ascii'),
+    Buffer.from([0x0c, 0x00, 0x00, 0x00]),
+    Buffer.from('WEBP', 'ascii'),
+    Buffer.from('VP8 ', 'ascii'),
+    Buffer.from([0x00, 0x00, 0x00, 0x00]),
+  ])
+
+  it('accepts real JPEG, PNG and WebP content with the matching type', () => {
+    assert.equal(hasValidCareReportPhotoContent({ buffer: jpeg, mimetype: 'image/jpeg' }), true)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: png, mimetype: 'image/png' }), true)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: webp, mimetype: 'image/webp' }), true)
+  })
+
+  it('rejects non-image content disguised as an image type', () => {
+    const text = Buffer.from('this is not an image, just text pretending to be one')
+    assert.equal(hasValidCareReportPhotoContent({ buffer: text, mimetype: 'image/png' }), false)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: Buffer.alloc(0), mimetype: 'image/jpeg' }), false)
+  })
+
+  it('rejects an image whose content does not match the declared type', () => {
+    assert.equal(hasValidCareReportPhotoContent({ buffer: jpeg, mimetype: 'image/png' }), false)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: png, mimetype: 'image/webp' }), false)
+  })
+
+  it('rejects types that care reports do not accept even if the content is valid', () => {
+    assert.equal(hasValidCareReportPhotoContent({ buffer: png, mimetype: 'image/gif' }), false)
   })
 })

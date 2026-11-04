@@ -1,4 +1,5 @@
 import { AppError } from '../utils/errors.js'
+import { hasValidImageMagicBytes } from './payment.validator.js'
 
 /**
  * กติการายงานการดูแลสัตว์เลี้ยง (US7-3) — ใช้ค่าเดียวกับฟอร์มฝั่ง frontend (CareReportFormModal)
@@ -17,6 +18,14 @@ export interface CreateCareReportInput {
 
 export const isAllowedCareReportPhotoType = (mimetype: string): boolean =>
   CARE_REPORT_PHOTO_MIME_TYPES.includes(mimetype)
+
+/**
+ * ตรวจเนื้อไฟล์จริงว่าเป็น JPEG/PNG/WebP และตรงกับชนิดที่ผู้ส่งระบุ
+ * ใช้ตัวตรวจเดียวกับสลิปโอนเงิน (US6-2) กันไฟล์อื่นที่ตั้ง Content-Type ปลอมเป็นรูป
+ */
+export const hasValidCareReportPhotoContent = (
+  file: Pick<Express.Multer.File, 'buffer' | 'mimetype'>
+): boolean => isAllowedCareReportPhotoType(file.mimetype) && hasValidImageMagicBytes(file.buffer, file.mimetype)
 
 /**
  * ตรวจสอบ Request Body สำหรับ POST /api/bookings/:bookingId/reports
