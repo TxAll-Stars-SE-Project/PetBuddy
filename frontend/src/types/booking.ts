@@ -77,4 +77,4 @@ export interface OwnerBooking {
   pets: PetInfo[];
 }
 
-export type BookingAction = 'accept' | 'reject' | 'complete';
+export type BookingAction = 'accept' | 'reject' | 'start' | 'complete';
