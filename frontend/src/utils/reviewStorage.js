@@ -35,6 +35,8 @@ export function saveBookingReview(bookingId, payload) {
       sitterName: payload.sitterName || '',
       serviceName: payload.serviceName || '',
       reviewedAt: new Date().toISOString(),
+      reviewedAt: new Date().toISOString(),
+      reviewId: payload.reviewId,
       status: 'reviewed', // สถานะ: รีวิวเรียบร้อยแล้ว
     };
     current[bookingId] = reviewData;
