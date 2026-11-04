@@ -62,6 +62,7 @@ export default function App() {
           element={<SitterRoute><SitterBookingsPage /></SitterRoute>}
         />
 
+
         {/* หน้า preview UI ด้วย mock data — มีเฉพาะตอน dev
             TODO(US7-3 รอบ frontend): ลบ route นี้ + import CareReportPreviewPage ตอนต่อ API จริง */}
         {import.meta.env.DEV && <Route path="/dev/care-report" element={<CareReportPreviewPage />} />}

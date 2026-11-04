@@ -149,12 +149,24 @@ export const updateBookingStatusBySitter = async (
   bookingId: number,
   action: SitterBookingAction
 ): Promise<{ bookingId: number; bookingstatus: string }> => {
-  // 1. ตรวจสอบ Action และกำหนด Status Machine ล่วงหน้า
+  // 1. ดึงข้อมูล Booking เพื่อเช็ก ownership และ paymentplan
+  const existingBooking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    select: { sitterid: true, bookingstatus: true, paymentplan: true },
+  })
+
+  if (!existingBooking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found')
+  }
+
+  if (existingBooking.sitterid !== sitterUserId) {
+    throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking')
+  }
+
   let expectedStatuses: booking_status[]
   let nextStatus: booking_status
 
   if (action === 'accept') {
-    // บังคับว่าพี่เลี้ยงต้องตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code แล้วจึงจะกดรับงานได้ (US 2-2 & US 6-2)
     const sitterPayment = await prisma.petsitter.findUnique({
       where: { userid: sitterUserId },
       select: { account_name: true, qr_code_url: true },
@@ -173,9 +185,13 @@ export const updateBookingStatusBySitter = async (
   } else if (action === 'reject') {
     expectedStatuses = ['pending']
     nextStatus = 'rejected'
+  } else if (action === 'start') { // ✅ เพิ่ม action 'start' เปลี่ยนเป็น 'in_progress'
+    expectedStatuses = ['confirmed', 'deposit_paid']
+    nextStatus = 'in_progress'
   } else if (action === 'complete') {
     expectedStatuses = ['confirmed', 'deposit_paid', 'in_progress']
-    nextStatus = 'waiting_final_payment'
+    // ✅ เช็ก paymentplan: ถ้าเป็น 'full' ให้เป็น 'completed' / ถ้าไม่ใช่ ให้เป็น 'waiting_final_payment'
+    nextStatus = existingBooking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment'
   } else {
     throw new AppError(400, 'INVALID_ACTION', 'Invalid action')
   }

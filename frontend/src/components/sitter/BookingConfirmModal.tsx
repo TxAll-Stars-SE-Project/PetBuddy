@@ -33,6 +33,12 @@ const actionMetaMap: Record<BookingAction, ActionMeta> = {
     buttonClass: 'booking-confirm-modal__button--reject',
     warningNote: 'ข้อควรระวัง: การปฏิเสธคำขอเป็นการดำเนินการที่ไม่สามารถย้อนกลับได้',
   },
+  start: {
+    title: 'ยืนยันการเริ่มให้บริการ',
+    description: 'คุณต้องการเริ่มให้บริการสัตว์เลี้ยงสำหรับรายการจองนี้ใช่หรือไม่? ระบบจะเปลี่ยนสถานะเป็น "กำลังให้บริการ" (In Progress)',
+    confirmLabel: 'ยืนยันเริ่มงาน (Start Job)',
+    buttonClass: 'booking-confirm-modal__button--start',
+  },
   complete: {
     title: 'ยืนยันการส่งมอบงานเสร็จสิ้น',
     description: 'คุณได้ดูแลสัตว์เลี้ยงเสร็จสิ้นตามข้อตกลงแล้วใช่หรือไม่? ระบบจะเปลี่ยนสถานะเป็น "รอชำระส่วนที่เหลือ" เพื่อให้เจ้าของสัตว์เลี้ยงทำการชำระเงินงวดสุดท้าย',

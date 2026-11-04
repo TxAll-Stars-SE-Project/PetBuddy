@@ -4,6 +4,7 @@ import { getPasswordResetEmailHtml } from '../templates/password-reset-email.tem
 import { getBookingStatusEmailHtml } from '../templates/booking-status-email.template.js'
 import { getNewBookingEmailHtml } from '../templates/new-booking-email.template.js';
 import { getBookingCancelledEmailHtml } from '../templates/booking-cancelled-email.template.js'
+import { SitterBookingAction } from '../validators/booking.validator.js';
 import {
   getPaymentStatusEmailHtml,
   PaymentStatusEmailParams,
@@ -126,7 +127,7 @@ export interface BookingStatusNotificationParams {
   ownerUsername: string
   sitterUsername: string
   serviceName: string
-  action: 'accept' | 'reject' | 'complete'
+  action: SitterBookingAction;
   bookingId: number
   startTime: string
   endTime: string
@@ -204,10 +205,20 @@ export const sendBookingStatusNotificationEmail = async (
     const fromAddress =
       process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
 
-    const subjectMap = {
+    // ✅ 1. subjectMap ที่รองรับ SitterBookingAction ครบทุก action (รวม 'start')
+    const subjectMap: Record<SitterBookingAction, string> = {
       accept: `🐾 คำขอจองบริการ PetBuddy ของคุณได้รับการตอบรับแล้ว (#${params.bookingId})`,
       reject: `🐾 แจ้งเตือนสถานะคำขอจองบริการ PetBuddy (#${params.bookingId})`,
+      start: `🚀 พี่เลี้ยงเริ่มให้บริการดูแลสัตว์เลี้ยงของคุณแล้ว (#${params.bookingId})`,
       complete: `🎉 บริการ PetBuddy ของคุณเสร็จสิ้นเรียบร้อยแล้ว (#${params.bookingId})`,
+    }
+
+    // ✅ 2. actionTextMap สำหรับแมปคำอ่านภาษาไทยใน textContent
+    const actionTextMap: Record<SitterBookingAction, string> = {
+      accept: 'ตอบรับ',
+      reject: 'ปฏิเสธ',
+      start: 'เริ่มต้นให้บริการ',
+      complete: 'ส่งงานเสร็จสิ้น',
     }
 
     const htmlContent = getBookingStatusEmailHtml({
@@ -222,7 +233,7 @@ export const sendBookingStatusNotificationEmail = async (
       totalPrice: params.totalPrice,
     })
 
-    const textContent = `สวัสดีคุณ ${params.ownerUsername}!\n\nคำขอจอง #${params.bookingId} (${params.serviceName}) ได้รับการ ${params.action === 'accept' ? 'ตอบรับ' : params.action === 'reject' ? 'ปฏิเสธ' : 'ส่งงานเสร็จสิ้น'} โดยพี่เลี้ยงคุณ ${params.sitterUsername}\n\nขอบคุณที่ใช้บริการ PetBuddy!`
+    const textContent = `สวัสดีคุณ ${params.ownerUsername}!\n\nคำขอจอง #${params.bookingId} (${params.serviceName}) ได้รับการ${actionTextMap[params.action]}โดยพี่เลี้ยงคุณ ${params.sitterUsername}\n\nขอบคุณที่ใช้บริการ PetBuddy!`
 
     const info = await transporter.sendMail({
       from: fromAddress,
