@@ -2,9 +2,10 @@ import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { CreateServiceInput, UpdateServiceInput } from '../validators/service.validator.js'
 import { SitterSearchInput, SitterSort } from '../validators/sitterSearch.validator.js'
-import { booking_status, service_type } from '../generated/prisma/enums.js'
+import { service_type } from '../generated/prisma/enums.js'
 import { Prisma } from '../generated/prisma/client.js'
 import { ACTIVE_BOOKING_STATUSES } from '../constants/booking.constant.js'
+import { calculateAverageRating } from '../utils/rating.helper.js'
 
 
 const ARCHIVED = 'archived'
@@ -47,7 +48,7 @@ export const getProfileById = async (sitterId: number) => {
   });
   const avgRating = ratingAgg._avg.review_score 
     ? Math.round(ratingAgg._avg.review_score * 10) / 10 
-    : 0;
+    : null;
 
   return {
     sitterId: sitter.userid,
@@ -83,13 +84,20 @@ export const getSitterReviewsById = async (sitterId: number) => {
     orderBy: { reviewid: 'desc' },
   });
 
-  return reviews.map((r) => ({
-    reviewId: r.reviewid,
-    rating: r.review_score ?? 0,
-    comment: r.review_detail ?? '',
-    ownerName: r.booking.petowner.USER.username,
-    createdAt: r.booking.bookingdate, // ใช้ bookingdate แทนเพราะตาราง review ยังไม่มี created_at
-  }));
+  const { averageRating, reviewCount } = calculateAverageRating(reviews);
+
+  return {
+    sitterId,
+    averageRating,
+    reviewCount,
+    reviews: reviews.map((r) => ({
+      reviewId: r.reviewid,
+      rating: r.review_score ?? 0,
+      comment: r.review_detail ?? '',
+      reviewerName: r.booking.petowner.USER.username,
+      createdAt: r.booking.bookingdate, // ใช้ bookingdate แทนเพราะตาราง review ยังไม่มี created_at
+    })),
+  };
 };
 
 export const getBusySlots = async (sitterId: number, dateString: string) => {

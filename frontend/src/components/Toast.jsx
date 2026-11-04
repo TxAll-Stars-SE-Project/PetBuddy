@@ -34,7 +34,7 @@ export default function Toast() {
   return (
     <aside
       aria-label="Notification"
-      className="fixed top-5 right-5 z-50 max-w-sm w-[calc(100vw-40px)] pointer-events-auto"
+      className="fixed top-5 right-5 z-[10050] max-w-sm w-[calc(100vw-40px)] pointer-events-auto"
     >
       <div
         className={`bg-white rounded-2xl p-4 shadow-xl border flex items-start gap-3 transition-all ${

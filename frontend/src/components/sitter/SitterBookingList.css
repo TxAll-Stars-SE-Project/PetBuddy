@@ -52,3 +52,72 @@
   display: grid;
   gap: 16px;
 }
+
+.sitter-booking-list__payment-warning {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid var(--primary-border, #fed7aa);
+  border-left: 8px solid var(--primary, #f97316);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(31, 41, 55, 0.08);
+}
+
+.sitter-booking-list__payment-warning-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sitter-booking-list__payment-warning-body svg {
+  flex-shrink: 0;
+  color: var(--primary, #f97316);
+  margin-top: 2px;
+}
+
+.sitter-booking-list__payment-warning-body strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #1f2937);
+  margin-bottom: 2px;
+}
+
+.sitter-booking-list__payment-warning-body p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted, #6b7280);
+}
+
+.sitter-booking-list__payment-warning-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--primary, #f97316);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.sitter-booking-list__payment-warning-btn:hover {
+  background: var(--primary-hover, #ea580c);
+}
+
+@media (max-width: 640px) {
+  .sitter-booking-list__payment-warning {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sitter-booking-list__payment-warning-btn {
+    width: 100%;
+  }
+}

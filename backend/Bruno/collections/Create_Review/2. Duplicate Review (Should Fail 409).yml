@@ -1,0 +1,37 @@
+info:
+  name: 2. Duplicate Review (Should Fail 409)
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/reviews"
+  body:
+    type: json
+    data: |-
+      {
+        "bookingId": 81,
+        "rating": 4,
+        "comment": "ส่งซ้ำอีกรอบ ควรจะโดนบล็อก"
+      }
+  auth:
+    type: bearer
+    token: "{{Owner_Token}}"
+
+assert:
+  - expr: res.status
+    operator: eq
+    value: 409
+  - expr: res.body.status
+    operator: eq
+    value: error
+  - expr: res.body.message
+    operator: eq
+    value: Booking has already been reviewed
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

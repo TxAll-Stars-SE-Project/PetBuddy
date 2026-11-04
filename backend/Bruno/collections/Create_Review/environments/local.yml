@@ -1,0 +1,11 @@
+name: local
+color: "#CE4F3B"
+variables:
+  - name: baseUrl
+    value: http://localhost:5000
+    description: ""
+  - name: sitterID
+    value: "143"
+    description: ""
+  - secret: true
+    name: Owner_Token

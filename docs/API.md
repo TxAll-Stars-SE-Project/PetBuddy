@@ -916,17 +916,24 @@ GET /api/sitters/1/reviews
 ```json
 {
   "status": "success",
-  "data": [
-    {
-      "reviewId": 1,
-      "rating": 5,
-      "comment": "ดูแลดีมาก",
-      "ownerName": "tanin",
-      "createdAt": "2026-09-01T10:00:00Z"
-    }
-  ]
+  "data": {
+    "sitterId": 1,
+    "averageRating": 5,
+    "reviewCount": 1,
+    "reviews": [
+      {
+        "reviewId": 1,
+        "rating": 5,
+        "comment": "ดูแลดีมาก",
+        "reviewerName": "tanin",
+        "createdAt": "2026-09-01T10:00:00Z"
+      }
+    ]
+  }
 }
 ```
+
+> อัปเดตตาม §7.2 (Sprint 3): ไม่มีรีวิว → `averageRating: null`, `reviewCount: 0`, `reviews: []`
 
 ### Response 404 Not Found
 ```json
@@ -1148,10 +1155,17 @@ GET /api/owner/bookings?status=waiting_payment
       "totalPrice": 6300,
       "pets": [
         { "petId": 1, "petName": "เหมียว", "petNote": "แมวขี้อาย" }
-      ]
+      ],
+      "review": {
+        "reviewId": 1,
+        "rating": 5,
+        "comment": "ดูแลดีมากครับ"
+      }
     }
   ]
 }
+
+> หมายเหตุ: หากการจองนั้นยังไม่เคยรีวิว ฟิลด์ `review` จะเป็น `null`
 ```
 
 ### Response 401 Unauthorized
