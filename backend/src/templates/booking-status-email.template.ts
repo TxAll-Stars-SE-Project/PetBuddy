@@ -1,8 +1,10 @@
+import { SitterBookingAction } from '../validators/booking.validator.js'
+
 export interface BookingStatusEmailTemplateProps {
   ownerUsername: string
   sitterUsername: string
   serviceName: string
-  action: 'accept' | 'reject' | 'complete'
+  action: SitterBookingAction // ✅ เปลี่ยนจาก 'accept' | 'reject' | 'complete' เป็น SitterBookingAction
   bookingId: number
   startTime: string
   endTime: string
@@ -39,7 +41,13 @@ export const getBookingStatusEmailHtml = ({
     statusBadgeBg = '#fee2e2'
     statusBadgeText = '#b91c1c'
     actionAdvice = 'คุณสามารถเลือกค้นหาพี่เลี้ยงท่านอื่นหรือเปลี่ยนช่วงเวลาการจองได้ที่ PetBuddy'
-  } else {
+  } else if (action === 'start') {
+    statusTitle = 'พี่เลี้ยงเริ่มให้บริการแล้ว'
+    statusMessage = `พี่เลี้ยง <strong>คุณ ${sitterUsername}</strong> ได้เริ่มให้บริการดูแลสัตว์เลี้ยงของคุณแล้ว`
+    statusBadgeBg = '#dbeafe'
+    statusBadgeText = '#1d4ed8'
+    actionAdvice = 'คุณสามารถเข้าสู่ระบบเพื่อติดตามสถานะการให้บริการหรือติดต่อพี่เลี้ยงได้ตลอดเวลา'
+  }else {
     statusTitle = 'บริการเสร็จสิ้นเรียบร้อยแล้ว'
     statusMessage = `พี่เลี้ยง <strong>คุณ ${sitterUsername}</strong> ได้ดำเนินการส่งมอบงานบริการเสร็จสิ้นเรียบร้อยแล้ว`
     statusBadgeBg = '#e0f2fe'
