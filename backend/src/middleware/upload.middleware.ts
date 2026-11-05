@@ -176,7 +176,8 @@ export const uploadCareReportPhotoMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  const contentType = req.headers['content-type'] || ''
+  // Content-Type ไม่สนตัวพิมพ์เล็ก/ใหญ่ตาม RFC
+  const contentType = (req.headers['content-type'] || '').toLowerCase()
   if (!contentType.includes('multipart/form-data')) {
     next()
     return

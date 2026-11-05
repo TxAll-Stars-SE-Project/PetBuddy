@@ -28,6 +28,13 @@ const toCareReportResponse = (report: {
   createdAt: report.created_at.toISOString(),
 })
 
+const notInProgressError = () =>
+  new AppError(
+    400,
+    'BOOKING_NOT_IN_PROGRESS',
+    'Care report can only be submitted during active service (status: in_progress)'
+  )
+
 /**
  * พี่เลี้ยงส่งรายงานการดูแลสัตว์เลี้ยงระหว่างให้บริการ (US7-3)
  *
@@ -54,28 +61,35 @@ export const createCareReport = async (
   }
 
   if (booking.bookingstatus !== 'in_progress') {
-    throw new AppError(
-      400,
-      'BOOKING_NOT_IN_PROGRESS',
-      'Care report can only be submitted during active service (status: in_progress)'
-    )
+    throw notInProgressError()
   }
 
   const photoUrl = photo ? await uploadCareReportPhoto(photo, bookingId) : null
 
   try {
-    const report = await prisma.report.create({
-      data: {
-        bookingid: bookingId,
-        // คู่สัญญาดึงจากการจองเสมอ ไม่รับจาก request เพื่อไม่ให้ข้อมูลขัดกัน
-        ownerid: booking.ownerid,
-        sitterid: sitterUserId,
-        report_detail: input.reportDetail,
-        photo_url: photoUrl,
-      },
-    })
+    return await prisma.$transaction(async (tx) => {
+      // ตรวจสถานะซ้ำพร้อมล็อกแถว booking (UPDATE แบบไม่เปลี่ยนค่า) กันงานถูกจบ/ยกเลิกระหว่างอัปโหลดรูป
+      const stillInProgress = await tx.booking.updateMany({
+        where: { bookingid: bookingId, sitterid: sitterUserId, bookingstatus: 'in_progress' },
+        data: { bookingstatus: 'in_progress' },
+      })
+      if (stillInProgress.count === 0) {
+        throw notInProgressError()
+      }
 
-    return toCareReportResponse(report)
+      const report = await tx.report.create({
+        data: {
+          bookingid: bookingId,
+          // คู่สัญญาดึงจากการจองเสมอ ไม่รับจาก request เพื่อไม่ให้ข้อมูลขัดกัน
+          ownerid: booking.ownerid,
+          sitterid: sitterUserId,
+          report_detail: input.reportDetail,
+          photo_url: photoUrl,
+        },
+      })
+
+      return toCareReportResponse(report)
+    })
   } catch (error) {
     // บันทึกไม่สำเร็จ → ลบรูปที่เพิ่งอัปโหลดทิ้ง ไม่ให้เป็นไฟล์กำพร้าใน Storage
     if (photoUrl) {

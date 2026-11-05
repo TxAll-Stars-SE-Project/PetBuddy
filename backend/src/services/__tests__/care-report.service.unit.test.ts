@@ -3,13 +3,18 @@ import { AppError } from '../../utils/errors.js'
 
 // mock ก่อน import service — เทสไม่แตะ DB หรือ Supabase จริง
 const findUnique = jest.fn<(args: unknown) => Promise<unknown>>()
+const updateMany = jest.fn<(args: unknown) => Promise<{ count: number }>>()
 const create = jest.fn<(args: unknown) => Promise<unknown>>()
 const uploadCareReportPhoto = jest.fn<(file: unknown, bookingId: number) => Promise<string>>()
 const deleteCareReportPhoto = jest.fn<(url: string) => Promise<void>>()
 
-jest.unstable_mockModule('../../utils/prisma.js', () => ({
-  default: { booking: { findUnique }, report: { create } },
-}))
+// $transaction ส่ง client ตัวเดียวกันให้ callback ใช้เป็น tx
+const prismaMock = {
+  booking: { findUnique, updateMany },
+  report: { create },
+  $transaction: (fn: (tx: unknown) => Promise<unknown>) => fn(prismaMock),
+}
+jest.unstable_mockModule('../../utils/prisma.js', () => ({ default: prismaMock }))
 jest.unstable_mockModule('../../utils/supabase/storage.js', () => ({
   uploadCareReportPhoto,
   deleteCareReportPhoto,
@@ -53,6 +58,7 @@ const expectAppError = async (promise: Promise<unknown>, statusCode: number, err
 describe('createCareReport (Unit)', () => {
   beforeEach(() => {
     findUnique.mockReset()
+    updateMany.mockReset().mockResolvedValue({ count: 1 })
     create.mockReset()
     uploadCareReportPhoto.mockReset()
     deleteCareReportPhoto.mockReset()
@@ -95,6 +101,10 @@ describe('createCareReport (Unit)', () => {
     const result = await createCareReport(SITTER_ID, BOOKING_ID, { reportDetail: 'น้องทานข้าวหมดแล้ว' })
 
     expect(uploadCareReportPhoto).not.toHaveBeenCalled()
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { bookingid: BOOKING_ID, sitterid: SITTER_ID, bookingstatus: 'in_progress' },
+      data: { bookingstatus: 'in_progress' },
+    })
     expect(create).toHaveBeenCalledWith({
       data: {
         bookingid: BOOKING_ID,
@@ -134,6 +144,20 @@ describe('createCareReport (Unit)', () => {
     create.mockRejectedValue(dbError)
 
     await expect(createCareReport(SITTER_ID, BOOKING_ID, { reportDetail: 'x' }, photo)).rejects.toBe(dbError)
+    expect(deleteCareReportPhoto).toHaveBeenCalledWith(PHOTO_URL)
+  })
+
+  it('rejects with 400 and deletes the photo when the booking leaves in_progress during upload', async () => {
+    findUnique.mockResolvedValue(bookingWith())
+    uploadCareReportPhoto.mockResolvedValue(PHOTO_URL)
+    updateMany.mockResolvedValue({ count: 0 })
+
+    await expectAppError(
+      createCareReport(SITTER_ID, BOOKING_ID, { reportDetail: 'x' }, photo),
+      400,
+      'BOOKING_NOT_IN_PROGRESS'
+    )
+    expect(create).not.toHaveBeenCalled()
     expect(deleteCareReportPhoto).toHaveBeenCalledWith(PHOTO_URL)
   })
 

@@ -46,6 +46,12 @@ describe('validateCreateCareReportInput', () => {
     assert.equal(validateCreateCareReportInput({ reportDetail }).reportDetail.length, MAX_REPORT_DETAIL_LENGTH)
   })
 
+  it('counts emoji as one character each', () => {
+    const reportDetail = '🐶'.repeat(MAX_REPORT_DETAIL_LENGTH)
+    assert.equal(validateCreateCareReportInput({ reportDetail }).reportDetail, reportDetail)
+    expectAppError(() => validateCreateCareReportInput({ reportDetail: `${reportDetail}🐶` }), 400, 'REPORT_DETAIL_TOO_LONG')
+  })
+
   it('rejects notes longer than the limit', () => {
     const reportDetail = 'a'.repeat(MAX_REPORT_DETAIL_LENGTH + 1)
     expectAppError(() => validateCreateCareReportInput({ reportDetail }), 400, 'REPORT_DETAIL_TOO_LONG')
@@ -58,8 +64,8 @@ describe('validateCreateCareReportInput', () => {
 })
 
 describe('isAllowedCareReportPhotoType', () => {
-  it('allows JPEG, PNG and WebP', () => {
-    for (const type of ['image/jpeg', 'image/png', 'image/webp']) {
+  it('allows JPEG (incl. image/jpg and image/pjpeg), PNG and WebP', () => {
+    for (const type of ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp']) {
       assert.equal(isAllowedCareReportPhotoType(type), true, type)
     }
   })
@@ -89,6 +95,8 @@ describe('hasValidCareReportPhotoContent', () => {
 
   it('accepts real JPEG, PNG and WebP content with the matching type', () => {
     assert.equal(hasValidCareReportPhotoContent({ buffer: jpeg, mimetype: 'image/jpeg' }), true)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: jpeg, mimetype: 'image/jpg' }), true)
+    assert.equal(hasValidCareReportPhotoContent({ buffer: jpeg, mimetype: 'image/pjpeg' }), true)
     assert.equal(hasValidCareReportPhotoContent({ buffer: png, mimetype: 'image/png' }), true)
     assert.equal(hasValidCareReportPhotoContent({ buffer: webp, mimetype: 'image/webp' }), true)
   })

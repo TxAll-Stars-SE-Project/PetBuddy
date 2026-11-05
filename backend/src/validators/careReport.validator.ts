@@ -6,7 +6,8 @@ import { hasValidImageMagicBytes } from './payment.validator.js'
  */
 export const MAX_REPORT_DETAIL_LENGTH = 1000
 export const MAX_CARE_REPORT_PHOTO_SIZE = 5 * 1024 * 1024 // 5 MB
-export const CARE_REPORT_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+// image/jpg, image/pjpeg: บาง client (เช่น Android webview) ส่ง .jpg มาด้วยชนิดนี้ ใช้ชุดเดียวกับสลิป (US6-2)
+export const CARE_REPORT_PHOTO_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp']
 
 // ข้อความ error ตาม Acceptance Criteria ของ US7-3
 export const REPORT_DETAIL_REQUIRED_MESSAGE = 'Please enter the required activity notes.'
@@ -39,7 +40,8 @@ export const validateCreateCareReportInput = (body: unknown): CreateCareReportIn
     throw new AppError(400, 'REPORT_DETAIL_REQUIRED', REPORT_DETAIL_REQUIRED_MESSAGE)
   }
 
-  if (reportDetail.length > MAX_REPORT_DETAIL_LENGTH) {
+  // นับเป็นตัวอักษรจริง (code point) ไม่ให้ emoji กินโควตา 2 หน่วย
+  if ([...reportDetail].length > MAX_REPORT_DETAIL_LENGTH) {
     throw new AppError(
       400,
       'REPORT_DETAIL_TOO_LONG',
