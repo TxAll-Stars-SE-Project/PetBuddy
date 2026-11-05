@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { requireRole } from '../middleware/role.middleware.js'
 import { uploadCareReportPhotoMiddleware } from '../middleware/upload.middleware.js'
-import { createCareReport } from '../controllers/care-report.controller.js'
+import { createCareReport, getCareReports } from '../controllers/care-report.controller.js'
 
 const router = Router()
 
@@ -17,5 +17,8 @@ router.post(
   uploadCareReportPhotoMiddleware,
   createCareReport
 )
+
+// GET /api/bookings/:bookingId/reports (US7-3) — owner หรือ sitter ของการจอง ตรวจสิทธิ์ใน service
+router.get('/:bookingId/reports', requireAuth, getCareReports)
 
 export default router

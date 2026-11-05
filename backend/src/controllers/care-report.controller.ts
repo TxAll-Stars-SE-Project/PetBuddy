@@ -34,3 +34,32 @@ export const createCareReport = async (
     res.status(500).json({ status: 'error', message: 'Internal server error' })
   }
 }
+
+/**
+ * GET /api/bookings/:bookingId/reports
+ * ดึงรายงานการดูแลทั้งหมดของการจอง สำหรับเจ้าของสัตว์เลี้ยงหรือพี่เลี้ยงของการจองนั้น (US7-3)
+ */
+export const getCareReports = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.auth!.userId
+    const bookingId = validateBookingId(req.params.bookingId)
+
+    const data = await careReportService.getCareReports(userId, bookingId)
+
+    res.status(200).json({ status: 'success', data })
+  } catch (error) {
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        status: 'error',
+        error: error.errorCode,
+        message: error.message,
+      })
+      return
+    }
+    console.error('[CareReportController] Error fetching care reports:', error)
+    res.status(500).json({ status: 'error', message: 'Internal server error' })
+  }
+}
