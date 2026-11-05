@@ -1,0 +1,37 @@
+info:
+  name: 3. Booking Not Completed (Should Fail 409)
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/reviews"
+  body:
+    type: json
+    data: |-
+      {
+        "bookingId": 89,
+        "rating": 5,
+        "comment": "งานยังไม่จบ แอบมารีวิวก่อน"
+      }
+  auth:
+    type: bearer
+    token: "{{Owner_Token}}"
+
+assert:
+  - expr: res.status
+    operator: eq
+    value: 409
+  - expr: res.body.status
+    operator: eq
+    value: error
+  - expr: res.body.message
+    operator: eq
+    value: Booking is not completed
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

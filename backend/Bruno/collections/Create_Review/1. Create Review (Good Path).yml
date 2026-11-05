@@ -1,0 +1,39 @@
+info:
+  name: 1. Create Review (Good Path)
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/reviews"
+  body:
+    type: json
+    data: |-
+      {
+        "bookingId": 81,
+        "rating": 5,
+        "comment": "พี่เลี้ยงดูแลน้องดีมาก มีรูปถ่ายอัปเดตสม่ำเสมอ แนะนำเลยครับ!"
+      }
+  auth:
+    type: bearer
+    token: "{{Owner_Token}}"
+
+assert:
+  - expr: res.status
+    operator: eq
+    value: 201
+  - expr: res.body.status
+    operator: eq
+    value: success
+  - expr: res.body.data.rating
+    operator: eq
+    value: 5
+  - expr: res.body.data.reviewId
+    operator: isDefined
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

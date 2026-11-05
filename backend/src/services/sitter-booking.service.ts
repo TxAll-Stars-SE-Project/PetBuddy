@@ -163,51 +163,61 @@ export const updateBookingStatusBySitter = async (
     throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking');
   }
 
-  // 2. ตรวจสอบ Action และกำหนด Status Machine ตามเงื่อนไข
+  // 2. กำหนดตัวแปรสำหรับ Status Machine
+  let expectedStatuses: booking_status[];
   let nextStatus: booking_status;
 
+  // 3. ตรวจสอบเงื่อนไขตาม Action
   if (action === 'accept') {
-    if (existingBooking.bookingstatus !== 'pending') {
-       throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Booking must be pending to accept');
+    // บังคับว่าพี่เลี้ยงต้องตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code แล้วจึงจะกดรับงานได้
+    const sitterPayment = await prisma.petsitter.findUnique({
+      where: { userid: sitterUserId },
+      select: { account_name: true, qr_code_url: true },
+    });
+
+    if (!sitterPayment?.account_name?.trim() || !sitterPayment?.qr_code_url?.trim()) {
+      throw new AppError(
+        400,
+        'SITTER_PAYMENT_INFO_REQUIRED',
+        'กรุณาตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code ในหน้าโปรไฟล์ก่อนกดรับงาน'
+      );
     }
+    expectedStatuses = ['pending'];
     nextStatus = 'waiting_payment';
 
   } else if (action === 'reject') {
-    if (existingBooking.bookingstatus !== 'pending') {
-       throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Booking must be pending to reject');
-    }
+    expectedStatuses = ['pending'];
     nextStatus = 'rejected';
 
   } else if (action === 'start') {
-    // กฎของ Start: ต้องเป็น confirmed หรือ deposit_paid
-    if (existingBooking.bookingstatus !== 'confirmed' && existingBooking.bookingstatus !== 'deposit_paid') {
-      throw new AppError(400, 'INVALID_STATUS', 'Booking must be confirmed or deposit paid before starting');
-    }
     // กฎของ Start: ต้องถึงเวลาเริ่มงานแล้ว
     const now = new Date();
     if (now < new Date(existingBooking.starttime)) {
       throw new AppError(400, 'EARLY_START', 'Cannot start service before the scheduled start date');
     }
+    // กฎของ Start: ต้องเป็น confirmed หรือ deposit_paid
+    expectedStatuses = ['confirmed', 'deposit_paid'];
     nextStatus = 'in_progress';
 
   } else if (action === 'complete') {
     // กฎของ Complete: ต้องเป็น in_progress
     if (existingBooking.bookingstatus !== 'in_progress') {
-       // ข้อความ Error ตรงตามเอกสาร API
        throw new AppError(400, 'INVALID_STATUS', 'Cannot complete service before starting. Current status must be in_progress.');
     }
-    // กฎของ Complete: เช็คแผนการเงิน
+    expectedStatuses = ['in_progress'];
+    // เช็คแผนการเงินเพื่อกำหนดสถานะถัดไป
     nextStatus = existingBooking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment';
 
   } else {
     throw new AppError(400, 'INVALID_ACTION', 'Invalid action');
   }
-  // 3. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
+
+  // 4. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
   const result = await prisma.booking.updateMany({
     where: {
       bookingid: bookingId,
       sitterid: sitterUserId,
-      bookingstatus: existingBooking.bookingstatus, // เช็คว่าระหว่างที่เราทำ มีใครมาเปลี่ยน status ตัดหน้าไหม
+      bookingstatus: { in: expectedStatuses },
     },
     data: {
       bookingstatus: nextStatus,
@@ -218,8 +228,7 @@ export const updateBookingStatusBySitter = async (
      throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ไม่สามารถดำเนินการได้ เนื่องจากสถานะคำขอจองถูกเปลี่ยนแปลงไปแล้ว หรือสถานะปัจจุบันไม่ถูกต้อง');
   }
 
-  // 4. ส่งอีเมลแจ้งเตือนไปยัง Pet Owner (แบบ Non-blocking safe dispatch)
-  // ดึงข้อมูลสำหรับส่งอีเมลหลังจากสถานะถูกอัปเดตสำเร็จ 100% แล้ว
+  // 5. ส่งอีเมลแจ้งเตือนไปยัง Pet Owner (แบบ Non-blocking safe dispatch)
   prisma.booking
     .findUnique({
       where: { bookingid: bookingId },
@@ -231,35 +240,35 @@ export const updateBookingStatusBySitter = async (
       },
     })
     .then((bookingInfo) => {
-      const ownerUser = bookingInfo?.petowner?.USER
-      const sitterUser = bookingInfo?.petsitter?.USER
+      const ownerUser = bookingInfo?.petowner?.USER;
+      const sitterUser = bookingInfo?.petsitter?.USER;
       if (ownerUser?.email) {
-        const petNames = bookingInfo?.bookingdetail.map((bd) => bd.pet.name) || []
-        const formatThaiDateTime = (date: Date): string => date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+        const petNames = bookingInfo?.bookingdetail.map((bd) => bd.pet.name) || [];
+        const formatThaiDateTime = (date: Date): string => date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
 
         sendBookingStatusNotificationEmail({
           toEmail: ownerUser.email,
           ownerUsername: ownerUser.username,
           sitterUsername: sitterUser?.username || 'พี่เลี้ยง',
           serviceName: bookingInfo?.services?.servicename || 'บริการสัตว์เลี้ยง',
-          action, // action ตรงนี้ส่ง 'start' / 'complete' เข้าไปได้เลย
+          action, 
           bookingId,
           startTime: bookingInfo?.starttime ? formatThaiDateTime(bookingInfo.starttime) : '',
           endTime: bookingInfo?.endtime ? formatThaiDateTime(bookingInfo.endtime) : '',
           petNames,
           totalPrice: Number(bookingInfo?.totalprice || 0),
         }).catch((err) => {
-          console.error('[SitterBookingService] Error dispatching booking notification email:', err)
-        })
+          console.error('[SitterBookingService] Error dispatching booking notification email:', err);
+        });
       }
     })
     .catch((err) => {
-      console.error('[SitterBookingService] Error fetching booking for email notification:', err)
-    })
+      console.error('[SitterBookingService] Error fetching booking for email notification:', err);
+    });
 
   return {
     bookingId,
     bookingstatus: nextStatus,
-    action: action // ส่ง action กลับไปให้ Controller ด้วย
+    action: action 
   };
 }
