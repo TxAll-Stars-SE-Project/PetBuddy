@@ -5,6 +5,7 @@ import sitterPaymentRoutes from './routes/sitter-payment.routes.js'
 import sittersRoutes from './routes/sitters.routes.js'
 import ownerBookingRoutes from './routes/owner-booking.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
+import careReportRoutes from './routes/care-report.routes.js'
 import reviewRoutes from './routes/review.routes.js'
 import cors from 'cors'
 import routes from './routes/routers.js'
@@ -23,5 +24,7 @@ app.use('/api/sitters', sittersRoutes)
 app.use('/api/owner/bookings', ownerBookingRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/reviews', reviewRoutes)
+// US7-3 รายงานการดูแลสัตว์เลี้ยง: /api/bookings/:bookingId/reports
+app.use('/api/bookings', careReportRoutes)
 
 export default app

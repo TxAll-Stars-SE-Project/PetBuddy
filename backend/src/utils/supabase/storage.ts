@@ -105,6 +105,15 @@ export const deleteQrCodeImage = (imageUrlOrPath: string): Promise<void> =>
   deleteFromBucket(PAY_QR_STORAGE_BUCKET, 'qrcodes', imageUrlOrPath)
 
 /**
+ * Pet care report photo storage helpers (Bucket: petbuddy-images, Folder: care-reports/{bookingId})
+ */
+export const uploadCareReportPhoto = (file: Express.Multer.File, bookingId: number): Promise<string> =>
+  uploadToBucket(SUPABASE_STORAGE_BUCKET, 'care-reports', bookingId, file, 'jpg')
+
+export const deleteCareReportPhoto = (imageUrlOrPath: string): Promise<void> =>
+  deleteFromBucket(SUPABASE_STORAGE_BUCKET, 'care-reports', imageUrlOrPath)
+
+/**
  * Payment slip image storage helpers (Bucket: petbuddy-images, Folder: slips)
  */
 export const uploadSlipImage = (

@@ -1,6 +1,12 @@
 import multer from 'multer'
 import { Request, Response, NextFunction } from 'express'
 import { AppError } from '../utils/errors.js'
+import {
+  INVALID_CARE_REPORT_PHOTO_MESSAGE,
+  MAX_CARE_REPORT_PHOTO_SIZE,
+  hasValidCareReportPhotoContent,
+  isAllowedCareReportPhotoType,
+} from '../validators/careReport.validator.js'
 
 const storage = multer.memoryStorage()
 
@@ -138,6 +144,69 @@ export const uploadQrCodeMiddleware = (
       if (matched) {
         req.file = matched
       }
+    }
+
+    next()
+  })
+}
+
+const uploadCareReport = multer({
+  storage,
+  limits: {
+    fileSize: MAX_CARE_REPORT_PHOTO_SIZE,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!isAllowedCareReportPhotoType(file.mimetype)) {
+      cb(new AppError(400, 'INVALID_PHOTO', INVALID_CARE_REPORT_PHOTO_MESSAGE))
+      return
+    }
+    cb(null, true)
+  },
+}).single('photo')
+
+const CARE_REPORT_PHOTO_MULTER_ERRORS: string[] = ['LIMIT_FILE_SIZE', 'LIMIT_FILE_COUNT', 'LIMIT_UNEXPECTED_FILE']
+
+/**
+ * Middleware that parses multipart/form-data for a pet care report (US7-3).
+ * The optional photo must be sent under the 'photo' field and is exposed as `req.file`.
+ * Formats response on error per docs/API.md §6.1: { status: 'error', error, message }
+ */
+export const uploadCareReportPhotoMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  // Content-Type ไม่สนตัวพิมพ์เล็ก/ใหญ่ตาม RFC
+  const contentType = (req.headers['content-type'] || '').toLowerCase()
+  if (!contentType.includes('multipart/form-data')) {
+    next()
+    return
+  }
+
+  uploadCareReport(req, res, (err: unknown) => {
+    if (err) {
+      // ปัญหาที่ตัวรูป (ชนิดผิด / ใหญ่เกิน 5MB / ผิดชื่อฟิลด์ / หลายไฟล์) ใช้ข้อความเดียวกันตาม AC
+      // ส่วน form-data ที่เสียหรือส่งมาไม่ครบไม่เกี่ยวกับรูป จึงแยก error ออกมา
+      const isPhotoError =
+        err instanceof AppError ||
+        (err instanceof multer.MulterError && CARE_REPORT_PHOTO_MULTER_ERRORS.includes(err.code))
+
+      res.status(400).json(
+        isPhotoError
+          ? { status: 'error', error: 'INVALID_PHOTO', message: INVALID_CARE_REPORT_PHOTO_MESSAGE }
+          : { status: 'error', error: 'INVALID_FORM_DATA', message: 'Invalid multipart form data' }
+      )
+      return
+    }
+
+    // Content-Type มาจากผู้ส่ง จึงตรวจเนื้อไฟล์ซ้ำว่าเป็นรูปจริงก่อนส่งต่อ
+    if (req.file && !hasValidCareReportPhotoContent(req.file)) {
+      res.status(400).json({
+        status: 'error',
+        error: 'INVALID_PHOTO',
+        message: INVALID_CARE_REPORT_PHOTO_MESSAGE,
+      })
+      return
     }
 
     next()
