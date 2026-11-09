@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
 import ConfirmModal from "../components/ui/ConfirmModal.jsx";
+import ReviewModal from "../components/ReviewModal.jsx";
 import { cancelBooking, getOwnerBookings } from "../services/bookings.js";
+import { getBookingReviewState, getSavedReviews } from "../utils/reviewStorage.js";
 import { getBookingPayments } from "../services/payment.api.js";
 import { toast } from "../utils/toast.js";
 
@@ -40,7 +42,7 @@ function formatDateRange(start, end) {
   return `${s.toLocaleDateString("th-TH", dateFmt)} - ${e.toLocaleDateString("th-TH", dateFmt)}`;
 }
 
-// OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1)
+// OwnerBookingPage — รายการ booking ของเจ้าของสัตว์เลี้ยง + ปุ่มชำระเงิน (US6-1) + ปุ่มรีวิวบริการ
 // ดึงจาก GET /api/owner/bookings โดยให้ backend กรองตามแท็บ (?status=)
 export default function OwnerBookingPage() {
   const [activeTab, setActiveTab] = useState("all");
@@ -53,6 +55,8 @@ export default function OwnerBookingPage() {
   const [paymentSummaryReloadKey, setPaymentSummaryReloadKey] = useState(0);
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [reviewingBooking, setReviewingBooking] = useState(null);
+  const [savedReviews, setSavedReviews] = useState(() => getSavedReviews());
 
   const payingBookingId = payingBooking?.bookingId || payingBooking?.id;
 
@@ -141,7 +145,7 @@ export default function OwnerBookingPage() {
       <Navbar />
       <main className="home-main booking-page">
         <h1 className="page-title">การจองของฉัน</h1>
-        <p className="section-sub">ติดตามสถานะการจองและชำระเงินให้พี่เลี้ยงที่คุณเลือกไว้</p>
+        <p className="section-sub">ติดตามสถานะการจอง ชำระเงิน และรีวิวให้พี่เลี้ยงที่คุณเลือกไว้</p>
 
         <div className="booking-tabs">
           {FILTER_TABS.map((t) => (
@@ -193,10 +197,15 @@ export default function OwnerBookingPage() {
                   : b.paymentplan === "full"
                     ? "ชำระเงิน"
                     : "ชำระมัดจำ";
+              const isCompleted = b.bookingstatus === "completed";
+              const reviewState = isCompleted ? getBookingReviewState(b, savedReviews) : null;
+              const hasActions = canCancel || canPay || isCompleted;
+
               return (
                 <article key={b.bookingId} className="booking-card">
                   <div className="booking-card-top">
                     <div>
+                      <span className="booking-id-tag">การจอง #{b.bookingId}</span>
                       <h3 className="booking-sitter-name">{b.sitterName}</h3>
                       <p className="booking-service-name">{b.serviceName}</p>
                     </div>
@@ -219,7 +228,8 @@ export default function OwnerBookingPage() {
                       <small>ราคารวม</small>
                       <strong>฿{Number(b.totalPrice).toLocaleString("th-TH")}</strong>
                     </div>
-                    {(canPay || canCancel) && (
+
+                    {hasActions && (
                       <div className="booking-actions">
                         {canCancel && (
                           <button
@@ -242,6 +252,55 @@ export default function OwnerBookingPage() {
                             {paymentLabel}
                           </button>
                         )}
+
+                        {/* ส่วนการรีวิวสำหรับงานที่เสร็จสิ้น (Completed) */}
+                        {isCompleted && reviewState && (
+                          <>
+                            {/* 1. ยังไม่เคยรีวิว และยังไม่เกิน 14 วัน -> แสดงปุ่มให้กดรีวิว พร้อมเตือนเมื่อใกล้หมดเวลา */}
+                            {reviewState.canReview && (
+                              <div className="booking-review-action-wrap">
+                                <span
+                                  className={`booking-review-time-hint ${
+                                    reviewState.isUrgent ? "booking-review-time-hint--urgent" : ""
+                                  }`}
+                                >
+                                  {reviewState.isUrgent
+                                    ? `⚠️ เหลือเวลาอีก ${reviewState.daysRemaining} วันสุดท้าย!`
+                                    : `⏳ เหลือเวลารีวิว ${reviewState.daysRemaining} วัน`}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn--small"
+                                  onClick={() => setReviewingBooking(b)}
+                                >
+                                  ⭐ ให้คะแนนและรีวิว
+                                </button>
+                              </div>
+                            )}
+
+                            {/* 2. ถ้า review แล้ว -> แสดงป้ายสถานะรีวิวแล้ว และคลิกเพื่อดูรีวิวที่เคยเขียนได้ */}
+                            {reviewState.state === "reviewed" && (
+                              <button
+                                type="button"
+                                className="booking-badge booking-badge--review-done booking-badge--clickable"
+                                title="คลิกเพื่อดูรีวิวที่คุณส่งไว้"
+                                onClick={() => setReviewingBooking(b)}
+                              >
+                                ✓ รีวิวแล้ว ({reviewState.rating} ★) · ดูรีวิว
+                              </button>
+                            )}
+
+                            {/* 3. ถ้าเวลาผ่านไปเกิน 14 วัน -> แสดงป้ายหมดเวลารีวิว ไม่ให้ปุ่มหายไปดื้อๆ */}
+                            {reviewState.state === "expired_auto_reviewed" && (
+                              <span
+                                className="booking-badge booking-badge--review-expired"
+                                title="สามารถส่งรีวิวได้ภายใน 14 วันหลังเสร็จสิ้นบริการ เพื่อความแม่นยำของข้อมูล"
+                              >
+                                ⏳ หมดเวลารีวิว (เกิน 14 วัน)
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -252,6 +311,7 @@ export default function OwnerBookingPage() {
         )}
       </main>
 
+      {/* Modal ชำระเงิน */}
       <PaymentModal
         isOpen={Boolean(payingBooking)}
         booking={payingBooking}
@@ -266,6 +326,8 @@ export default function OwnerBookingPage() {
         }}
       />
 
+
+      {/* Modal ยกเลิกการจอง */}
       {cancellingBooking && (
         <ConfirmModal
           title="ยืนยันการยกเลิกการจอง"
@@ -295,6 +357,21 @@ export default function OwnerBookingPage() {
             </div>
           )}
         </ConfirmModal>
+      )}
+
+      {/* Modal รีวิวและให้คะแนนการบริการ */}
+      {reviewingBooking && (
+        <ReviewModal
+          booking={reviewingBooking}
+          isOpen={!!reviewingBooking}
+          existingReview={reviewingBooking.review || savedReviews[reviewingBooking.bookingId] || null}
+          onClose={() => setReviewingBooking(null)}
+          onSubmitSuccess={() => {
+            setSavedReviews(getSavedReviews());
+            setReloadKey((k) => k + 1); // รีเฟรชรายการจองเพื่อดึง booking.review ล่าสุดจาก Server
+            setReviewingBooking(null);
+          }}
+        />
       )}
     </div>
   );

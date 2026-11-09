@@ -1,0 +1,37 @@
+info:
+  name: 5. Invalid Rating (Should Fail 400)
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/reviews"
+  body:
+    type: json
+    data: |-
+      {
+        "bookingId": 81,
+        "rating": 6,
+        "comment": "ให้ 6 ดาวเกินลิมิต"
+      }
+  auth:
+    type: bearer
+    token: "{{Owner_Token}}"
+
+assert:
+  - expr: res.status
+    operator: eq
+    value: 400
+  - expr: res.body.status
+    operator: eq
+    value: error
+  - expr: res.body.message
+    operator: eq
+    value: Rating must be an integer between 1 and 5
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
