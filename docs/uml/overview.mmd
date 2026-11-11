@@ -1,0 +1,62 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Auth {
+        <<Resource>>
+    }
+
+    class Users {
+        <<Resource>>
+    }
+
+    class Pets {
+        <<Resource>>
+    }
+
+    class Sitters {
+        <<Resource>>
+    }
+
+    class SitterServices["Sitter Services"] {
+        <<Resource>>
+    }
+
+    class SitterBookings["Sitter Bookings"] {
+        <<Resource>>
+    }
+
+    class SitterPaymentInfo["Sitter PaymentInfo"] {
+        <<Resource>>
+    }
+
+    class OwnerBookings["Owner Bookings"] {
+        <<Resource>>
+    }
+
+    class Bookings {
+        <<Resource>>
+    }
+
+    class Payments {
+        <<Resource>>
+    }
+
+    class Reviews {
+        <<Resource>>
+    }
+
+    PetBuddyAPI ..> Auth : «Path» /api/auth
+    PetBuddyAPI ..> Users : «Path» /api/users
+    PetBuddyAPI ..> Pets : «Path» /api/pets
+    PetBuddyAPI ..> Sitters : «Path» /api/sitters
+    PetBuddyAPI ..> SitterServices : «Path» /api/sitter/services
+    PetBuddyAPI ..> SitterBookings : «Path» /api/sitter/bookings
+    PetBuddyAPI ..> SitterPaymentInfo : «Path» /api/sitter/payment-info
+    PetBuddyAPI ..> OwnerBookings : «Path» /api/owner/bookings
+    PetBuddyAPI ..> Bookings : «Path» /api/bookings
+    PetBuddyAPI ..> Payments : «Path» /api/payments
+    PetBuddyAPI ..> Reviews : «Path» /api/reviews

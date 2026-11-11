@@ -1,0 +1,59 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Auth {
+        <<Resource>>
+    }
+
+    class Register {
+        <<Resource>>
+        +POST()
+    }
+
+    class Login {
+        <<Resource>>
+        +POST()
+    }
+
+    class Logout {
+        <<Resource>>
+        +POST()
+    }
+
+    class ForgotPassword {
+        <<Resource>>
+        +POST()
+    }
+
+    class ResetPassword {
+        <<Resource>>
+        +POST()
+    }
+
+    class Account {
+        <<Resource>>
+        +DELETE()
+    }
+
+    class AuthResult {
+        <<Representation>>
+        - token : string
+        - userId : integer
+        - username : string
+        - role : string
+    }
+
+    PetBuddyAPI ..> Auth : «Path» /api/auth
+    Auth ..> Register : «Path» /register
+    Auth ..> Login : «Path» /login
+    Auth ..> Logout : «Path» /logout
+    Auth ..> ForgotPassword : «Path» /forgot-password
+    Auth ..> ResetPassword : «Path» /reset-password
+    Auth ..> Account : «Path» /account
+
+    Register ..> AuthResult : «use»
+    Login ..> AuthResult : «use»

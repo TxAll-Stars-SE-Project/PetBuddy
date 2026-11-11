@@ -1,0 +1,34 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Users {
+        <<Resource>>
+        +GET()
+    }
+
+    class UserMe["UserMe"] {
+        <<Resource>>
+        +GET()
+        +PUT()
+    }
+
+    class User {
+        <<Representation>>
+        - userId : integer
+        - username : string
+        - email : string
+        - role : string
+        - tel : string
+        - province : string
+        - district : string
+    }
+
+    PetBuddyAPI ..> Users : «Path» /api/users
+    Users ..> UserMe : «Path» /me
+
+    Users ..> User : «use»
+    UserMe ..> User : «use»

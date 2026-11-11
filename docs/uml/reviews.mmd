@@ -1,0 +1,23 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Reviews {
+        <<Resource>>
+        +POST()
+    }
+
+    class Review {
+        <<Representation>>
+        - reviewId : integer
+        - bookingId : integer
+        - rating : integer
+        - comment : string
+        - createdAt : string
+    }
+
+    PetBuddyAPI ..> Reviews : «Path» /api/reviews
+    Reviews ..> Review : «use»

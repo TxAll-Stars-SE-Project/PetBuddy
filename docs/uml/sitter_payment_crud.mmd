@@ -1,0 +1,25 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class SitterPaymentInfo {
+        <<Resource>>
+        +GET()
+        +POST()
+        +PATCH()
+        +DELETE()
+    }
+
+    class PaymentInfo {
+        <<Representation>>
+        - accountName : string
+        - qrCodeUrl : string
+        - promptPayNumber : string
+        - bankName : string
+    }
+
+    PetBuddyAPI ..> SitterPaymentInfo : «Path» /api/sitter/payment-info
+    SitterPaymentInfo ..> PaymentInfo : «use»
