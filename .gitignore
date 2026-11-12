@@ -62,3 +62,7 @@ docs/sitter_dashboard_prototype.html
 
 mocks/
 tests/
+
+# Playwright reports
+playwright-report/
+test-results/
