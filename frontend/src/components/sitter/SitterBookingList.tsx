@@ -65,6 +65,13 @@ export default function SitterBookingList() {
       ]);
 
       const now = Date.now();
+      // ล้างข้อมูลที่หมดอายุ (>= 5 วินาที) ออกจาก Merge Guard ทั้งหมด เพื่อป้องกัน Memory leak
+      for (const [id, value] of recentUpdatedStatusRef.current.entries()) {
+        if (now - value.timestamp >= 5000) {
+          recentUpdatedStatusRef.current.delete(id);
+        }
+      }
+
       const rawList = Array.isArray(list) ? list : [];
 
       // Merge Guard: ป้องกันไม่ให้การอ่านข้อมูลเก่า (Stale Read) มาเขียนทับสถานะที่เพิ่งอัปเดตไป
@@ -184,13 +191,21 @@ export default function SitterBookingList() {
 
     try {
       const res = await updateBookingStatus(booking.bookingId, action);
+      const getFallbackStatus = (act: BookingAction, paymentPlan?: string): BookingStatus => {
+        switch (act) {
+          case 'accept':
+            return 'waiting_payment';
+          case 'reject':
+            return 'rejected';
+          case 'start':
+            return 'in_progress';
+          case 'complete':
+            return paymentPlan === 'full' ? 'completed' : 'waiting_final_payment';
+        }
+      };
+
       const nextStatus: BookingStatus =
-        res?.bookingstatus ??
-        (action === 'accept'
-          ? 'waiting_payment'
-          : action === 'reject'
-            ? 'rejected'
-            : 'waiting_final_payment');
+        res?.bookingstatus ?? getFallbackStatus(action, booking.paymentplan);
 
       // บันทึกลง Merge Guard เพื่อป้องกัน Race Condition จากการ Refetch ซ้ำในเบื้องหลัง
       recentUpdatedStatusRef.current.set(booking.bookingId, {
