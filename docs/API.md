@@ -2367,6 +2367,7 @@ POST /api/bookings/{bookingID}/reports
 * **Header:** `Authorization: Bearer <token>` (role: `sitter` ของการจองนี้)
 * **Path Variables:** `bookingID` (integer)
 * **Content-Type:** `multipart/form-data` (ถ้าไม่แนบรูป ส่งเป็น `application/json` ได้)
+* **หลังบันทึกสำเร็จ:** ส่งอีเมลแจ้งเจ้าของสัตว์เลี้ยงแบบไม่รอผล (ส่งไม่สำเร็จก็ยังตอบ 201)
 
 ### Request Body (Multipart Form-Data):
 - `reportDetail`: (string, required) บันทึกกิจกรรม ไม่เกิน 1000 ตัวอักษร (ตัดช่องว่างหัวท้ายก่อนตรวจ) เช่น `"น้องทานอาหารเม็ดหมดเกลี้ยง อารมณ์ดี วิ่งเล่นรอบสวนครับ"`
@@ -2456,6 +2457,34 @@ GET /api/bookings/{bookingID}/reports
       "createdAt": "2026-10-25T15:00:00.000Z"
     }
   ]
+}
+```
+*(เรียงจากเก่าไปใหม่ตาม `createdAt` ถ้ายังไม่มีรายงานจะได้ `data: []` ดูได้ทุกสถานะของการจอง)*
+
+### Response 400 Bad Request
+```json
+{
+  "status": "error",
+  "error": "INVALID_BOOKING_ID",
+  "message": "Invalid booking ID"
+}
+```
+
+### Response 403 Forbidden
+```json
+{
+  "status": "error",
+  "error": "FORBIDDEN",
+  "message": "Not a participant of this booking"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "status": "error",
+  "error": "BOOKING_NOT_FOUND",
+  "message": "Booking not found"
 }
 ```
 
