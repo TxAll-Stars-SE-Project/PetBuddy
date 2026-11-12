@@ -8,6 +8,7 @@ import {
   getPaymentStatusEmailHtml,
   PaymentStatusEmailParams,
 } from '../templates/payment-status-email.template.js'
+import { getCareReportEmailHtml, CareReportEmailParams } from '../templates/care-report-email.template.js'
 
 interface WelcomeEmailParams {
   email: string
@@ -346,6 +347,47 @@ export const sendPaymentStatusNotificationEmail = async (
       `[MailService] Failed to send payment status email to ${params.toEmail}:`,
       error
     )
+    return false
+  }
+}
+
+// ==========================================
+// แจ้ง Pet Owner เมื่อพี่เลี้ยงส่งรายงานการดูแล (US 7-3)
+// ==========================================
+
+/**
+ * ส่งอีเมลแจ้งเจ้าของสัตว์เลี้ยงว่ามีรายงานการดูแลใหม่
+ * เป็นแบบ Non-blocking พร้อม Safe fallback เพื่อไม่ให้กระทบกระบวนการหลักของ API
+ */
+export const sendCareReportToOwnerEmail = async (
+  params: CareReportEmailParams & { toEmail: string }
+): Promise<boolean> => {
+  try {
+    const transporter = getMailTransporter()
+
+    if (!transporter) {
+      console.warn(
+        `[MailService] SMTP credentials are not configured. Skipping care report email to: ${params.toEmail}`
+      )
+      return false
+    }
+
+    const fromAddress = process.env.MAIL_FROM || `"PetBuddy" <${process.env.SMTP_USER}>`
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.toEmail,
+      subject: `📝 รายงานการดูแลน้องจากพี่เลี้ยง (#${params.bookingId})`,
+      text: `สวัสดีคุณ ${params.ownerUsername}!\n\nพี่เลี้ยงคุณ ${params.sitterUsername} ส่งรายงานการดูแลใหม่สำหรับการจอง #${params.bookingId} (${params.serviceName})\n\n${params.reportDetail}\n\nดูรายงานทั้งหมดได้ที่หน้าการจองของคุณใน PetBuddy`,
+      html: getCareReportEmailHtml(params),
+    })
+
+    console.log(
+      `[MailService] Care report email sent successfully to ${params.toEmail} (Message ID: ${info.messageId})`
+    )
+    return true
+  } catch (error) {
+    console.error(`[MailService] Failed to send care report email to ${params.toEmail}:`, error)
     return false
   }
 }

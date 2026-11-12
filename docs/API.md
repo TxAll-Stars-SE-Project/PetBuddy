@@ -2366,11 +2366,12 @@ POST /api/bookings/{bookingID}/reports
 
 * **Header:** `Authorization: Bearer <token>` (role: `sitter` ของการจองนี้)
 * **Path Variables:** `bookingID` (integer)
-* **Content-Type:** `multipart/form-data`
+* **Content-Type:** `multipart/form-data` (ถ้าไม่แนบรูป ส่งเป็น `application/json` ได้)
+* **หลังบันทึกสำเร็จ:** ส่งอีเมลแจ้งเจ้าของสัตว์เลี้ยงแบบไม่รอผล (ส่งไม่สำเร็จก็ยังตอบ 201)
 
 ### Request Body (Multipart Form-Data):
-- `reportDetail`: (string, required) บันทึกกิจกรรม เช่น `"น้องทานอาหารเม็ดหมดเกลี้ยง อารมณ์ดี วิ่งเล่นรอบสวนครับ"`
-- `photo`: (file, optional) ไฟล์รูปถ่ายกิจกรรม (`.jpg`, `.jpeg`, `.png`, `.webp`, ไม่เกิน 5MB)
+- `reportDetail`: (string, required) บันทึกกิจกรรม ไม่เกิน 1000 ตัวอักษร (ตัดช่องว่างหัวท้ายก่อนตรวจ) เช่น `"น้องทานอาหารเม็ดหมดเกลี้ยง อารมณ์ดี วิ่งเล่นรอบสวนครับ"`
+- `photo`: (file, optional) ไฟล์รูปถ่ายกิจกรรม 1 รูป (`.jpg`, `.jpeg`, `.png`, `.webp`, ไม่เกิน 5MB) ต้องส่งในฟิลด์ชื่อ `photo` เท่านั้น
 
 ### Response 201 Created
 ```json
@@ -2390,7 +2391,36 @@ POST /api/bookings/{bookingID}/reports
 ```json
 {
   "status": "error",
+  "error": "BOOKING_NOT_IN_PROGRESS",
   "message": "Care report can only be submitted during active service (status: in_progress)"
+}
+```
+
+| `error` | เมื่อไร | `message` |
+|---|---|---|
+| `INVALID_BOOKING_ID` | `bookingID` ไม่ใช่จำนวนเต็มบวก | `Invalid booking ID` |
+| `REPORT_DETAIL_REQUIRED` | `reportDetail` ว่าง / มีแต่ช่องว่าง | `Please enter the required activity notes.` |
+| `REPORT_DETAIL_TOO_LONG` | `reportDetail` เกิน 1000 ตัวอักษร | `Activity notes must not exceed 1000 characters.` |
+| `INVALID_PHOTO` | รูปผิดชนิด, เกิน 5MB, เนื้อไฟล์ไม่ใช่รูปจริง/ไม่ตรงกับชนิดที่ระบุ หรือส่งผิดชื่อฟิลด์ | `Invalid photo format or size limit exceeded.` |
+| `INVALID_FORM_DATA` | multipart/form-data เสียหรือส่งมาไม่ครบ | `Invalid multipart form data` |
+| `BOOKING_NOT_IN_PROGRESS` | สถานะการจองไม่ใช่ `in_progress` | `Care report can only be submitted during active service (status: in_progress)` |
+
+### Response 403 Forbidden
+```json
+{
+  "status": "error",
+  "error": "FORBIDDEN",
+  "message": "Not the assigned sitter of this booking"
+}
+```
+*(ถ้า token ไม่ใช่ role `sitter` จะได้ `error: "ROLE_NOT_ALLOWED"`, `message: "Sitter role required"`)*
+
+### Response 404 Not Found
+```json
+{
+  "status": "error",
+  "error": "BOOKING_NOT_FOUND",
+  "message": "Booking not found"
 }
 ```
 
@@ -2427,6 +2457,34 @@ GET /api/bookings/{bookingID}/reports
       "createdAt": "2026-10-25T15:00:00.000Z"
     }
   ]
+}
+```
+*(เรียงจากเก่าไปใหม่ตาม `createdAt` ถ้ายังไม่มีรายงานจะได้ `data: []` ดูได้ทุกสถานะของการจอง)*
+
+### Response 400 Bad Request
+```json
+{
+  "status": "error",
+  "error": "INVALID_BOOKING_ID",
+  "message": "Invalid booking ID"
+}
+```
+
+### Response 403 Forbidden
+```json
+{
+  "status": "error",
+  "error": "FORBIDDEN",
+  "message": "Not a participant of this booking"
+}
+```
+
+### Response 404 Not Found
+```json
+{
+  "status": "error",
+  "error": "BOOKING_NOT_FOUND",
+  "message": "Booking not found"
 }
 ```
 

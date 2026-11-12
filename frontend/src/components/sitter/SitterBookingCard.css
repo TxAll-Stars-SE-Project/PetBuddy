@@ -167,6 +167,16 @@
   background: var(--error-bg, #fef2f2);
 }
 
+.sitter-booking-card__button--report {
+  color: var(--primary, #f97316);
+  background: #fff;
+  border-color: var(--primary, #f97316);
+}
+
+.sitter-booking-card__button--report:hover:not(:disabled) {
+  background: var(--primary-soft, #fff7ed);
+}
+
 @media (max-width: 560px) {
   .sitter-booking-card {
     padding: 16px;
