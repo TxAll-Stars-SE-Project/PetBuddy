@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../services/api";
+import { toast } from "../utils/toast";
 
 // 1. ตารางแปลงชื่อประเภทสัตว์เลี้ยงเป็นภาษาไทย
 const SPECIES_THAI_MAP = {
@@ -25,7 +26,7 @@ const formatSpeciesThai = (speciesInput) => {
 const normalizeSpecies = (speciesInput) => {
   if (!speciesInput) return "";
   const str = String(speciesInput).trim().toLowerCase();
-  
+
   const thaiToEng = {
     "สุนัข": "dog",
     "หมา": "dog",
@@ -52,7 +53,7 @@ export default function BookingModal({
   onSuccess,
 }) {
   const [userPets, setUserPets] = useState([]);
-  const [selectedPetId, setSelectedPetId] = useState("");
+  const [selectedPetIds, setSelectedPetIds] = useState([]);
 
   const today = new Date().toISOString().split("T")[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
@@ -111,15 +112,10 @@ export default function BookingModal({
         const compatiblePet = petsList.find((p) =>
           isPetCompatible(p, selectedService)
         );
-        const initialPet = compatiblePet || petsList[0];
-        const initialId = getPetId(initialPet);
-        if (initialId && compatiblePet) {
-          setSelectedPetId(String(initialId));
-        } else {
-          setSelectedPetId("");
-        }
+        const initialId = compatiblePet ? getPetId(compatiblePet) : null;
+        setSelectedPetIds(initialId ? [String(initialId)] : []);
       } else {
-        setSelectedPetId("");
+        setSelectedPetIds([]);
       }
     } catch (err) {
       console.error("Failed to fetch pets:", err);
@@ -136,6 +132,15 @@ export default function BookingModal({
   }, [isOpen, fetchPets]);
 
   if (!isOpen) return null;
+
+  // Toggle เลือก/ยกเลิกสัตว์เลี้ยงหลายตัว
+  const handleTogglePet = (petIdStr) => {
+    setSelectedPetIds((prev) =>
+      prev.includes(petIdStr)
+        ? prev.filter((id) => id !== petIdStr)
+        : [...prev, petIdStr]
+    );
+  };
 
   // คำนวณระยะเวลาและราคารวม
   const servicePrice = Number(selectedService?.price || 0);
@@ -166,29 +171,39 @@ export default function BookingModal({
     setSubmitting(true);
 
     try {
-      const activePet = userPets.find(
-        (p) => String(getPetId(p)) === String(selectedPetId)
+      const selectedPets = userPets.filter((p) =>
+        selectedPetIds.includes(String(getPetId(p)))
       );
 
-      if (!activePet) {
+      if (selectedPets.length === 0) {
         setBookingError("กรุณาเลือกสัตว์เลี้ยงที่ต้องการจองบริการ");
         setSubmitting(false);
         return;
       }
 
-      if (!isPetCompatible(activePet, selectedService)) {
+      const incompatiblePet = selectedPets.find(
+        (p) => !isPetCompatible(p, selectedService)
+      );
+      if (incompatiblePet) {
         setBookingError(
-          `สัตว์เลี้ยง (${formatSpeciesThai(activePet.species)}) ไม่ตรงกับประเภทที่บริการรับฝาก (${formatSpeciesThai(selectedService?.species)})`
+          `สัตว์เลี้ยง (${formatSpeciesThai(incompatiblePet.species)}) ไม่ตรงกับประเภทที่บริการรับฝาก (${formatSpeciesThai(selectedService?.species)})`
         );
         setSubmitting(false);
         return;
       }
 
-      const validPetId = Number(getPetId(activePet));
-      if (!validPetId || Number.isNaN(validPetId) || validPetId <= 0) {
-        setBookingError("ไม่พบรหัสสัตว์เลี้ยงที่ถูกต้อง");
-        setSubmitting(false);
-        return;
+      const formattedPets = [];
+      for (const pet of selectedPets) {
+        const validPetId = Number(getPetId(pet));
+        if (!validPetId || Number.isNaN(validPetId) || validPetId <= 0) {
+          setBookingError("ไม่พบรหัสสัตว์เลี้ยงที่ถูกต้อง");
+          setSubmitting(false);
+          return;
+        }
+        formattedPets.push({
+          petId: validPetId,
+          ...(note.trim() ? { petNote: note.trim() } : {}),
+        });
       }
 
       const startIso = new Date(`${startDate}T${startTime}:00`).toISOString();
@@ -201,12 +216,7 @@ export default function BookingModal({
         endtime: endIso,
         paymentplan: paymentOption === "deposit" ? "deposit" : "full",
         ...(note.trim() ? { note: note.trim() } : {}),
-        pets: [
-          {
-            petId: validPetId,
-            ...(note.trim() ? { petNote: note.trim() } : {}),
-          },
-        ],
+        pets: formattedPets,
       };
 
       const res = await api.post("/bookings", bookingPayload);
@@ -216,7 +226,7 @@ export default function BookingModal({
         res.status === 201 ||
         res.data?.status === "success"
       ) {
-        alert("จองบริการสำเร็จเรียบร้อยแล้ว!");
+        toast("จองบริการสำเร็จเรียบร้อยแล้ว!", "success");
         if (onSuccess) onSuccess();
         onClose();
       }
@@ -272,14 +282,14 @@ export default function BookingModal({
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {userPets.map((pet) => {
                 const petIdStr = String(getPetId(pet));
-                const isSelected = String(selectedPetId) === petIdStr;
+                const isSelected = selectedPetIds.includes(petIdStr);
                 const compatible = isPetCompatible(pet, selectedService);
 
                 return (
                   <div
                     key={petIdStr}
                     onClick={() => {
-                      if (compatible) setSelectedPetId(petIdStr);
+                      if (compatible) handleTogglePet(petIdStr);
                     }}
                     className={`p-3 rounded-xl border transition flex justify-between items-center ${
                       !compatible
@@ -432,7 +442,7 @@ export default function BookingModal({
           <button
             type="button"
             onClick={handleConfirmBooking}
-            disabled={submitting || !selectedPetId}
+            disabled={submitting || selectedPetIds.length === 0}
             className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition disabled:opacity-50 text-sm shadow-md"
           >
             {submitting ? "กำลังดำเนินการ..." : "ยืนยันการจอง"}

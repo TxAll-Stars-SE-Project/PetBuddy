@@ -23,12 +23,12 @@ const extractArray = (res) => {
 const formatSpeciesName = (species) => {
   if (!species) return "";
   const s = String(species).trim().toLowerCase();
-  
+
   if (s === "dog" || s === "สุนัข") return "สุนัข";
   if (s === "cat" || s === "แมว") return "แมว";
   if (s === "bird" || s === "นก") return "นก";
   if (s === "exotic" || s === "สัตว์แปลก" || s === "สัตว์มหัศจรรย์") return "สัตว์แปลก";
-  
+
   return species;
 };
 
@@ -36,13 +36,13 @@ const formatSpeciesName = (species) => {
 const formatServiceType = (type) => {
   if (!type) return "ทั่วไป";
   const t = String(type).trim().toLowerCase();
-  
+
   if (t === "daycare" || t.includes("รายวัน")) return "ฝากเลี้ยงรายวัน";
   if (t === "boarding" || t.includes("ค้างคืน")) return "ฝากเลี้ยงค้างคืน";
   if (t === "walking" || t.includes("เดิน")) return "พาเดินเล่น";
   if (t === "grooming" || t.includes("อาบน้ำ")) return "อาบน้ำตัดขน";
   if (t === "sitting" || t.includes("ที่พัก")) return "ดูแลถึงที่พัก";
-  
+
   return type;
 };
 
@@ -70,7 +70,7 @@ export default function SitterDetailPage() {
   const { sitterId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const auth = useAuth() || {};
   const user = auth.user;
   const token = auth.token;
@@ -88,7 +88,7 @@ export default function SitterDetailPage() {
 
   const [sitter, setSitter] = useState(passedSitter);
   const [services, setServices] = useState([]);
-  const [userBookings, setUserBookings] = useState([]);
+  const [, setUserBookings] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState(initialServiceId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -101,18 +101,15 @@ export default function SitterDetailPage() {
       try {
         const servicesRes = await getSitterServices(sitterId);
         const serviceList = extractArray(servicesRes);
-        
-        console.log("BACKEND SERVICES DATA:", serviceList);
+
         setServices(serviceList);
 
         if (!passedSitter) {
-          const sitterRes = await api.get(`/sitters?limit=100`);
-          const allSitters = extractArray(sitterRes);
-          const currentSitter = Array.isArray(allSitters)
-            ? allSitters.find((s) => String(s.sitterId || s.userId || s.id) === String(sitterId))
-            : null;
+          const sitterRes = await api.get(`/sitters/${sitterId}`);
+          const currentSitter =
+            sitterRes?.data?.data || sitterRes?.data?.sitter || sitterRes?.data || null;
 
-          if (currentSitter) {
+          if (currentSitter && typeof currentSitter === "object" && !Array.isArray(currentSitter)) {
             setSitter(currentSitter);
           } else {
             setSitter({
@@ -136,30 +133,17 @@ export default function SitterDetailPage() {
     if (sitterId) fetchSitterData();
   }, [sitterId, passedSitter]);
 
-  // 2. Fetch User Bookings
+  // 2. Fetch User Bookings (Single GET /bookings call)
   const fetchUserBookings = useCallback(async () => {
     const authToken = token || localStorage.getItem("token") || localStorage.getItem("accessToken");
     const reqHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {};
 
-    const candidateEndpoints = [
-      "/owner/bookings",
-      "/bookings/owner",
-      "/users/me/bookings",
-      "/bookings/user",
-      "/bookings"
-    ];
-
-    for (const endpoint of candidateEndpoints) {
-      try {
-        const res = await api.get(endpoint, { headers: reqHeaders });
-        const list = extractArray(res);
-        if (Array.isArray(list) && list.length > 0) {
-          setUserBookings(list);
-          return;
-        }
-      } catch (_) {
-        // Continue to fallback endpoint
-      }
+    try {
+      const res = await api.get("/bookings", { headers: reqHeaders });
+      const list = extractArray(res);
+      setUserBookings(list);
+    } catch (err) {
+      console.error("Failed to fetch bookings:", err);
     }
   }, [token]);
 
@@ -167,88 +151,26 @@ export default function SitterDetailPage() {
     fetchUserBookings();
   }, [fetchUserBookings, user]);
 
-  // 3. Collect active and pending booked service IDs and names from My Bookings
-  const bookedServiceIdentifiers = useMemo(() => {
-    const activeBookedIds = new Set();
-    const activeBookedNames = new Set();
-
-    (userBookings || []).forEach((b) => {
-      const rawStatus = String(
-        b?.bookingStatus || b?.status || b?.booking_status || b?.state || ""
-      ).trim().toLowerCase();
-
-      const isInactive = [
-        "cancelled",
-        "canceled",
-        "rejected",
-        "completed",
-        "finished",
-        "expired",
-        "ยกเลิกแล้ว",
-        "ปฏิเสธแล้ว",
-        "เสร็จสิ้น",
-      ].includes(rawStatus);
-
-      if (!isInactive) {
-        const sId =
-          b?.serviceId ??
-          b?.serviceid ??
-          b?.service_id ??
-          b?.sitter_service_id ??
-          b?.service?.serviceId ??
-          b?.service?.id;
-
-        if (sId !== undefined && sId !== null) {
-          activeBookedIds.add(String(sId));
-          activeBookedIds.add(Number(sId));
-        }
-
-        const sName =
-          b?.serviceName ||
-          b?.servicename ||
-          b?.service_name ||
-          b?.serviceType ||
-          b?.service?.serviceName;
-
-        if (sName) {
-          activeBookedNames.add(String(sName).trim().toLowerCase());
-        }
-      }
-    });
-
-    return { ids: activeBookedIds, names: activeBookedNames };
-  }, [userBookings]);
-
-  // 4. Filter dropdown items (Standardized for camelCase Backend)
+  // 3. Filter dropdown items (Only exclude inactive/draft services; allow repeat bookings)
   const availableServices = useMemo(() => {
     return (services || []).filter((svc) => {
       if (!svc) return false;
 
-      // Status check (if provided by Backend)
-      if (svc.status && ["draft", "inactive", "disabled", "ปิดรับบริการ"].includes(String(svc.status).toLowerCase())) {
+      if (
+        svc.status &&
+        ["draft", "inactive", "disabled", "ปิดรับบริการ"].includes(String(svc.status).toLowerCase())
+      ) {
         return false;
       }
       if (svc.isActive === false || svc.is_active === false) {
         return false;
       }
 
-      // Backend Standard Keys
-      const sId = svc.serviceId ?? svc.serviceid ?? svc.id;
-      const sName = svc.serviceName ?? svc.servicename;
-
-      const isBookedById =
-        sId !== undefined &&
-        sId !== null &&
-        (bookedServiceIdentifiers.ids.has(String(sId)) || bookedServiceIdentifiers.ids.has(Number(sId)));
-
-      const isBookedByName =
-        sName && bookedServiceIdentifiers.names.has(String(sName).trim().toLowerCase());
-
-      return !(isBookedById || isBookedByName);
+      return true;
     });
-  }, [services, bookedServiceIdentifiers]);
+  }, [services]);
 
-  // 5. Keep selectedServiceId valid
+  // 4. Keep selectedServiceId valid
   useEffect(() => {
     if (availableServices.length > 0) {
       const isStillAvailable = availableServices.some(
@@ -311,7 +233,7 @@ export default function SitterDetailPage() {
           <div style={{ padding: "16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", color: "#991b1b", fontSize: "14px" }}>
             {services.length === 0
               ? "พี่เลี้ยงท่านนี้ยังไม่ได้เปิดให้บริการในขณะนี้"
-              : "ℹ️ ไม่มีบริการที่เปิดรับอยู่ในขณะนี้ หรือคุณได้ทำการจองบริการที่เปิดสาธารณะทั้งหมดเรียบร้อยแล้ว"}
+              : "ℹ️ ไม่มีบริการที่เปิดรับอยู่ในขณะนี้"}
           </div>
         ) : (
           <>
