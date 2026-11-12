@@ -14,7 +14,6 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SitterDashboardPage from './pages/SitterDashboardPage';
 import SitterDetailPage from './pages/SitterDetailPage';
 import SitterBookingsPage from './pages/sitter/SitterBookingsPage';
-import CareReportPreviewPage from './pages/dev/CareReportPreviewPage.jsx';
 import './styles/global.css';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -63,9 +62,6 @@ export default function App() {
           path="/sitter/bookings"
           element={<SitterRoute><SitterBookingsPage /></SitterRoute>}
         />
-
-        {import.meta.env.DEV && <Route path="/dev/care-report" element={<CareReportPreviewPage />} />}
-
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toast />

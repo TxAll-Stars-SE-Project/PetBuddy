@@ -11,7 +11,7 @@ export interface BookingCancelledEmailParams {
 }
 
 // ชื่อผู้ใช้/บริการมาจากผู้ใช้ จึง escape ก่อนใส่ลง HTML
-const escapeHtml = (value: string): string =>
+export const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
