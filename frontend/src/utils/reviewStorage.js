@@ -50,13 +50,13 @@ export function saveBookingReview(bookingId, payload) {
 
 /**
  * คำนวณและตรวจสอบสถานะการรีวิวของการจอง
- *
+ * 
  * สถานะที่เป็นไปได้ (State):
  * 1. 'pending_review' -> งานจบแล้ว ยังไม่ได้รีวิว และยังไม่เกิน 14 วัน (แสดงปุ่มรีวิว)
  * 2. 'reviewed' -> รีวิวแล้ว (แสดงป้ายรีวิวแล้ว พร้อมคลิกดูรีวิวเดิมได้)
  * 3. 'expired_auto_reviewed' -> ผ่านไป 14 วันแล้วไม่ได้รีวิว (หมดเวลารีวิว)
  * 4. 'not_completed' -> งานยังไม่เสร็จสิ้น (ไม่มีปุ่มรีวิว)
- *
+ * 
  * @param {Object} booking
  * @param {Record<string, any>} [savedReviews]
  * @returns {{ state: 'pending_review'|'reviewed'|'expired_auto_reviewed'|'not_completed', canReview: boolean, rating?: number, comment?: string, reviewedAt?: string, daysRemaining?: number, isUrgent?: boolean, isExpired?: boolean }}

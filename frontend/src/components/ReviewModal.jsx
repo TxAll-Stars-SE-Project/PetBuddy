@@ -13,11 +13,11 @@ const RATING_LABELS = {
 
 /**
  * ReviewModal Component
- *
+ * 
  * หน้าต่าง Modal สำหรับให้เจ้าของสัตว์เลี้ยง:
  * 1. ส่งคะแนน (1-5 ดาว) และข้อความรีวิว (โหมดเขียนรีวิว)
  * 2. เปิดดูรีวิวของตัวเองที่เคยส่งไปแล้วย้อนหลัง (โหมดอ่านอย่างเดียว - View Mode)
- *
+ * 
  * @param {Object} props
  * @param {Object} props.booking - ข้อมูลการจองที่ต้องการรีวิว
  * @param {Object} [props.existingReview] - รีวิวเดิมที่เคยส่งไว้แล้ว (ถ้ามี)
