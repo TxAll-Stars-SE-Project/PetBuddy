@@ -74,6 +74,7 @@ export interface OwnerBooking {
   starttime: string;
   endtime: string;
   totalPrice: number;
+  paymentplan: PaymentPlan | null;
   pets: PetInfo[];
 }
 

@@ -95,15 +95,16 @@ export default function OwnerBookingPage() {
       })
       .catch(() => {
         if (!isCurrent) return;
-        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        const fallbackTotal = Number(payingBooking?.totalprice || payingBooking?.totalPrice || 0);
         const isFinalFallback = payingBooking?.bookingstatus === "waiting_final_payment";
+        const fallbackDeposit = Math.round(fallbackTotal * 0.3);
         setPaymentSummaryError(true);
         setPaymentSummary({
           bookingId: payingBookingId,
           bookingstatus: payingBooking?.bookingstatus,
-          totalPrice: fallbackAmount,
-          depositAmount: isFinalFallback ? Math.round(fallbackAmount * 0.3) : fallbackAmount,
-          remainingAmount: isFinalFallback ? fallbackAmount * 0.7 : fallbackAmount,
+          totalPrice: fallbackTotal,
+          depositAmount: isFinalFallback ? fallbackDeposit : fallbackTotal,
+          remainingAmount: isFinalFallback ? fallbackTotal - fallbackDeposit : fallbackTotal,
           paymentplan: payingBooking?.paymentplan === "full" ? "full" : "deposit",
           payment_stage: isFinalFallback ? "final" : payingBooking?.paymentplan === "full" ? "full" : "deposit",
           payments: [],

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getPaymentStageInfo } from "../../utils/paymentStage.js";
 
 const STAGE_LABEL = { deposit: "มัดจำ", final: "ยอดคงเหลือ", full: "เต็มจำนวน" };
 const STATUS_LABEL = { pending_verifying: "รอตรวจสอบ", verified: "ยืนยันแล้ว", rejected: "ถูกปฏิเสธ" };
@@ -26,17 +27,7 @@ export default function PaymentSummary({ summary, booking, isError }) {
   const hasPendingPayment = summary.payments?.some(
     (payment) => payment.payment_status === "pending_verifying",
   );
-  const paymentStage = summary.bookingstatus === "waiting_final_payment"
-    ? "final"
-    : summary.payment_stage
-      || (summary.paymentplan === "deposit" ? "deposit" : "full");
-  const isFinalPayment = paymentStage === "final"
-    || summary.bookingstatus === "waiting_final_payment";
-  const amountDueNow = isFinalPayment
-    ? summary.remainingAmount
-    : paymentStage === "deposit"
-      ? summary.depositAmount
-      : summary.totalPrice;
+  const { isFinalPayment, amountDueNow } = getPaymentStageInfo(booking, summary);
 
   const sitterPaymentInfo = summary.sitterPaymentInfo;
   const hasSitterPaymentInfo = Boolean(

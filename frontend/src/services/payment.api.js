@@ -5,13 +5,7 @@ export function getBookingPayments(bookingId) {
 }
 
 export function uploadPaymentSlip(formData) {
-  const stage = formData.has("payment_stage") ? String(formData.get("payment_stage")) : "";
-  if (!formData.has("payment_type") && (stage === "deposit" || stage === "final")) {
-    formData.append("payment_type", stage);
-  }
-  return api.post("/payments", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return api.post("/payments", formData);
 }
 
 export function verifyPayment(bookingId, paymentId, action) {

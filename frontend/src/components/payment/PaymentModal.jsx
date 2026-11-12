@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { uploadPaymentSlip } from "../../services/payment.api.js";
 import { toast } from "../../utils/toast.js";
 import { validateSlipFile } from "../../utils/paymentValidation.js";
+import { getPaymentStageInfo } from "../../utils/paymentStage.js";
 import PaymentSummary from "./PaymentSummary.jsx";
 import SlipUploadZone from "./SlipUploadZone.jsx";
 
@@ -27,24 +28,12 @@ export default function PaymentModal({
   const hasSitterPaymentInfo = Boolean(
     summary?.sitterPaymentInfo?.accountName && summary?.sitterPaymentInfo?.qrCodeUrl,
   );
-  const paymentStage =
-    booking?.bookingstatus === "waiting_final_payment" || summary?.bookingstatus === "waiting_final_payment"
-      ? "final"
-      : summary?.payment_stage
-        || (summary?.paymentplan === "deposit" ? "deposit" : "full");
-  const isFinalPayment = paymentStage === "final"
-    || booking?.bookingstatus === "waiting_final_payment"
-    || summary?.bookingstatus === "waiting_final_payment";
+  const { paymentStage, isFinalPayment, amountDueNow } = getPaymentStageInfo(booking, summary);
   const paymentModalTitle = isFinalPayment
     ? "ชำระเงินส่วนที่เหลือ"
     : summary?.paymentplan === "deposit"
       ? "ชำระเงินมัดจำ"
       : "ชำระเงิน";
-  const amountDueNow = isFinalPayment
-    ? Number(summary?.remainingAmount)
-    : paymentStage === "deposit"
-      ? Number(summary?.depositAmount)
-      : Number(summary?.totalPrice);
 
   useEffect(() => {
     if (!previewUrl) return undefined;
@@ -113,7 +102,8 @@ export default function PaymentModal({
 
     clearSelectedFile();
     onClose();
-    const paymentStatus = responseData?.data?.payment_status || responseData?.payment_status;
+    const paymentStatus =
+      responseData?.data?.data?.payment_status || responseData?.data?.data?.paymentStatus;
     if (paymentStatus === "verified") {
       toast("ตรวจสอบสลิปผ่านอัตโนมัติ ยืนยันการชำระเงินเรียบร้อยแล้ว", "success");
     } else {
@@ -154,7 +144,6 @@ export default function PaymentModal({
             previewUrl={previewUrl}
             onFileSelect={handleFileSelect}
             onRemoveFile={clearSelectedFile}
-            amount={amountDueNow}
           />
           {uploadValidationError && (
             <div className="payment-slip-error-alert" role="alert">
