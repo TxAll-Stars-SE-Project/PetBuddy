@@ -2,6 +2,7 @@ import prisma from '../utils/prisma.js'
 import { AppError } from '../utils/errors.js'
 import { deleteCareReportPhoto, uploadCareReportPhoto } from '../utils/supabase/storage.js'
 import { CreateCareReportInput } from '../validators/careReport.validator.js'
+import { sendCareReportToOwnerEmail } from './mail.service.js'
 
 /**
  * รูปแบบข้อมูลรายงานการดูแลสัตว์เลี้ยง (docs/API.md § PART 3: 6.1 / 6.2)
@@ -49,7 +50,16 @@ export const createCareReport = async (
 ): Promise<CareReportResponse> => {
   const booking = await prisma.booking.findUnique({
     where: { bookingid: bookingId },
-    select: { ownerid: true, sitterid: true, bookingstatus: true },
+    select: {
+      ownerid: true,
+      sitterid: true,
+      bookingstatus: true,
+      // ข้อมูลสำหรับอีเมลแจ้ง owner ดึงมาในคำสั่งเดียวกัน
+      services: { select: { servicename: true } },
+      petowner: { select: { USER: { select: { email: true, username: true } } } },
+      petsitter: { select: { USER: { select: { username: true } } } },
+      bookingdetail: { select: { pet: { select: { name: true } } } },
+    },
   })
 
   if (!booking) {
@@ -66,8 +76,9 @@ export const createCareReport = async (
 
   const photoUrl = photo ? await uploadCareReportPhoto(photo, bookingId) : null
 
+  let result: CareReportResponse
   try {
-    return await prisma.$transaction(async (tx) => {
+    result = await prisma.$transaction(async (tx) => {
       // ตรวจสถานะซ้ำพร้อมล็อกแถว booking (UPDATE แบบไม่เปลี่ยนค่า) กันงานถูกจบ/ยกเลิกระหว่างอัปโหลดรูป
       const stillInProgress = await tx.booking.updateMany({
         where: { bookingid: bookingId, sitterid: sitterUserId, bookingstatus: 'in_progress' },
@@ -97,4 +108,46 @@ export const createCareReport = async (
     }
     throw error
   }
+
+  // แจ้ง owner แบบไม่รอผล ส่งเมลไม่สำเร็จก็ไม่กระทบการบันทึกรายงาน
+  const owner = booking.petowner.USER
+  sendCareReportToOwnerEmail({
+    toEmail: owner.email,
+    ownerUsername: owner.username,
+    sitterUsername: booking.petsitter?.USER.username || 'พี่เลี้ยง',
+    serviceName: booking.services.servicename,
+    bookingId,
+    petNames: booking.bookingdetail.map((bd) => bd.pet.name),
+    reportDetail: result.reportDetail,
+    photoUrl: result.photoUrl,
+    createdAt: result.createdAt,
+  }).catch((err) => console.error('[CareReportService] Error dispatching care report email:', err))
+
+  return result
+}
+
+/**
+ * ดึงรายงานการดูแลทั้งหมดของการจอง เรียงจากเก่าไปใหม่ (US7-3, docs/API.md § PART 3: 6.2)
+ * ดูได้เฉพาะเจ้าของสัตว์เลี้ยงหรือพี่เลี้ยงของการจองนั้น
+ */
+export const getCareReports = async (userId: number, bookingId: number): Promise<CareReportResponse[]> => {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    select: { ownerid: true, sitterid: true },
+  })
+
+  if (!booking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found')
+  }
+
+  if (booking.ownerid !== userId && booking.sitterid !== userId) {
+    throw new AppError(403, 'FORBIDDEN', 'Not a participant of this booking')
+  }
+
+  const reports = await prisma.report.findMany({
+    where: { bookingid: bookingId },
+    orderBy: [{ created_at: 'asc' }, { reportid: 'asc' }],
+  })
+
+  return reports.map(toCareReportResponse)
 }
