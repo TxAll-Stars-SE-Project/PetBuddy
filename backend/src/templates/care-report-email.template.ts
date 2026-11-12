@@ -49,7 +49,7 @@ export const getCareReportEmailHtml = (params: CareReportEmailParams): string =>
         </div>
 
         <div style="text-align: center; margin-bottom: 24px;">
-          <a href="${process.env.FRONTEND_URL}/bookings"
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings"
              style="background-color: #F97316; color: #ffffff; padding: 14px 24px; border-radius: 8px; text-decoration: none; display: block; font-weight: bold; text-align: center;">
              ดูรายงานทั้งหมด
           </a>
