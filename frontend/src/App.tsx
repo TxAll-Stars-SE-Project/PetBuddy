@@ -12,6 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SitterDashboardPage from './pages/SitterDashboardPage';
+import SitterDetailPage from './pages/SitterDetailPage';
 import SitterBookingsPage from './pages/sitter/SitterBookingsPage';
 import './styles/global.css';
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
+        <Route path="/sitters/:sitterId" element={<SitterDetailPage />} />
         <Route path="/sitter" element={<Navigate to="/sitter/dashboard" replace />} />
         <Route
           path="/sitter/dashboard"

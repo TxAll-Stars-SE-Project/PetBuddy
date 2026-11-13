@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom"; // 👈 [เพิ่มส่วนนี้: useNavigate]
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx";
 import SitterCard, { SitterCardSkeleton } from "../components/SitterCard.jsx";
 import SitterFilters from "../components/SitterFilters.jsx";
-import BookingModal from "../components/BookingModal.jsx"; // 👈 [เพิ่มส่วนนี้: นำเข้า BookingModal]
 import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 import { searchSitters } from "../services/sitters.js";
 import { DEFAULT_FILTERS, getPriceError } from "../utils/sitterOptions.js";
@@ -12,8 +11,7 @@ import { DEFAULT_FILTERS, getPriceError } from "../utils/sitterOptions.js";
 const SKELETON_COUNT = 4;
 
 export default function HomePage() {
-  const navigate = useNavigate(); // 👈 [เพิ่มส่วนนี้: เรียกใช้ navigate]
-  const [selectedSitterForBooking, setSelectedSitterForBooking] = useState(null); // 👈 [เพิ่มส่วนนี้: State เก็บพี่เลี้ยงที่เลือกจอง]
+  const navigate = useNavigate();
 
   // คำค้นหาจาก Navbar อยู่ใน URL (?q=) เพื่อให้ใช้ได้จากทุกหน้า รีเฟรชแล้วไม่หาย และแชร์ลิงก์ได้
   const [searchParams, setSearchParams] = useSearchParams();
@@ -150,7 +148,6 @@ export default function HomePage() {
               <SitterCard
                 key={s.sitterId}
                 sitter={s}
-                onBook={setSelectedSitterForBooking} // 👈 [เพิ่มส่วนนี้: ส่งฟังก์ชันรับพี่เลี้ยงที่ถูกกดจองไปให้ SitterCard]
               />
             ))}
           </div>
@@ -165,14 +162,6 @@ export default function HomePage() {
           />
         )}
       </main>
-
-      {/* 👈 [เพิ่มส่วนนี้: Component Pop-up จองบริการ] */}
-      <BookingModal
-        sitter={selectedSitterForBooking}
-        isOpen={!!selectedSitterForBooking}
-        onClose={() => setSelectedSitterForBooking(null)}
-        onSuccess={() => navigate("/bookings")}
-      />
     </div>
   );
 }
