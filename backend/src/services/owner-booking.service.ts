@@ -13,6 +13,7 @@ export interface OwnerBookingResponse {
   starttime: string
   endtime: string
   bookingstatus: string
+  paymentplan: string | null
   totalPrice: number
   pets: {
     petId: number
@@ -79,6 +80,7 @@ export const getOwnerBookings = async (
       starttime: b.starttime.toISOString(),
       endtime: b.endtime.toISOString(),
       bookingstatus: b.bookingstatus,
+      paymentplan: b.paymentplan,
       totalPrice: Number(b.totalprice),
       pets: b.bookingdetail.map((bd) => ({
         petId: bd.petid,

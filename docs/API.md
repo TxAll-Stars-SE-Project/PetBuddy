@@ -1152,6 +1152,7 @@ GET /api/owner/bookings?status=waiting_payment
       "starttime": "2026-09-20T09:00:00Z",
       "endtime": "2026-09-20T18:00:00Z",
       "bookingstatus": "waiting_payment",
+      "paymentplan": "deposit",
       "totalPrice": 6300,
       "pets": [
         { "petId": 1, "petName": "เหมียว", "petNote": "แมวขี้อาย" }
@@ -1268,7 +1269,8 @@ POST /api/payments
 ### Request Body (Multipart Form-Data):
 - `bookingId`: (integer, required) รหัสการจอง เช่น `1`
 - `amount`: (number, required) ยอดเงิน เช่น `1890` (ต้องตรงกับยอดที่ Backend คำนวณ)
-- `payment_stage`: (string, required) `"deposit"` | `"final"` | `"full"`
+- `payment_stage`: (string, required) `"deposit"` | `"full"` | `"final"`
+- `payment_type`: (string, optional) `"deposit"` | `"final"`; must match `payment_stage` when provided
 - `paymentType`: (string, required) `"bank_transfer"`
 - `slip_image`: (file, required) ไฟล์สลิปโอนเงิน
 
@@ -1279,13 +1281,18 @@ POST /api/payments
 ```json
 {
   "status": "success",
+  "message": "ส่งสลิปชำระเงินสำเร็จ รอพี่เลี้ยงตรวจสอบ",
   "data": {
     "paymentId": 1,
     "payment_status": "pending_verifying",
-    "slip_image": "https://storage.../slip-1.jpg"
+    "slip_image": "https://storage.../slip-1.jpg",
+    "bookingstatus": "waiting_payment",
+    "verifiedBy": "manual"
   }
 }
 ```
+
+ทุกขั้นการชำระเงิน (`deposit`, `full`, `final`) ใช้ success envelope รูปแบบเดียวกัน `{ "status": "success", "message": "...", "data": { ... } }`
 
 ### Response 400 Bad Request
 ```json
@@ -2104,7 +2111,8 @@ POST /api/payments
 ### Request Body (Multipart Form-Data):
 - `bookingId`: (integer, required) รหัสการจอง เช่น `1`
 - `amount`: (number, required) ยอดเงินที่ต้องชำระ (ต้องตรงกับยอดคำนวณของ Backend)
-- `payment_stage`: (string, required) `"deposit"` | `"final"` | `"full"`
+- `payment_stage`: (string, required) `"deposit"` | `"full"` | `"final"`
+- `payment_type`: (string, optional) `"deposit"` | `"final"`; must match `payment_stage` when provided
 - `paymentType`: (string, required) `"bank_transfer"`
 - `slip_image`: (file, required) ไฟล์สลิปโอนเงิน (`.jpg`, `.jpeg`, `.png`, `.webp`, ไม่เกิน 5MB)
 
@@ -2112,14 +2120,18 @@ POST /api/payments
 ```json
 {
   "status": "success",
+  "message": "ส่งสลิปชำระเงินสำเร็จ รอพี่เลี้ยงตรวจสอบ",
   "data": {
     "paymentId": 2,
-    "payment_status": "verified",
+    "payment_status": "pending_verifying",
     "slip_image": "https://storage.supabase.co/.../slips/slip-2.jpg",
-    "bookingstatus": "completed"
+    "bookingstatus": "waiting_payment",
+    "verifiedBy": "manual"
   }
 }
 ```
+
+ทุกขั้นการชำระเงิน (`deposit`, `full`, `final`) ใช้ success envelope รูปแบบเดียวกัน `{ "status": "success", "message": "...", "data": { ... } }`
 
 ### Response 400 Bad Request
 ```json

@@ -5,9 +5,7 @@ export function getBookingPayments(bookingId) {
 }
 
 export function uploadPaymentSlip(formData) {
-  return api.post("/payments", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return api.post("/payments", formData);
 }
 
 export function verifyPayment(bookingId, paymentId, action) {

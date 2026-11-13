@@ -100,16 +100,18 @@ export default function OwnerBookingPage() {
       })
       .catch(() => {
         if (!isCurrent) return;
-        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        const fallbackTotal = Number(payingBooking?.totalprice || payingBooking?.totalPrice || 0);
+        const isFinalFallback = payingBooking?.bookingstatus === "waiting_final_payment";
+        const fallbackDeposit = Math.round(fallbackTotal * 0.3);
         setPaymentSummaryError(true);
         setPaymentSummary({
           bookingId: payingBookingId,
           bookingstatus: payingBooking?.bookingstatus,
-          totalPrice: fallbackAmount,
-          depositAmount: fallbackAmount,
-          remainingAmount: fallbackAmount,
-          paymentplan: "full",
-          payment_stage: "full",
+          totalPrice: fallbackTotal,
+          depositAmount: isFinalFallback ? fallbackDeposit : fallbackTotal,
+          remainingAmount: isFinalFallback ? fallbackTotal - fallbackDeposit : fallbackTotal,
+          paymentplan: payingBooking?.paymentplan === "full" ? "full" : "deposit",
+          payment_stage: isFinalFallback ? "final" : payingBooking?.paymentplan === "full" ? "full" : "deposit",
           payments: [],
         });
       })
@@ -195,6 +197,12 @@ export default function OwnerBookingPage() {
               const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
               const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
               const canCancel = CANCELLABLE_STATUSES.includes(b.bookingstatus);
+              const paymentLabel =
+                b.bookingstatus === "waiting_final_payment"
+                  ? "ชำระส่วนที่เหลือ"
+                  : b.paymentplan === "full"
+                    ? "ชำระเงิน"
+                    : "ชำระมัดจำ";
               const isCompleted = b.bookingstatus === "completed";
               const reviewState = isCompleted ? getBookingReviewState(b, savedReviews) : null;
               const hasCareReports = CARE_REPORT_STATUSES.includes(b.bookingstatus);
@@ -257,7 +265,7 @@ export default function OwnerBookingPage() {
                               setPayingBooking(b);
                             }}
                           >
-                            ชำระเงิน
+                            {paymentLabel}
                           </button>
                         )}
 
