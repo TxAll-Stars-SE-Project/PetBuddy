@@ -147,12 +147,14 @@
   color: #1f2937;
 }
 
-.booking-confirm-modal__button--accept {
+.booking-confirm-modal__button--accept,
+.booking-confirm-modal__button--start {
   background-color: #f97316;
   color: #ffffff;
 }
 
-.booking-confirm-modal__button--accept:hover:not(:disabled) {
+.booking-confirm-modal__button--accept:hover:not(:disabled),
+.booking-confirm-modal__button--start:hover:not(:disabled) {
   background-color: #ea580c;
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
 }
