@@ -4,6 +4,8 @@ import { booking_status } from '../generated/prisma/enums.js'
 import { SitterBookingAction, BookingStatusFilter } from '../validators/booking.validator.js'
 import { sendBookingStatusNotificationEmail } from './mail.service.js'
 
+const EARLY_START_BUFFER_MINUTES = 5;
+
 export interface FormattedBookingResponse {
   bookingId: number
   ownerName: string
@@ -193,7 +195,7 @@ export const updateBookingStatusBySitter = async (
     expectedStatuses = ['confirmed', 'deposit_paid'];
     
     // 1. ตรวจสอบสถานะ 
-    if (!expectedStatuses.includes(existingBooking.bookingstatus as any)) {
+    if (!expectedStatuses.includes(existingBooking.bookingstatus as booking_status)) {
       throw new AppError(
         400,
         'INVALID_STATUS',
@@ -202,7 +204,6 @@ export const updateBookingStatusBySitter = async (
     }
 
     // 2. ตรวจสอบเวลา (UX Improvement)
-    const EARLY_START_BUFFER_MINUTES = 5;
     const earliestAllowed = new Date(new Date(existingBooking.starttime).getTime() - EARLY_START_BUFFER_MINUTES * 60 * 1000);
     
     if (new Date() < earliestAllowed) {
