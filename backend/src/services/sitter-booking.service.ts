@@ -150,7 +150,7 @@ export const updateBookingStatusBySitter = async (
   sitterUserId: number,
   bookingId: number,
   action: SitterBookingAction
-): Promise<{ bookingId: number; bookingstatus: string, action: string }> => {
+): Promise<{ bookingId: number; bookingstatus: string; action: SitterBookingAction }> => {
   // 1. ดึงข้อมูล Booking ปัจจุบันมาก่อน (เพื่อให้เช็คเงื่อนไขเรื่องเวลา และ paymentplan ได้)
   const existingBooking = await prisma.booking.findUnique({
     where: { bookingid: bookingId },
