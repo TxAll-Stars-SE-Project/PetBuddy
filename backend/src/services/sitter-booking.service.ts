@@ -3,6 +3,8 @@ import { AppError } from '../utils/errors.js'
 import { booking_status } from '../generated/prisma/enums.js'
 import { SitterBookingAction, BookingStatusFilter } from '../validators/booking.validator.js'
 import { sendBookingStatusNotificationEmail } from './mail.service.js'
+import { EARLY_START_BUFFER_MINUTES } from '../constants/booking.constant.js';
+
 
 export interface FormattedBookingResponse {
   bookingId: number
@@ -148,39 +150,86 @@ export const updateBookingStatusBySitter = async (
   sitterUserId: number,
   bookingId: number,
   action: SitterBookingAction
-): Promise<{ bookingId: number; bookingstatus: string }> => {
-  // 1. ตรวจสอบ Action และกำหนด Status Machine ล่วงหน้า
-  let expectedStatuses: booking_status[]
-  let nextStatus: booking_status
+): Promise<{ bookingId: number; bookingstatus: string; action: SitterBookingAction }> => {
+  // 1. ดึงข้อมูล Booking ปัจจุบันมาก่อน (เพื่อให้เช็คเงื่อนไขเรื่องเวลา และ paymentplan ได้)
+  const existingBooking = await prisma.booking.findUnique({
+    where: { bookingid: bookingId },
+    select: { sitterid: true, bookingstatus: true, starttime: true, paymentplan: true },
+  });
 
+  if (!existingBooking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+  }
+
+  if (existingBooking.sitterid !== sitterUserId) {
+    throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking');
+  }
+
+  // 2. กำหนดตัวแปรสำหรับ Status Machine
+  let expectedStatuses: booking_status[];
+  let nextStatus: booking_status;
+
+  // 3. ตรวจสอบเงื่อนไขตาม Action
   if (action === 'accept') {
-    // บังคับว่าพี่เลี้ยงต้องตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code แล้วจึงจะกดรับงานได้ (US 2-2 & US 6-2)
+    // บังคับว่าพี่เลี้ยงต้องตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code แล้วจึงจะกดรับงานได้
     const sitterPayment = await prisma.petsitter.findUnique({
       where: { userid: sitterUserId },
       select: { account_name: true, qr_code_url: true },
-    })
+    });
 
     if (!sitterPayment?.account_name?.trim() || !sitterPayment?.qr_code_url?.trim()) {
       throw new AppError(
         400,
         'SITTER_PAYMENT_INFO_REQUIRED',
         'กรุณาตั้งค่าชื่อบัญชีรับเงินและอัปโหลด QR Code ในหน้าโปรไฟล์ก่อนกดรับงาน'
-      )
+      );
+    }
+    expectedStatuses = ['pending'];
+    nextStatus = 'waiting_payment';
+
+  } else if (action === 'reject') {
+    expectedStatuses = ['pending'];
+    nextStatus = 'rejected';
+
+  } else if (action === 'start') {
+    expectedStatuses = ['confirmed', 'deposit_paid'];
+    
+    // 1. ตรวจสอบสถานะ 
+    if (!expectedStatuses.includes(existingBooking.bookingstatus as booking_status)) {
+      throw new AppError(
+        400,
+        'INVALID_STATUS',
+        'Cannot start service. Current status must be confirmed or deposit_paid.'
+      );
     }
 
-    expectedStatuses = ['pending']
-    nextStatus = 'waiting_payment'
-  } else if (action === 'reject') {
-    expectedStatuses = ['pending']
-    nextStatus = 'rejected'
+    // 2. ตรวจสอบเวลา (UX Improvement)
+    const earliestAllowed = new Date(new Date(existingBooking.starttime).getTime() - EARLY_START_BUFFER_MINUTES * 60 * 1000);
+    
+    if (new Date() < earliestAllowed) {
+      throw new AppError(
+        400,
+        'EARLY_START',
+        `Cannot start service prior to ${EARLY_START_BUFFER_MINUTES} minutes before scheduled start time`
+      );
+    }
+
+    nextStatus = 'in_progress';
+
   } else if (action === 'complete') {
-    expectedStatuses = ['confirmed', 'deposit_paid', 'in_progress']
-    nextStatus = 'waiting_final_payment'
+    // กฎของ Complete: ต้องเป็น in_progress
+    if (existingBooking.bookingstatus !== 'in_progress') {
+       throw new AppError(400, 'INVALID_STATUS', 'Cannot complete service before starting. Current status must be in_progress.');
+    }
+    expectedStatuses = ['in_progress'];
+    // เช็คแผนการเงินเพื่อกำหนดสถานะถัดไป
+    nextStatus = existingBooking.paymentplan === 'full' ? 'completed' : 'waiting_final_payment';
+
   } else {
-    throw new AppError(400, 'INVALID_ACTION', 'Invalid action')
+    throw new AppError(400, 'INVALID_ACTION', 'Invalid action');
   }
 
-  // 2. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
+  // 4. Atomic Conditional Update: ตรวจสอบและอัปเดตแบบ Lock ในคำสั่งเดียว (Row-level Locking)
   const result = await prisma.booking.updateMany({
     where: {
       bookingid: bookingId,
@@ -190,84 +239,53 @@ export const updateBookingStatusBySitter = async (
     data: {
       bookingstatus: nextStatus,
     },
-  })
+  });
 
-  // 3. หากไม่มีแถวใดถูกอัปเดต (count === 0) ตรวจสอบหาสาเหตุเพื่อส่ง HTTP Status ที่แม่นยำ
   if (result.count === 0) {
-    const existingBooking = await prisma.booking.findUnique({
-      where: { bookingid: bookingId },
-      select: { sitterid: true, bookingstatus: true },
-    })
-
-    if (!existingBooking) {
-      throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found')
-    }
-
-    if (existingBooking.sitterid !== sitterUserId) {
-      throw new AppError(403, 'FORBIDDEN', 'Not the assigned sitter of this booking')
-    }
-
-    throw new AppError(
-      409,
-      'INVALID_STATUS_TRANSITION',
-      'ไม่สามารถดำเนินการได้ เนื่องจากสถานะคำขอจองถูกเปลี่ยนแปลงไปแล้ว หรือสถานะปัจจุบันไม่ถูกต้อง'
-    )
+     throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'ไม่สามารถดำเนินการได้ เนื่องจากสถานะคำขอจองถูกเปลี่ยนแปลงไปแล้ว หรือสถานะปัจจุบันไม่ถูกต้อง');
   }
 
-  // 4. ส่งอีเมลแจ้งเตือนไปยัง Pet Owner (แบบ Non-blocking safe dispatch)
-  // ดึงข้อมูลสำหรับส่งอีเมลหลังจากสถานะถูกอัปเดตสำเร็จ 100% แล้ว
+  // 5. ส่งอีเมลแจ้งเตือนไปยัง Pet Owner (แบบ Non-blocking safe dispatch)
   prisma.booking
     .findUnique({
       where: { bookingid: bookingId },
       include: {
         services: true,
-        petowner: {
-          include: {
-            USER: true,
-          },
-        },
-        petsitter: {
-          include: {
-            USER: true,
-          },
-        },
-        bookingdetail: {
-          include: {
-            pet: true,
-          },
-        },
+        petowner: { include: { USER: true } },
+        petsitter: { include: { USER: true } },
+        bookingdetail: { include: { pet: true } },
       },
     })
     .then((bookingInfo) => {
-      const ownerUser = bookingInfo?.petowner?.USER
-      const sitterUser = bookingInfo?.petsitter?.USER
+      const ownerUser = bookingInfo?.petowner?.USER;
+      const sitterUser = bookingInfo?.petsitter?.USER;
       if (ownerUser?.email) {
-        const petNames = bookingInfo?.bookingdetail.map((bd) => bd.pet.name) || []
-        const formatThaiDateTime = (date: Date): string =>
-          date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+        const petNames = bookingInfo?.bookingdetail.map((bd) => bd.pet.name) || [];
+        const formatThaiDateTime = (date: Date): string => date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
 
         sendBookingStatusNotificationEmail({
           toEmail: ownerUser.email,
           ownerUsername: ownerUser.username,
           sitterUsername: sitterUser?.username || 'พี่เลี้ยง',
           serviceName: bookingInfo?.services?.servicename || 'บริการสัตว์เลี้ยง',
-          action,
+          action, 
           bookingId,
           startTime: bookingInfo?.starttime ? formatThaiDateTime(bookingInfo.starttime) : '',
           endTime: bookingInfo?.endtime ? formatThaiDateTime(bookingInfo.endtime) : '',
           petNames,
           totalPrice: Number(bookingInfo?.totalprice || 0),
         }).catch((err) => {
-          console.error('[SitterBookingService] Error dispatching booking notification email:', err)
-        })
+          console.error('[SitterBookingService] Error dispatching booking notification email:', err);
+        });
       }
     })
     .catch((err) => {
-      console.error('[SitterBookingService] Error fetching booking for email notification:', err)
-    })
+      console.error('[SitterBookingService] Error fetching booking for email notification:', err);
+    });
 
   return {
     bookingId,
     bookingstatus: nextStatus,
-  }
+    action: action 
+  };
 }

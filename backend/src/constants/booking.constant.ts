@@ -22,3 +22,6 @@ export const OWNER_CANCELLABLE_BOOKING_STATUSES: booking_status[] = [
   'waiting_payment',
   'deposit_paid',
 ]
+
+
+export const EARLY_START_BUFFER_MINUTES = 5;
