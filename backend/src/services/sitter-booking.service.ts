@@ -3,8 +3,8 @@ import { AppError } from '../utils/errors.js'
 import { booking_status } from '../generated/prisma/enums.js'
 import { SitterBookingAction, BookingStatusFilter } from '../validators/booking.validator.js'
 import { sendBookingStatusNotificationEmail } from './mail.service.js'
+import { EARLY_START_BUFFER_MINUTES } from '../constants/booking.constant.js';
 
-const EARLY_START_BUFFER_MINUTES = 5;
 
 export interface FormattedBookingResponse {
   bookingId: number
