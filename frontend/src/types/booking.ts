@@ -74,7 +74,24 @@ export interface OwnerBooking {
   starttime: string;
   endtime: string;
   totalPrice: number;
+  paymentplan: PaymentPlan | null;
   pets: PetInfo[];
 }
 
-export type BookingAction = 'accept' | 'reject' | 'complete';
+export type BookingAction = 'accept' | 'reject' | 'start' | 'complete';
+
+/**
+ * ตรวจสอบว่าถึงเวลาเริ่มงานตามนัดหมาย (Exact Time) แล้วหรือยัง
+ */
+export function isStartTimeReached(starttime: string, now: Date = new Date()): boolean {
+  const startDate = new Date(starttime);
+  if (Number.isNaN(startDate.getTime())) {
+    return false;
+  }
+  return now.getTime() >= startDate.getTime();
+}
+
+/**
+ * Alias เพื่อ backwards-compatibility กับโค้ดเดิม
+ */
+export const isStartDateReached = isStartTimeReached;

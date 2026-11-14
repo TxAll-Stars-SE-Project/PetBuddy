@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar.jsx";
 import PaymentModal from "../components/payment/PaymentModal.jsx";
 import ConfirmModal from "../components/ui/ConfirmModal.jsx";
 import ReviewModal from "../components/ReviewModal.jsx";
+import CareReportsDialog from "../components/careReport/CareReportsDialog.jsx";
 import { cancelBooking, getOwnerBookings } from "../services/bookings.js";
 import { getBookingReviewState, getSavedReviews } from "../utils/reviewStorage.js";
 import { getBookingPayments } from "../services/payment.api.js";
@@ -13,6 +14,7 @@ const STATUS_META = {
   waiting_payment: { label: "รอชำระมัดจำ", tone: "warning" },
   deposit_paid: { label: "ชำระมัดจำแล้ว", tone: "success" },
   confirmed: { label: "ยืนยันแล้ว", tone: "success" },
+  in_progress: { label: "กำลังดูแล", tone: "success" },
   waiting_final_payment: { label: "รอชำระส่วนที่เหลือ", tone: "warning" },
   completed: { label: "เสร็จสิ้น", tone: "muted" },
   rejected: { label: "ถูกปฏิเสธ", tone: "error" },
@@ -29,6 +31,8 @@ const FILTER_TABS = [
 const PAYABLE_STATUSES = ["waiting_payment", "waiting_final_payment"];
 // ยกเลิกได้ก่อนพี่เลี้ยงเริ่มงาน — ถ้าจ่ายมัดจำแล้ว (deposit_paid) ไม่คืนเงิน (US6-3)
 const CANCELLABLE_STATUSES = ["pending", "waiting_payment", "deposit_paid"];
+// รายงานการดูแลมีตั้งแต่พี่เลี้ยงเริ่มงาน (US7-3)
+const CARE_REPORT_STATUSES = ["in_progress", "waiting_final_payment", "completed"];
 
 function formatDateRange(start, end) {
   const s = new Date(start);
@@ -57,6 +61,7 @@ export default function OwnerBookingPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [savedReviews, setSavedReviews] = useState(() => getSavedReviews());
+  const [reportBooking, setReportBooking] = useState(null);
 
   const payingBookingId = payingBooking?.bookingId || payingBooking?.id;
 
@@ -95,16 +100,18 @@ export default function OwnerBookingPage() {
       })
       .catch(() => {
         if (!isCurrent) return;
-        const fallbackAmount = payingBooking?.totalprice || payingBooking?.totalPrice || 0;
+        const fallbackTotal = Number(payingBooking?.totalprice || payingBooking?.totalPrice || 0);
+        const isFinalFallback = payingBooking?.bookingstatus === "waiting_final_payment";
+        const fallbackDeposit = Math.round(fallbackTotal * 0.3);
         setPaymentSummaryError(true);
         setPaymentSummary({
           bookingId: payingBookingId,
           bookingstatus: payingBooking?.bookingstatus,
-          totalPrice: fallbackAmount,
-          depositAmount: fallbackAmount,
-          remainingAmount: fallbackAmount,
-          paymentplan: "full",
-          payment_stage: "full",
+          totalPrice: fallbackTotal,
+          depositAmount: isFinalFallback ? fallbackDeposit : fallbackTotal,
+          remainingAmount: isFinalFallback ? fallbackTotal - fallbackDeposit : fallbackTotal,
+          paymentplan: payingBooking?.paymentplan === "full" ? "full" : "deposit",
+          payment_stage: isFinalFallback ? "final" : payingBooking?.paymentplan === "full" ? "full" : "deposit",
           payments: [],
         });
       })
@@ -190,9 +197,16 @@ export default function OwnerBookingPage() {
               const meta = STATUS_META[b.bookingstatus] ?? { label: b.bookingstatus, tone: "muted" };
               const canPay = PAYABLE_STATUSES.includes(b.bookingstatus);
               const canCancel = CANCELLABLE_STATUSES.includes(b.bookingstatus);
+              const paymentLabel =
+                b.bookingstatus === "waiting_final_payment"
+                  ? "ชำระส่วนที่เหลือ"
+                  : b.paymentplan === "full"
+                    ? "ชำระเงิน"
+                    : "ชำระมัดจำ";
               const isCompleted = b.bookingstatus === "completed";
               const reviewState = isCompleted ? getBookingReviewState(b, savedReviews) : null;
-              const hasActions = canCancel || canPay || isCompleted;
+              const hasCareReports = CARE_REPORT_STATUSES.includes(b.bookingstatus);
+              const hasActions = canCancel || canPay || isCompleted || hasCareReports;
 
               return (
                 <article key={b.bookingId} className="booking-card">
@@ -224,6 +238,15 @@ export default function OwnerBookingPage() {
 
                     {hasActions && (
                       <div className="booking-actions">
+                        {hasCareReports && (
+                          <button
+                            type="button"
+                            className="btn btn--small btn--ghost"
+                            onClick={() => setReportBooking(b)}
+                          >
+                            📝 รายงานการดูแล
+                          </button>
+                        )}
                         {canCancel && (
                           <button
                             type="button"
@@ -242,7 +265,7 @@ export default function OwnerBookingPage() {
                               setPayingBooking(b);
                             }}
                           >
-                            ชำระเงิน
+                            {paymentLabel}
                           </button>
                         )}
 
@@ -350,6 +373,18 @@ export default function OwnerBookingPage() {
             </div>
           )}
         </ConfirmModal>
+      )}
+
+      {/* Modal รายงานการดูแลสัตว์เลี้ยง (US7-3) */}
+      {reportBooking && (
+        <CareReportsDialog
+          bookingId={reportBooking.bookingId}
+          subtitle={`การจอง #${reportBooking.bookingId} · ${reportBooking.serviceName} · 🐾 ${reportBooking.pets
+            .map((p) => p.petName)
+            .join(", ")}`}
+          viewer="owner"
+          onClose={() => setReportBooking(null)}
+        />
       )}
 
       {/* Modal รีวิวและให้คะแนนการบริการ */}

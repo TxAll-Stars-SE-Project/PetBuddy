@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getPaymentStageInfo } from "../../utils/paymentStage.js";
 
 const STAGE_LABEL = { deposit: "มัดจำ", final: "ยอดคงเหลือ", full: "เต็มจำนวน" };
 const STATUS_LABEL = { pending_verifying: "รอตรวจสอบ", verified: "ยืนยันแล้ว", rejected: "ถูกปฏิเสธ" };
@@ -26,13 +27,7 @@ export default function PaymentSummary({ summary, booking, isError }) {
   const hasPendingPayment = summary.payments?.some(
     (payment) => payment.payment_status === "pending_verifying",
   );
-  const amountDueNow = summary.payment_stage === "full"
-    ? summary.totalPrice
-    : summary.bookingstatus === "waiting_final_payment"
-      ? summary.remainingAmount
-      : isDeposit
-        ? summary.depositAmount
-        : summary.totalPrice;
+  const { isFinalPayment, amountDueNow } = getPaymentStageInfo(booking, summary);
 
   const sitterPaymentInfo = summary.sitterPaymentInfo;
   const hasSitterPaymentInfo = Boolean(
@@ -56,32 +51,51 @@ export default function PaymentSummary({ summary, booking, isError }) {
         {booking?.serviceName || ""}
       </p>
       <div className="payment-breakdown">
-        <div className="payment-row">
-          <span>ราคารวม</span>
-          <span>{formatBaht(summary.totalPrice)}</span>
-        </div>
-        <div className="payment-row">
-          <span>รูปแบบการชำระ</span>
-          <span className="payment-plan-tag">
-            {isDeposit ? "มัดจำ 30% + ชำระส่วนที่เหลือภายหลัง" : "ชำระเต็มจำนวน"}
-          </span>
-        </div>
-        {isDeposit && (
+        {isFinalPayment ? (
           <>
             <div className="payment-row">
-              <span>ยอดมัดจำ (30%)</span>
-              <span>{formatBaht(summary.depositAmount)}</span>
+              <span>ราคาทั้งหมด</span>
+              <span>{formatBaht(summary.totalPrice)}</span>
             </div>
             <div className="payment-row">
-              <span>ยอดคงเหลือ</span>
+              <span>ชำระมัดจำแล้ว</span>
+              <span className="payment-row--deposit-paid">- {formatBaht(summary.depositAmount)}</span>
+            </div>
+            <div className="payment-row payment-row--total">
+              <span>ยอดคงเหลือที่ต้องชำระ</span>
               <span>{formatBaht(summary.remainingAmount)}</span>
             </div>
           </>
+        ) : (
+          <>
+            <div className="payment-row">
+              <span>ราคารวม</span>
+              <span>{formatBaht(summary.totalPrice)}</span>
+            </div>
+            <div className="payment-row">
+              <span>รูปแบบการชำระ</span>
+              <span className="payment-plan-tag">
+                {isDeposit ? "มัดจำ 30% + ชำระส่วนที่เหลือภายหลัง" : "ชำระเต็มจำนวน"}
+              </span>
+            </div>
+            {isDeposit && (
+              <>
+                <div className="payment-row">
+                  <span>ยอดมัดจำ (30%)</span>
+                  <span>{formatBaht(summary.depositAmount)}</span>
+                </div>
+                <div className="payment-row">
+                  <span>ยอดคงเหลือ</span>
+                  <span>{formatBaht(summary.remainingAmount)}</span>
+                </div>
+              </>
+            )}
+            <div className="payment-row payment-row--total">
+              <span>ยอดที่ต้องชำระตอนนี้</span>
+              <span>{formatBaht(amountDueNow)}</span>
+            </div>
+          </>
         )}
-        <div className="payment-row payment-row--total">
-          <span>ยอดที่ต้องชำระตอนนี้</span>
-          <span>{formatBaht(amountDueNow)}</span>
-        </div>
       </div>
 
       {/* โซนแสดง QR Code และชื่อบัญชีรับเงินของพี่เลี้ยง (Sprint 3 US 6-2) */}

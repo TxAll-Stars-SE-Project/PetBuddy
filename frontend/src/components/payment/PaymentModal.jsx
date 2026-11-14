@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { uploadPaymentSlip } from "../../services/payment.api.js";
 import { toast } from "../../utils/toast.js";
 import { validateSlipFile } from "../../utils/paymentValidation.js";
+import { getPaymentStageInfo } from "../../utils/paymentStage.js";
 import PaymentSummary from "./PaymentSummary.jsx";
 import SlipUploadZone from "./SlipUploadZone.jsx";
 
@@ -27,6 +28,12 @@ export default function PaymentModal({
   const hasSitterPaymentInfo = Boolean(
     summary?.sitterPaymentInfo?.accountName && summary?.sitterPaymentInfo?.qrCodeUrl,
   );
+  const { paymentStage, isFinalPayment, amountDueNow } = getPaymentStageInfo(booking, summary);
+  const paymentModalTitle = isFinalPayment
+    ? "ชำระเงินส่วนที่เหลือ"
+    : summary?.paymentplan === "deposit"
+      ? "ชำระเงินมัดจำ"
+      : "ชำระเงิน";
 
   useEffect(() => {
     if (!previewUrl) return undefined;
@@ -62,17 +69,7 @@ export default function PaymentModal({
     event.preventDefault();
     if (!selectedFile || !summary || !bookingId || isLoading || hasPendingPayment || !hasSitterPaymentInfo) return;
 
-    const paymentStage = summary.payment_stage
-      || (summary.bookingstatus === "waiting_final_payment"
-        ? "final"
-        : summary.paymentplan === "deposit"
-          ? "deposit"
-          : "full");
-    const amount = paymentStage === "final"
-      ? Number(summary.remainingAmount)
-      : paymentStage === "deposit"
-        ? Number(summary.depositAmount)
-        : Number(summary.totalPrice);
+    const amount = amountDueNow;
 
     if (!Number.isFinite(amount) || amount <= 0) {
       setUploadValidationError("ไม่พบยอดชำระเงินที่ถูกต้อง กรุณาลองโหลดข้อมูลใหม่");
@@ -84,6 +81,9 @@ export default function PaymentModal({
     formData.append("bookingId", String(bookingId));
     formData.append("amount", String(amount));
     formData.append("payment_stage", paymentStage);
+    if (paymentStage === "deposit" || paymentStage === "final") {
+      formData.append("payment_type", paymentStage);
+    }
     formData.append("paymentType", "bank_transfer");
     formData.append("slip_image", selectedFile);
 
@@ -102,7 +102,8 @@ export default function PaymentModal({
 
     clearSelectedFile();
     onClose();
-    const paymentStatus = responseData?.data?.payment_status || responseData?.payment_status;
+    const paymentStatus =
+      responseData?.data?.data?.payment_status || responseData?.data?.data?.paymentStatus;
     if (paymentStatus === "verified") {
       toast("ตรวจสอบสลิปผ่านอัตโนมัติ ยืนยันการชำระเงินเรียบร้อยแล้ว", "success");
     } else {
@@ -122,7 +123,7 @@ export default function PaymentModal({
         aria-labelledby="payment-modal-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="payment-modal-title">แนบสลิปการชำระเงิน</h2>
+        <h2 id="payment-modal-title">{paymentModalTitle}</h2>
         <p className="payment-modal-sub">การจอง #{bookingId}</p>
 
         {isLoading && <p className="payment-load-message">กำลังโหลดข้อมูลการชำระเงิน...</p>}

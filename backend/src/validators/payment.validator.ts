@@ -8,6 +8,7 @@ export interface SubmitPaymentDTO {
   bookingId: number
   amount: number
   payment_stage: payment_stage
+  payment_type?: 'deposit' | 'final'
   paymentType: string
 }
 
@@ -159,7 +160,7 @@ export const validateSubmitPaymentInput = (
     throw new AppError(400, 'MISSING_FILE', 'Invalid file type or size / missing fields')
   }
 
-  const { bookingId, amount, payment_stage: stage, paymentType } = body
+  const { bookingId, amount, payment_stage: stage, payment_type: paymentTypeByStage, paymentType } = body
 
   if (!bookingId || !amount || !stage) {
     throw new AppError(400, 'MISSING_FIELDS', 'Invalid file type or size / missing fields')
@@ -180,6 +181,22 @@ export const validateSubmitPaymentInput = (
     throw new AppError(400, 'INVALID_STAGE', 'Invalid file type or size / missing fields')
   }
 
+  let normalizedPaymentStageType: 'deposit' | 'final' | undefined
+  if (paymentTypeByStage !== undefined && paymentTypeByStage !== null && paymentTypeByStage !== '') {
+    const paymentTypeValue = String(paymentTypeByStage).trim()
+    if (paymentTypeValue !== 'deposit' && paymentTypeValue !== 'final') {
+      throw new AppError(400, 'INVALID_PAYMENT_TYPE', 'payment_type must be deposit or final')
+    }
+    normalizedPaymentStageType = paymentTypeValue
+
+    if (
+      (normalizedPaymentStageType === 'final' && normalizedStage !== 'final')
+      || (normalizedPaymentStageType === 'deposit' && normalizedStage !== 'deposit')
+    ) {
+      throw new AppError(400, 'PAYMENT_TYPE_STAGE_MISMATCH', 'payment_type does not match payment_stage')
+    }
+  }
+
   const normalizedPaymentType = paymentType ? String(paymentType).trim() : 'bank_transfer'
   if (!normalizedPaymentType) {
     throw new AppError(400, 'INVALID_PAYMENT_TYPE', 'Invalid file type or size / missing fields')
@@ -189,6 +206,7 @@ export const validateSubmitPaymentInput = (
     bookingId: parsedBookingId,
     amount: parsedAmount,
     payment_stage: normalizedStage,
+    payment_type: normalizedPaymentStageType,
     paymentType: normalizedPaymentType,
   }
 }

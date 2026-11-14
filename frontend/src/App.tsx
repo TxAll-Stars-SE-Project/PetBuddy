@@ -12,8 +12,8 @@ import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SitterDashboardPage from './pages/SitterDashboardPage';
+import SitterDetailPage from './pages/SitterDetailPage';
 import SitterBookingsPage from './pages/sitter/SitterBookingsPage';
-import CareReportPreviewPage from './pages/dev/CareReportPreviewPage.jsx'; // TODO(US7-3): ลบพร้อม route /dev/care-report
 import './styles/global.css';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -52,6 +52,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><OwnerBookingPage /></ProtectedRoute>} />
+        <Route path="/sitters/:sitterId" element={<SitterDetailPage />} />
         <Route path="/sitter" element={<Navigate to="/sitter/dashboard" replace />} />
         <Route
           path="/sitter/dashboard"
@@ -61,11 +62,6 @@ export default function App() {
           path="/sitter/bookings"
           element={<SitterRoute><SitterBookingsPage /></SitterRoute>}
         />
-
-        {/* หน้า preview UI ด้วย mock data — มีเฉพาะตอน dev
-            TODO(US7-3 รอบ frontend): ลบ route นี้ + import CareReportPreviewPage ตอนต่อ API จริง */}
-        {import.meta.env.DEV && <Route path="/dev/care-report" element={<CareReportPreviewPage />} />}
-
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toast />

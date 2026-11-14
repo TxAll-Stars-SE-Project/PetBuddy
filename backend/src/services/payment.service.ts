@@ -168,7 +168,27 @@ export const submitPaymentSlip = async (
 
   // ตรวจสอบสิทธิ์ว่าต้องเป็นเจ้าของสัตว์เลี้ยงของ booking นี้
   if (existingBooking.ownerid !== ownerUserId) {
-    throw new AppError(403, 'FORBIDDEN', 'Only pet owner can submit payment for this booking')
+    throw new AppError(403, 'FORBIDDEN', 'คุณไม่มีสิทธิ์ทำรายการสำหรับการจองนี้')
+  }
+
+  if (existingBooking.bookingstatus === 'completed') {
+    throw new AppError(
+      409,
+      'BOOKING_ALREADY_COMPLETED',
+      'การจองนี้ชำระเงินส่วนที่เหลือเรียบร้อยแล้ว'
+    )
+  }
+
+  // อนุญาตเฉพาะการชำระงวดแรก/เต็มจำนวน หรือชำระยอดคงเหลือ
+  if (
+    existingBooking.bookingstatus !== 'waiting_payment'
+    && existingBooking.bookingstatus !== 'waiting_final_payment'
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_BOOKING_STATUS',
+      'Booking cannot accept payment in current status'
+    )
   }
 
   // ตรวจสอบสถานะการจองตามรอบการชำระเงิน
@@ -217,6 +237,13 @@ export const submitPaymentSlip = async (
   )
 
   if (hasActivePaymentInStage) {
+    if (input.payment_stage === 'final') {
+      throw new AppError(
+        409,
+        'FINAL_PAYMENT_ALREADY_PROCESSING',
+        'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+      )
+    }
     throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
   }
 
@@ -230,7 +257,8 @@ export const submitPaymentSlip = async (
     const verifiedDeposit = existingBooking.payment
       .filter((p) => p.payment_stage === 'deposit' && p.payment_status === 'verified')
       .reduce((sum, p) => sum + Number(p.amount), 0)
-    expectedAmount = totalPrice - (verifiedDeposit || Math.round(totalPrice * 0.3))
+    const paidDepositAmount = verifiedDeposit || Math.round(totalPrice * 0.3)
+    expectedAmount = totalPrice - paidDepositAmount
   } else {
     // stage === 'full'
     expectedAmount = totalPrice
@@ -300,6 +328,13 @@ export const submitPaymentSlip = async (
         })
 
         if (concurrentPayment) {
+          if (input.payment_stage === 'final') {
+            throw new AppError(
+              409,
+              'FINAL_PAYMENT_ALREADY_PROCESSING',
+              'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+            )
+          }
           throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
         }
 
@@ -324,7 +359,7 @@ export const submitPaymentSlip = async (
         const createdPayment = await tx.payment.create({
           data: {
             bookingid: existingBooking.bookingid,
-            amount: input.amount,
+            amount: expectedAmount,
             paymenttype: input.paymentType,
             payment_stage: input.payment_stage,
             payment_status: 'verified',
@@ -346,7 +381,7 @@ export const submitPaymentSlip = async (
           serviceName: existingBooking.services?.servicename || 'บริการสัตว์เลี้ยง',
           action: 'verify',
           paymentStage: input.payment_stage,
-          amount: input.amount,
+          amount: expectedAmount,
           bookingId: existingBooking.bookingid,
           bookingStatus: targetBookingStatus,
         }).catch((err) => {
@@ -394,13 +429,20 @@ export const submitPaymentSlip = async (
       })
 
       if (concurrentPayment) {
+        if (input.payment_stage === 'final') {
+          throw new AppError(
+            409,
+            'FINAL_PAYMENT_ALREADY_PROCESSING',
+            'รายการชำระเงินส่วนที่เหลือนี้กำลังดำเนินการหรือชำระเรียบร้อยแล้ว'
+          )
+        }
         throw new AppError(409, 'STAGE_ALREADY_PAID', 'Amount mismatch or stage already paid')
       }
 
       return tx.payment.create({
         data: {
           bookingid: existingBooking.bookingid,
-          amount: input.amount,
+          amount: expectedAmount,
           paymenttype: input.paymentType,
           payment_stage: input.payment_stage,
           payment_status: 'pending_verifying',
@@ -413,6 +455,7 @@ export const submitPaymentSlip = async (
       paymentId: newPayment.paymentid,
       payment_status: newPayment.payment_status,
       slip_image: newPayment.slip_image,
+      bookingstatus: input.payment_stage === 'final' ? 'waiting_final_payment' : 'waiting_payment',
       verifiedBy: 'manual',
     }
   } catch (error) {
@@ -475,6 +518,17 @@ export const verifyPaymentSlip = async (
     throw new AppError(409, 'PAYMENT_ALREADY_PROCESSED', 'Payment already verified or rejected')
   }
 
+  if (
+    targetPayment.payment_stage === 'final'
+    && existingBooking.bookingstatus !== 'waiting_final_payment'
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_BOOKING_STATUS',
+      'Final payment is only allowed when booking is waiting_final_payment'
+    )
+  }
+
   let nextBookingStatus: booking_status = existingBooking.bookingstatus
   let nextPaymentStatus: payment_status = 'pending_verifying'
 
@@ -517,10 +571,21 @@ export const verifyPaymentSlip = async (
     }
 
     if (nextBookingStatus !== existingBooking.bookingstatus) {
-      await tx.booking.update({
-        where: { bookingid: bookingId },
+      const updatedBooking = await tx.booking.updateMany({
+        where: {
+          bookingid: bookingId,
+          bookingstatus: existingBooking.bookingstatus,
+        },
         data: { bookingstatus: nextBookingStatus },
       })
+
+      if (updatedBooking.count === 0) {
+        throw new AppError(
+          409,
+          'INVALID_BOOKING_STATUS',
+          'Final payment booking status changed concurrently or is invalid'
+        )
+      }
     }
   })
 

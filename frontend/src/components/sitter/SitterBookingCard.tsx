@@ -1,5 +1,10 @@
+import { useState } from 'react';
+import CareReportsDialog from '../careReport/CareReportsDialog.jsx';
 import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
 import './SitterBookingCard.css';
+
+// รายงานการดูแลมีตั้งแต่เริ่มงาน แต่ส่งรายงานใหม่ได้เฉพาะตอน in_progress (US7-3)
+const careReportStatuses: BookingStatus[] = ['in_progress', 'waiting_final_payment', 'completed'];
 
 interface SitterBookingCardProps {
   booking: Booking;
@@ -89,6 +94,9 @@ export default function SitterBookingCard({
   const serviceTypeLabel =
     serviceTypeLabels[booking.service.servicetype] || booking.service.servicetype;
   const totalPrice = Number(booking.totalprice) || 0;
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const hasCareReports = careReportStatuses.includes(booking.bookingstatus);
+  const serviceTitle = booking.service.title || booking.serviceName || 'บริการสัตว์เลี้ยง';
   const runAction = (action: BookingAction) => {
     if (onRequestConfirm) {
       onRequestConfirm(booking, action);
@@ -101,9 +109,7 @@ export default function SitterBookingCard({
     <article className="sitter-booking-card">
       <header className="sitter-booking-card__header">
         <div>
-          <h2 className="sitter-booking-card__title">
-            {booking.service.title || booking.serviceName || 'บริการสัตว์เลี้ยง'}
-          </h2>
+          <h2 className="sitter-booking-card__title">{serviceTitle}</h2>
           <p className="sitter-booking-card__service-type">
             {serviceTypeLabel || 'บริการสัตว์เลี้ยง'}
           </p>
@@ -183,15 +189,56 @@ export default function SitterBookingCard({
         (onAction || onRequestConfirm) && (
           <footer className="sitter-booking-card__actions">
             <button
+              className="sitter-booking-card__button sitter-booking-card__button--start"
+              type="button"
+              disabled={isUpdating}
+              onClick={() => runAction('start')}
+            >
+              เริ่มงานดูแล (Start Service)
+            </button>
+          </footer>
+        )}
+      {booking.bookingstatus === 'in_progress' && (
+        <footer className="sitter-booking-card__actions">
+          <button
+            className="sitter-booking-card__button sitter-booking-card__button--report"
+            type="button"
+            onClick={() => setIsReportsOpen(true)}
+          >
+            รายงานการดูแล
+          </button>
+          {(onAction || onRequestConfirm) && (
+            <button
               className="sitter-booking-card__button sitter-booking-card__button--complete"
               type="button"
               disabled={isUpdating}
               onClick={() => runAction('complete')}
             >
-              ส่งงานเสร็จสิ้น (Complete Job)
+              ส่งงานเสร็จสิ้น (Complete Service)
             </button>
-          </footer>
-        )}
+          )}
+        </footer>
+      )}
+      {booking.bookingstatus !== 'in_progress' && hasCareReports && (
+        <footer className="sitter-booking-card__actions">
+          <button
+            className="sitter-booking-card__button sitter-booking-card__button--report"
+            type="button"
+            onClick={() => setIsReportsOpen(true)}
+          >
+            รายงานการดูแล
+          </button>
+        </footer>
+      )}
+      {isReportsOpen && (
+        <CareReportsDialog
+          bookingId={booking.bookingId}
+          subtitle={`การจอง #${booking.bookingId} · ${serviceTitle} · ${getPetDetails(booking)}`}
+          viewer="sitter"
+          canSubmit={booking.bookingstatus === 'in_progress'}
+          onClose={() => setIsReportsOpen(false)}
+        />
+      )}
     </article>
   );
 }

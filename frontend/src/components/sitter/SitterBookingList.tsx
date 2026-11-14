@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SitterBookingCard from './SitterBookingCard';
 import BookingConfirmModal from './BookingConfirmModal';
@@ -8,22 +8,29 @@ import {
   updateBookingStatus,
 } from '../../services/booking.api';
 import { toast } from '../../utils/toast';
-import type { Booking, BookingAction, BookingStatus } from '../../types/booking';
+import {
+  isStartTimeReached,
+  type Booking,
+  type BookingAction,
+  type BookingStatus,
+} from '../../types/booking';
 import './SitterBookingList.css';
 
-type BookingTab = 'ALL' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type BookingTab = 'ALL' | 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
 const statusGroups: Record<Exclude<BookingTab, 'ALL'>, BookingStatus[]> = {
   pending: ['pending'],
-  confirmed: ['waiting_payment', 'waiting_final_payment'],
-  completed: ['confirmed', 'completed', 'deposit_paid', 'in_progress'],
+  confirmed: ['waiting_payment', 'deposit_paid', 'confirmed'],
+  in_progress: ['in_progress', 'waiting_final_payment'],
+  completed: ['completed'],
   cancelled: ['rejected', 'cancelled'],
 };
 
 const tabs: { id: BookingTab; label: string }[] = [
   { id: 'ALL', label: 'ทั้งหมด' },
-  { id: 'pending', label: 'รอดำเนินการ' },
+  { id: 'pending', label: 'คำขอใหม่' },
   { id: 'confirmed', label: 'ยืนยันแล้ว' },
+  { id: 'in_progress', label: 'กำลังดูแล' },
   { id: 'completed', label: 'สำเร็จ' },
   { id: 'cancelled', label: 'ยกเลิก/ปฏิเสธ' },
 ];
@@ -40,8 +47,15 @@ export default function SitterBookingList() {
     action: BookingAction;
   } | null>(null);
 
-  const fetchBookingsAndPaymentInfo = useCallback(async () => {
-    setLoading(true);
+  const recentUpdatedStatusRef = useRef<Map<number, { status: BookingStatus; timestamp: number }>>(
+    new Map(),
+  );
+
+  const fetchBookingsAndPaymentInfo = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -50,15 +64,42 @@ export default function SitterBookingList() {
         getSitterPaymentInfo().catch(() => null),
       ]);
 
-      setBookings(Array.isArray(list) ? list : []);
+      const now = Date.now();
+      // ล้างข้อมูลที่หมดอายุ (>= 5 วินาที) ออกจาก Merge Guard ทั้งหมด เพื่อป้องกัน Memory leak
+      for (const [id, value] of recentUpdatedStatusRef.current.entries()) {
+        if (now - value.timestamp >= 5000) {
+          recentUpdatedStatusRef.current.delete(id);
+        }
+      }
+
+      const rawList = Array.isArray(list) ? list : [];
+
+      // Merge Guard: ป้องกันไม่ให้การอ่านข้อมูลเก่า (Stale Read) มาเขียนทับสถานะที่เพิ่งอัปเดตไป
+      const reconciledList = rawList.map((item) => {
+        const recent = recentUpdatedStatusRef.current.get(item.bookingId);
+        if (recent) {
+          // หากอัปเดตไปไม่เกิน 5 วินาที และสถานะจาก Server ยังเป็นสถานะเก่า ให้คงสถานะใหม่ล่าสุดไว้
+          if (now - recent.timestamp < 5000 && item.bookingstatus !== recent.status) {
+            return { ...item, bookingstatus: recent.status };
+          }
+          recentUpdatedStatusRef.current.delete(item.bookingId);
+        }
+        return item;
+      });
+
+      setBookings(reconciledList);
       if (paymentInfo !== null) {
         setHasPaymentInfo(Boolean(paymentInfo.hasPaymentInfo));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
-      setBookings([]);
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'ไม่สามารถดึงข้อมูลการจองได้');
+        setBookings([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -101,6 +142,21 @@ export default function SitterBookingList() {
       );
       return;
     }
+
+    if (
+      action === 'start' &&
+      booking.bookingstatus !== 'confirmed' &&
+      booking.bookingstatus !== 'deposit_paid'
+    ) {
+      toast('สามารถกดเริ่มงานได้เฉพาะรายการที่ชำระมัดจำหรือยืนยันการจองแล้วเท่านั้น', 'error');
+      return;
+    }
+
+    if (action === 'complete' && booking.bookingstatus !== 'in_progress') {
+      toast('ไม่สามารถส่งมอบงานได้ กรุณากดเริ่มงานดูแล (Start Service) ก่อนส่งมอบงาน', 'error');
+      return;
+    }
+
     setConfirmTarget({ booking, action });
   };
 
@@ -108,20 +164,81 @@ export default function SitterBookingList() {
     if (!confirmTarget) return;
 
     const { booking, action } = confirmTarget;
+
+    if (
+      action === 'start' &&
+      booking.bookingstatus !== 'confirmed' &&
+      booking.bookingstatus !== 'deposit_paid'
+    ) {
+      toast('สามารถกดเริ่มงานได้เฉพาะรายการที่ชำระมัดจำหรือยืนยันการจองแล้วเท่านั้น', 'error');
+      setConfirmTarget(null);
+      return;
+    }
+
+    if (action === 'start' && !isStartTimeReached(booking.starttime)) {
+      toast('ยังไม่ถึงเวลาเริ่มงานตามนัดหมาย ไม่สามารถเริ่มงานก่อนกำหนดได้', 'error');
+      return;
+    }
+
+    if (action === 'complete' && booking.bookingstatus !== 'in_progress') {
+      toast('ไม่สามารถส่งมอบงานได้ กรุณากดเริ่มงานดูแล (Start Service) ก่อนส่งมอบงาน', 'error');
+      setConfirmTarget(null);
+      return;
+    }
+
     setUpdatingId(booking.bookingId);
     setError(null);
 
     try {
-      await updateBookingStatus(booking.bookingId, action);
+      const res = await updateBookingStatus(booking.bookingId, action);
+      const getFallbackStatus = (act: BookingAction, paymentPlan?: string): BookingStatus => {
+        switch (act) {
+          case 'accept':
+            return 'waiting_payment';
+          case 'reject':
+            return 'rejected';
+          case 'start':
+            return 'in_progress';
+          case 'complete':
+            return paymentPlan === 'full' ? 'completed' : 'waiting_final_payment';
+        }
+      };
+
+      const nextStatus: BookingStatus =
+        res?.bookingstatus ?? getFallbackStatus(action, booking.paymentplan);
+
+      // บันทึกลง Merge Guard เพื่อป้องกัน Race Condition จากการ Refetch ซ้ำในเบื้องหลัง
+      recentUpdatedStatusRef.current.set(booking.bookingId, {
+        status: nextStatus,
+        timestamp: Date.now(),
+      });
+
+      // อัปเดต State รายการทันทีจากผลลัพธ์ของ PATCH โดยตรง (ไม่ต้องรอผล GET และไม่เกิด Race Condition)
+      setBookings((prev) =>
+        prev.map((item) =>
+          item.bookingId === booking.bookingId
+            ? { ...item, bookingstatus: nextStatus }
+            : item,
+        ),
+      );
+
       const actionText =
         action === 'accept'
           ? 'รับงานคำขอจองเรียบร้อยแล้ว (สถานะ: รอชำระเงิน)'
           : action === 'reject'
             ? 'ปฏิเสธคำขอจองเรียบร้อยแล้ว'
-            : 'ส่งมอบงานเสร็จสิ้นเรียบร้อยแล้ว';
+            : action === 'start'
+              ? 'เริ่มงานดูแลสัตว์เลี้ยงเรียบร้อยแล้ว (สถานะ: กำลังดูแล)'
+              : booking.paymentplan === 'full'
+                ? 'ส่งมอบงานเสร็จสิ้นสมบูรณ์เรียบร้อยแล้ว (สถานะ: เสร็จสิ้น)'
+                : 'ส่งมอบงานเรียบร้อยแล้ว (สถานะ: รอชำระส่วนที่เหลือ 70%)';
       toast(actionText, 'success');
       setConfirmTarget(null);
-      await fetchBookingsAndPaymentInfo();
+
+      // หน่วงเวลาสั้นๆ ก่อนทำ Silent Background Refetch เพื่อซิงก์ข้อมูลโดยไม่ทำให้หน้าจอกระพริบ
+      setTimeout(() => {
+        void fetchBookingsAndPaymentInfo({ silent: true });
+      }, 500);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'ไม่สามารถอัปเดตสถานะการจองได้';
       toast(errMsg, 'error');
