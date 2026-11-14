@@ -190,11 +190,10 @@ export const updateBookingStatusBySitter = async (
     nextStatus = 'rejected';
 
   } else if (action === 'start') {
-    //ตรวจสอบสถานะ: ต้องเป็น confirmed หรือ deposit_paid
-    if (
-      existingBooking.bookingstatus !== 'confirmed' &&
-      existingBooking.bookingstatus !== 'deposit_paid'
-    ) {
+    expectedStatuses = ['confirmed', 'deposit_paid'];
+    
+    // 1. ตรวจสอบสถานะ 
+    if (!expectedStatuses.includes(existingBooking.bookingstatus as any)) {
       throw new AppError(
         400,
         'INVALID_STATUS',
@@ -202,17 +201,18 @@ export const updateBookingStatusBySitter = async (
       );
     }
 
-    //ตรวจสอบเวลา (Exact Time)
-    const now = new Date();
-    if (now < new Date(existingBooking.starttime)) {
+    // 2. ตรวจสอบเวลา (UX Improvement)
+    const EARLY_START_BUFFER_MINUTES = 5;
+    const earliestAllowed = new Date(new Date(existingBooking.starttime).getTime() - EARLY_START_BUFFER_MINUTES * 60 * 1000);
+    
+    if (new Date() < earliestAllowed) {
       throw new AppError(
         400,
         'EARLY_START',
-        'Cannot start service before the scheduled start time'
+        `Cannot start service prior to ${EARLY_START_BUFFER_MINUTES} minutes before scheduled start time`
       );
     }
-    // กฎของ Start: ต้องเป็น confirmed หรือ deposit_paid
-    expectedStatuses = ['confirmed', 'deposit_paid'];
+
     nextStatus = 'in_progress';
 
   } else if (action === 'complete') {
