@@ -21,11 +21,11 @@ export const getBookingStatusEmailHtml = ({
   petNames,
   totalPrice,
 }: BookingStatusEmailTemplateProps): string => {
-  let statusTitle = ''
-  let statusMessage = ''
-  let statusBadgeBg = ''
-  let statusBadgeText = ''
-  let actionAdvice = ''
+  let statusTitle: string
+  let statusMessage: string
+  let statusBadgeBg: string
+  let statusBadgeText: string
+  let actionAdvice: string
 
   if (action === 'accept') {
     statusTitle = 'คำขอจองได้รับการตอบรับแล้ว'
