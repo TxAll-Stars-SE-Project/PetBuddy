@@ -112,7 +112,7 @@ export async function updateBookingStatus(
   } catch (err: unknown) {
     const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
     const backendMessage = axiosErr?.response?.data?.message || axiosErr?.message || 'ไม่สามารถอัปเดตสถานะการจองได้';
-    throw new Error(backendMessage);
+    throw new Error(backendMessage, { cause: err });
   }
 }
 
