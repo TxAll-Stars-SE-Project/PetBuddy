@@ -147,7 +147,7 @@ body{margin:0;background:var(--bg)}
 
 
 /* ---------- หน้า Profile ---------- */
-.profile-main {  min-height: calc(100vh - 64px);  display: flex;  justify-content: center;  align-items: center;  padding: 40px 20px;  background: #f8f9fa;}
+.profile-main {  min-height: calc(100vh - 64px);  display: flex;  justify-content: center;  align-items: center;  padding: 40px 20px;  background: var(--bg);}
 .profile-card {  width: 100%;  max-width: 600px;  background: #ffffff;  border-radius: 20px;  padding: 40px;  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);}
 .profile-avatar {  width: 90px;  height: 90px;  margin: 0 auto 16px;  display: flex;  align-items: center;  justify-content: center;  border-radius: 50%;  background: #f97316;  font-size: 36px;  font-weight: 700;  color: #ffffff;}
 .profile-card h1 {  margin: 0;  text-align: center;  font-size: 28px;}
