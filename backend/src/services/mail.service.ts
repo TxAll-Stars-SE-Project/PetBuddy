@@ -9,6 +9,7 @@ import {
   PaymentStatusEmailParams,
 } from '../templates/payment-status-email.template.js'
 import { getCareReportEmailHtml, CareReportEmailParams } from '../templates/care-report-email.template.js'
+import { SitterBookingAction } from '../validators/booking.validator.js';
 
 interface WelcomeEmailParams {
   email: string
@@ -127,7 +128,7 @@ export interface BookingStatusNotificationParams {
   ownerUsername: string
   sitterUsername: string
   serviceName: string
-  action: 'accept' | 'reject' | 'complete'
+  action: SitterBookingAction
   bookingId: number
   startTime: string
   endTime: string
@@ -208,6 +209,7 @@ export const sendBookingStatusNotificationEmail = async (
     const subjectMap = {
       accept: `🐾 คำขอจองบริการ PetBuddy ของคุณได้รับการตอบรับแล้ว (#${params.bookingId})`,
       reject: `🐾 แจ้งเตือนสถานะคำขอจองบริการ PetBuddy (#${params.bookingId})`,
+      start: `⏳ บริการ PetBuddy ของคุณกำลังเริ่มต้นขึ้นแล้ว! (#${params.bookingId})`,
       complete: `🎉 บริการ PetBuddy ของคุณเสร็จสิ้นเรียบร้อยแล้ว (#${params.bookingId})`,
     }
 
@@ -223,7 +225,15 @@ export const sendBookingStatusNotificationEmail = async (
       totalPrice: params.totalPrice,
     })
 
-    const textContent = `สวัสดีคุณ ${params.ownerUsername}!\n\nคำขอจอง #${params.bookingId} (${params.serviceName}) ได้รับการ ${params.action === 'accept' ? 'ตอบรับ' : params.action === 'reject' ? 'ปฏิเสธ' : 'ส่งงานเสร็จสิ้น'} โดยพี่เลี้ยงคุณ ${params.sitterUsername}\n\nขอบคุณที่ใช้บริการ PetBuddy!`
+    const actionTextMap: Record<SitterBookingAction, string> = {
+  accept: 'ตอบรับ',
+  reject: 'ปฏิเสธ',
+  start: 'เริ่มให้บริการ',
+  complete: 'ส่งงานเสร็จสิ้น',
+};
+const actionText = actionTextMap[params.action] || 'อัปเดตสถานะ';
+
+const textContent = `สวัสดีคุณ ${params.ownerUsername}!\n\nคำขอจอง #${params.bookingId} (${params.serviceName}) ได้รับการ${actionText} โดยพี่เลี้ยงคุณ ${params.sitterUsername}\n\nขอบคุณที่ใช้บริการ PetBuddy!`;
 
     const info = await transporter.sendMail({
       from: fromAddress,

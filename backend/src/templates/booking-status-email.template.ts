@@ -2,7 +2,7 @@ export interface BookingStatusEmailTemplateProps {
   ownerUsername: string
   sitterUsername: string
   serviceName: string
-  action: 'accept' | 'reject' | 'complete'
+  action: 'accept' | 'reject' | 'start' | 'complete'
   bookingId: number
   startTime: string
   endTime: string
@@ -39,6 +39,12 @@ export const getBookingStatusEmailHtml = ({
     statusBadgeBg = '#fee2e2'
     statusBadgeText = '#b91c1c'
     actionAdvice = 'คุณสามารถเลือกค้นหาพี่เลี้ยงท่านอื่นหรือเปลี่ยนช่วงเวลาการจองได้ที่ PetBuddy'
+  } else if (action === 'start') {
+    statusTitle = 'บริการเริ่มต้นขึ้นแล้ว'
+    statusMessage = `พี่เลี้ยง <strong>คุณ ${sitterUsername}</strong> ได้เริ่มให้บริการดูแลสัตว์เลี้ยงของคุณแล้ว`
+    statusBadgeBg = '#fef08a' // Yellow/Warning background
+    statusBadgeText = '#854d0e'
+    actionAdvice = 'คุณสามารถติดตามสถานะและรอรับรายงานการดูแล (Care Report) จากพี่เลี้ยงได้เลย'
   } else {
     statusTitle = 'บริการเสร็จสิ้นเรียบร้อยแล้ว'
     statusMessage = `พี่เลี้ยง <strong>คุณ ${sitterUsername}</strong> ได้ดำเนินการส่งมอบงานบริการเสร็จสิ้นเรียบร้อยแล้ว`

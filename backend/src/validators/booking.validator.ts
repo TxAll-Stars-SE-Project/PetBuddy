@@ -1,7 +1,7 @@
 import { AppError } from '../utils/errors.js'
 
-export const VALID_ACTIONS = ['accept', 'reject', 'start', 'complete'] as const
-export type SitterBookingAction = (typeof VALID_ACTIONS)[number]
+export const VALID_ACTIONS = ['accept', 'reject', 'start', 'complete'] as const;
+export type SitterBookingAction = (typeof VALID_ACTIONS)[number];
 
 export const VALID_BOOKING_STATUSES = [
   'pending',
