@@ -474,36 +474,6 @@ PUT /api/users/me
 
 ---
 
-## S2.3 Get all users
-
-ดึงรายการผู้ใช้ทั้งหมดในระบบ (สำหรับตรวจสอบหรือใช้งานระดับแอดมิน)
-
-```http
-GET /api/users
-```
-
-* **Header:** none (Public / Admin)
-
-### Response 200 OK
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "userid": 1,
-      "username": "somchai",
-      "email": "somchai@example.com",
-      "tel": "0812345678",
-      "province": "กรุงเทพมหานคร",
-      "is_active": true,
-      "created_at": "2026-09-01T10:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
 # S3. Pet Profile Management (`/api/pets`)
 
 ---
