@@ -9,6 +9,7 @@ import careReportRoutes from './routes/care-report.routes.js'
 import reviewRoutes from './routes/review.routes.js'
 import cors from 'cors'
 import routes from './routes/routers.js'
+import { errorHandler } from './middleware/error.middleware.js'
 
 const app: Express = express()
 
@@ -26,5 +27,8 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/reviews', reviewRoutes)
 // US7-3 รายงานการดูแลสัตว์เลี้ยง: /api/bookings/:bookingId/reports
 app.use('/api/bookings', careReportRoutes)
+
+// Must be registered after all routes
+app.use(errorHandler)
 
 export default app
