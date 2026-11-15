@@ -31,7 +31,9 @@
     "libphonenumber-js": "^1.13.13",
     "multer": "^2.5.0",
     "nodemailer": "^10.5.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -43,6 +45,7 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.13.5",
     "@types/nodemailer": "^8.0.1",
+    "@types/swagger-ui-express": "^4.1.8",
     "cross-env": "^10.1.0",
     "eslint": "^10.15.0",
     "globals": "^15.15.0",

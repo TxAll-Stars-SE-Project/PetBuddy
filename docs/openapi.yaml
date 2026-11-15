@@ -1,0 +1,2249 @@
+openapi: 3.0.3
+info:
+  title: PetBuddy API
+  version: 3.0.0
+  description: |
+    Comprehensive API specification for PetBuddy Platform (Sprint 1, Sprint 2 & Sprint 3).
+    Supports Authentication, User & Pet Profile Management, Sitter Discovery, Services, Bookings, Payments, Timeline Reports, and Customer Reviews.
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server (Port 5000 from .env)
+  - url: http://localhost:5003
+    description: Alternate Dev Server (Port 5003)
+
+tags:
+  - name: Auth
+    description: S1. User Authentication, Registration, Password Management & Account Deactivation
+  - name: Pets
+    description: S3. Pet Profile Management
+  - name: Sitters
+    description: Public Pet Sitter Discovery, Profiles, Services, Reviews & Busy Slots
+  - name: Sitter Services
+    description: Sitter Management - Own Services CRUD
+  - name: Owner Bookings
+    description: Booking Operations for Pet Owners (Creation, List, Details, Cancellation)
+  - name: Sitter Bookings
+    description: Booking Operations for Pet Sitters (List, Accept/Reject, Start/Complete, Daily Reports)
+  - name: Sitter Payment Info
+    description: Sitter Bank Account and PromptPay QR Code Settings (US 2-2)
+  - name: Payments
+    description: Payment Summary, Slip Submission & Verification (US 6-2 & US 6-5)
+  - name: Reviews
+    description: Customer Reviews & Ratings for Completed Bookings (US 7-1)
+  - name: Health
+    description: System Health Check
+
+paths:
+  # ==========================================
+  # S1. Authentication (/api/auth)
+  # ==========================================
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register new user (Owner or Sitter)
+      description: Register a new Pet Owner or Pet Sitter account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email or username already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login user
+      description: Authenticate user with email and password to receive JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: somchai@example.com
+                password:
+                  type: string
+                  format: password
+                  example: Password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Missing email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Account deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Request password reset link/token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: somchai@example.com
+      responses:
+        '200':
+          description: Reset password email sent if account exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Invalid email format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset password with token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                  example: reset-token-uuid-or-jwt
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: NewSecurePassword123
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Invalid or expired token / password requirements not met
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/deactivate:
+    post:
+      tags:
+        - Auth
+      summary: Deactivate user account (Soft delete)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  example: Password123
+      responses:
+        '200':
+          description: Account deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Incorrect password or unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Active bookings prevent deactivation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================
+  # S3. Pet Profile Management (/api/pets)
+  # ==========================================
+  /api/pets:
+    post:
+      tags:
+        - Pets
+      summary: Create new pet profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - species
+              properties:
+                name:
+                  type: string
+                  example: ถุงเงิน
+                species:
+                  $ref: '#/components/schemas/Species'
+                breed:
+                  type: string
+                  example: Golden Retriever
+                age:
+                  type: integer
+                  example: 2
+                weight:
+                  type: number
+                  example: 25.5
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                note:
+                  type: string
+                  example: นิสัยร่าเริง แพ้อาหารทะเล
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Pet profile created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Pet'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (Owner role required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/pets/{id}:
+    put:
+      tags:
+        - Pets
+      summary: Update pet profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                species:
+                  $ref: '#/components/schemas/Species'
+                breed:
+                  type: string
+                age:
+                  type: integer
+                weight:
+                  type: number
+                gender:
+                  $ref: '#/components/schemas/Gender'
+                note:
+                  type: string
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Pet profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Pet'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Pets
+      summary: Delete pet profile (Soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Pet profile deleted successfully
+        '400':
+          description: Cannot delete pet with active bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/pets/my-pets:
+    get:
+      tags:
+        - Pets
+        - Owner Bookings
+      summary: Get owner's pets for booking selection
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of owner's active pets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        petId:
+                          type: integer
+                          example: 1
+                        petName:
+                          type: string
+                          example: เหมียว
+                        petType:
+                          type: string
+                          example: cat
+                        age:
+                          type: integer
+                          example: 2
+
+  # ==========================================
+  # Sitters & Public Discovery (/api/sitters)
+  # ==========================================
+  /api/sitters:
+    get:
+      tags:
+        - Sitters
+      summary: Search and filter pet sitters
+      description: Retrieve published sitters matching criteria with pagination and sorting.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search term matching sitter username
+        - name: province
+          in: query
+          schema:
+            type: string
+          description: Province name
+        - name: district
+          in: query
+          schema:
+            type: string
+          description: District name (must accompany province)
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/ServiceType'
+          description: Service category filter
+        - name: petType
+          in: query
+          schema:
+            $ref: '#/components/schemas/Species'
+          description: Pet species filter
+        - name: minPrice
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: integer
+        - name: minRating
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            maximum: 5
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [rating, priceAsc, priceDesc]
+            default: rating
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        '200':
+          description: Paginated search results of sitters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SitterSearchResult'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitters/{sitterID}:
+    get:
+      tags:
+        - Sitters
+      summary: Get public sitter profile
+      parameters:
+        - name: sitterID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sitter profile data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/SitterPublicProfile'
+        '404':
+          description: Sitter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitters/{sitterID}/services:
+    get:
+      tags:
+        - Sitters
+      summary: Get published services of a sitter
+      parameters:
+        - name: sitterID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of active services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceItem'
+        '404':
+          description: Sitter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitters/{sitterID}/reviews:
+    get:
+      tags:
+        - Sitters
+        - Reviews
+      summary: Get public reviews for a sitter
+      parameters:
+        - name: sitterID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reviews and rating statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/SitterReviewStats'
+        '404':
+          description: Sitter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitters/{sitterID}/busy-slots:
+    get:
+      tags:
+        - Sitters
+      summary: Get sitter unavailable schedule / busy slots
+      parameters:
+        - name: sitterID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Busy date-time ranges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        startTime:
+                          type: string
+                          format: date-time
+                        endTime:
+                          type: string
+                          format: date-time
+        '404':
+          description: Sitter not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================
+  # Sitter Services CRUD (/api/sitter/services)
+  # ==========================================
+  /api/sitter/services/me:
+    get:
+      tags:
+        - Sitter Services
+      summary: Get sitter's own services
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of sitter's services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceItem'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sitter role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitter/services:
+    post:
+      tags:
+        - Sitter Services
+      summary: Create new service
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - serviceName
+                - serviceType
+                - price
+                - species
+              properties:
+                serviceName:
+                  type: string
+                  example: รับฝากเลี้ยงสุนัขพันธุ์เล็ก
+                serviceType:
+                  $ref: '#/components/schemas/ServiceType'
+                species:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Species'
+                  example: ["dog"]
+                price:
+                  type: number
+                  example: 350
+                description:
+                  type: string
+                  example: ดูแลในห้องแอร์ 24 ชั่วโมง มีสนามหญ้าให้วิ่งเล่น
+      responses:
+        '201':
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ServiceItem'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitter/services/{id}:
+    patch:
+      tags:
+        - Sitter Services
+      summary: Edit existing service
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                serviceName:
+                  type: string
+                serviceType:
+                  $ref: '#/components/schemas/ServiceType'
+                species:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Species'
+                price:
+                  type: number
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Service updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ServiceItem'
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Sitter Services
+      summary: Delete service
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '409':
+          description: Cannot delete service tied to active bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================
+  # Owner Bookings (/api/owner/bookings & /api/bookings)
+  # ==========================================
+  /api/owner/bookings:
+    get:
+      tags:
+        - Owner Bookings
+      summary: Get owner's booking history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+          description: Filter by booking status
+      responses:
+        '200':
+          description: List of bookings for current owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OwnerBookingItem'
+    post:
+      tags:
+        - Owner Bookings
+      summary: Create multi-pet booking request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created in pending status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/BookingDetail'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Overlapping booking or schedule conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bookings/{bookingID}:
+    get:
+      tags:
+        - Owner Bookings
+        - Sitter Bookings
+      summary: Get booking details and visual status timeline (US 6-4)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking details, participants, pets and event timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/BookingWithTimeline'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Owner Bookings
+      summary: Cancel booking by owner (US 6-3)
+      description: Allows pet owner to cancel their booking prior to service start (in pending, waiting_payment, or deposit_paid status).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [cancel]
+                  example: cancel
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      bookingId:
+                        type: integer
+                      bookingstatus:
+                        type: string
+                        example: cancelled
+        '400':
+          description: Invalid action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Booking cannot be cancelled in current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================
+  # Sitter Bookings & Transitions (/api/sitter/bookings)
+  # ==========================================
+  /api/sitter/bookings:
+    get:
+      tags:
+        - Sitter Bookings
+      summary: Get sitter's received bookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+      responses:
+        '200':
+          description: List of bookings for current sitter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SitterBookingItem'
+
+  /api/sitter/bookings/{bookingID}:
+    patch:
+      tags:
+        - Sitter Bookings
+      summary: Update booking status by sitter (accept, reject, start, complete) (US 7-2)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [accept, reject, start, complete]
+                  example: start
+      responses:
+        '200':
+          description: Status transition executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      bookingId:
+                        type: integer
+                      bookingstatus:
+                        $ref: '#/components/schemas/BookingStatus'
+                      action:
+                        type: string
+        '400':
+          description: Invalid status transition or condition not met
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not assigned sitter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/sitter/bookings/{bookingID}/status:
+    patch:
+      tags:
+        - Sitter Bookings
+      summary: Update booking status (Legacy route alias)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [accept, reject, start, complete]
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  # ==========================================
+  # Pet Care Daily Reports (US 7-3)
+  # ==========================================
+  /api/bookings/{bookingID}/reports:
+    post:
+      tags:
+        - Sitter Bookings
+      summary: Submit pet care daily report with photo (US 7-3)
+      description: Allowed during active service when booking is in in_progress status.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - reportDetail
+              properties:
+                reportDetail:
+                  type: string
+                  example: น้องทานอาหารเม็ดหมดเกลี้ยง วิ่งเล่นอย่างร่าเริงครับ
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Care report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/CareReport'
+        '400':
+          description: Booking is not in in_progress status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Sitter Bookings
+        - Owner Bookings
+      summary: Get pet care reports for a booking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of daily care reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CareReport'
+
+  # ==========================================
+  # Sitter Payment Info (/api/sitter/payment-info)
+  # ==========================================
+  /api/sitter/payment-info:
+    get:
+      tags:
+        - Sitter Payment Info
+      summary: Get sitter payout information & PromptPay QR (US 2-2)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sitter payment account & QR info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SitterPaymentInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sitter role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Sitter Payment Info
+      summary: Create or update payment information (Multipart Form-Data)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - accountName
+              properties:
+                accountName:
+                  type: string
+                  example: สมชาย รักสัตว์
+                qrCode:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Payment info saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: บันทึกข้อมูลการรับเงินสำเร็จ
+                  data:
+                    $ref: '#/components/schemas/SitterPaymentInfo'
+        '400':
+          description: Missing account name or invalid file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Sitter Payment Info
+      summary: Delete payment information
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payment info deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  # ==========================================
+  # Payments (/api/payments & /api/bookings/{id}/payments)
+  # ==========================================
+  /api/bookings/{bookingID}/payments:
+    get:
+      tags:
+        - Payments
+      summary: Get payment summary with Sitter QR Code (US 6-2)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payment breakdown, sitter QR code and payment history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/PaymentSummary'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments:
+    post:
+      tags:
+        - Payments
+      summary: Submit payment slip (Deposit / Final / Full) (US 6-2 & US 6-5)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - bookingId
+                - amount
+                - payment_stage
+                - paymentType
+                - slip_image
+              properties:
+                bookingId:
+                  type: integer
+                  example: 1
+                amount:
+                  type: number
+                  example: 1890
+                payment_stage:
+                  $ref: '#/components/schemas/PaymentStage'
+                paymentType:
+                  type: string
+                  example: bank_transfer
+                slip_image:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Payment slip uploaded and processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: integer
+                      payment_status:
+                        $ref: '#/components/schemas/PaymentStatus'
+                      slip_image:
+                        type: string
+                      bookingstatus:
+                        $ref: '#/components/schemas/BookingStatus'
+        '400':
+          description: Invalid stage or status restriction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Amount mismatch or stage already paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/bookings/{bookingID}/verify-payment:
+    patch:
+      tags:
+        - Payments
+      summary: Sitter verifies or rejects payment slip
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bookingID
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentId
+                - action
+              properties:
+                paymentId:
+                  type: integer
+                  example: 1
+                action:
+                  type: string
+                  enum: [verify, reject]
+                  example: verify
+      responses:
+        '200':
+          description: Verification executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: integer
+                      payment_status:
+                        type: string
+                        example: verified
+                      bookingstatus:
+                        $ref: '#/components/schemas/BookingStatus'
+        '400':
+          description: Invalid action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not assigned sitter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==========================================
+  # Reviews (/api/reviews)
+  # ==========================================
+  /api/reviews:
+    post:
+      tags:
+        - Reviews
+      summary: Submit review and 1-5 rating for completed booking (US 7-1)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bookingId
+                - rating
+              properties:
+                bookingId:
+                  type: integer
+                  example: 1
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  example: พี่เลี้ยงดูแลน้องดีมาก มีรูปอัปเดตสม่ำเสมอ แนะนำเลยครับ!
+      responses:
+        '201':
+          description: Review created and sitter rating recalculated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/ReviewItem'
+        '400':
+          description: Rating must be 1 to 5
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Booking not completed or already reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reviews/sitter/{sitterId}:
+    get:
+      tags:
+        - Reviews
+      summary: Get public reviews for a sitter
+      parameters:
+        - name: sitterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Review stats and comments list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/SitterReviewStats'
+
+  # ==========================================
+  # System Health (/api/health)
+  # ==========================================
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: System health check
+      responses:
+        '200':
+          description: Server and database connection healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Common Enums
+    Role:
+      type: string
+      enum: [owner, sitter]
+      example: owner
+
+    Gender:
+      type: string
+      enum: [male, female]
+      example: male
+
+    Species:
+      type: string
+      enum: [dog, cat, bird, exotic]
+      example: dog
+
+    ServiceType:
+      type: string
+      enum: [walking, sitting, boarding, grooming, daycare]
+      example: sitting
+
+    BookingStatus:
+      type: string
+      enum:
+        - pending
+        - waiting_payment
+        - deposit_paid
+        - confirmed
+        - in_progress
+        - rejected
+        - cancelled
+        - waiting_final_payment
+        - completed
+      example: in_progress
+
+    PaymentPlan:
+      type: string
+      enum: [full, deposit]
+      example: deposit
+
+    PaymentStage:
+      type: string
+      enum: [deposit, final, full]
+      example: deposit
+
+    PaymentStatus:
+      type: string
+      enum: [pending_verifying, verified, rejected]
+      example: verified
+
+    # Responses & Utility Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: ข้อมูลไม่ถูกต้อง
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    SuccessMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: ดำเนินการสำเร็จ
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 12
+        total:
+          type: integer
+          example: 24
+        totalPages:
+          type: integer
+          example: 2
+
+    # Auth Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - role
+        - tel
+      properties:
+        username:
+          type: string
+          example: somchai
+        email:
+          type: string
+          format: email
+          example: somchai@example.com
+        password:
+          type: string
+          format: password
+          example: Password123
+        role:
+          $ref: '#/components/schemas/Role'
+        tel:
+          type: string
+          example: 0812345678
+        province:
+          type: string
+          example: กรุงเทพมหานคร
+        district:
+          type: string
+          example: จตุจักร
+        subdistrict:
+          type: string
+          example: จันทรเกษม
+        postalCode:
+          type: string
+          example: 10900
+        address:
+          type: string
+          example: 123/45 ซอยพหลโยธิน 32
+        thaiId:
+          type: string
+          description: Required if role is sitter (13 digits)
+          example: 1234567890123
+        experience:
+          type: string
+          example: เลี้ยงสัตว์มา 5 ปี
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          type: object
+          properties:
+            userId:
+              type: integer
+              example: 1
+            username:
+              type: string
+              example: somchai
+            email:
+              type: string
+              example: somchai@example.com
+            role:
+              $ref: '#/components/schemas/Role'
+
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: somchai
+        email:
+          type: string
+          example: somchai@example.com
+        role:
+          $ref: '#/components/schemas/Role'
+        tel:
+          type: string
+          example: 0812345678
+        address:
+          type: string
+          example: 123/45 ซอยพหลโยธิน 32
+        province:
+          type: string
+          example: กรุงเทพมหานคร
+        district:
+          type: string
+          example: จตุจักร
+        subdistrict:
+          type: string
+          example: จันทรเกษม
+        postalCode:
+          type: string
+          example: 10900
+        experience:
+          type: string
+          example: ประสบการณ์ดูแลแมว 5 ปี
+
+    # Pet Schemas
+    Pet:
+      type: object
+      properties:
+        petId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: ถุงเงิน
+        species:
+          $ref: '#/components/schemas/Species'
+        breed:
+          type: string
+          example: Golden Retriever
+        age:
+          type: integer
+          example: 2
+        weight:
+          type: number
+          example: 25.5
+        gender:
+          $ref: '#/components/schemas/Gender'
+        note:
+          type: string
+          example: นิสัยร่าเริง แพ้อาหารทะเล
+        photoUrl:
+          type: string
+          example: https://storage.supabase.co/.../pets/1/dog.jpg
+
+    # Sitter Schemas
+    ServiceItem:
+      type: object
+      properties:
+        serviceId:
+          type: integer
+          example: 3
+        serviceName:
+          type: string
+          example: รับฝากเลี้ยงน้องหมา
+        serviceType:
+          $ref: '#/components/schemas/ServiceType'
+        species:
+          type: array
+          items:
+            $ref: '#/components/schemas/Species'
+          example: ["dog"]
+        price:
+          type: number
+          example: 350
+        description:
+          type: string
+          example: ดูแลอย่างดีในห้องแอร์
+        status:
+          type: string
+          example: published
+
+    SitterSearchResult:
+      type: object
+      properties:
+        sitterId:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: somchai
+        province:
+          type: string
+          example: กรุงเทพมหานคร
+        district:
+          type: string
+          example: บางรัก
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceItem'
+        minPrice:
+          type: number
+          example: 300
+        rating:
+          type: number
+          nullable: true
+          example: 4.8
+        reviewCount:
+          type: integer
+          example: 12
+
+    SitterPublicProfile:
+      type: object
+      properties:
+        sitterId:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: somchai
+        province:
+          type: string
+          example: กรุงเทพมหานคร
+        district:
+          type: string
+          example: บางรัก
+        experience:
+          type: string
+          example: ดูแลสัตว์เลี้ยงมา 5 ปี
+        rating:
+          type: number
+          example: 4.8
+        reviewCount:
+          type: integer
+          example: 12
+
+    SitterPaymentInfo:
+      type: object
+      properties:
+        sitterId:
+          type: integer
+          example: 12
+        accountName:
+          type: string
+          nullable: true
+          example: สมชาย รักสัตว์
+        qrCodeUrl:
+          type: string
+          nullable: true
+          example: https://storage.supabase.co/.../qrcodes/12/qr.png
+        hasPaymentInfo:
+          type: boolean
+          example: true
+
+    # Booking Schemas
+    CreateBookingRequest:
+      type: object
+      required:
+        - sitterId
+        - serviceId
+        - starttime
+        - endtime
+        - paymentplan
+        - pets
+      properties:
+        sitterId:
+          type: integer
+          example: 1
+        serviceId:
+          type: integer
+          example: 1
+        starttime:
+          type: string
+          format: date-time
+          example: 2026-09-20T09:00:00Z
+        endtime:
+          type: string
+          format: date-time
+          example: 2026-09-20T18:00:00Z
+        paymentplan:
+          $ref: '#/components/schemas/PaymentPlan'
+        note:
+          type: string
+          example: ฝากดูแลหน่อยครับ
+        pets:
+          type: array
+          items:
+            type: object
+            required:
+              - petId
+            properties:
+              petId:
+                type: integer
+                example: 1
+              petNote:
+                type: string
+                nullable: true
+                example: แมวขี้อาย
+
+    BookingDetail:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          example: 1
+        bookingstatus:
+          $ref: '#/components/schemas/BookingStatus'
+        totalPrice:
+          type: number
+          example: 6300
+        depositAmount:
+          type: number
+          example: 1890
+        pets:
+          type: array
+          items:
+            type: object
+            properties:
+              petId:
+                type: integer
+              petName:
+                type: string
+              petNote:
+                type: string
+                nullable: true
+
+    OwnerBookingItem:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          example: 1
+        sitterName:
+          type: string
+          example: somchai
+        serviceName:
+          type: string
+          example: รับเลี้ยงแมว
+        starttime:
+          type: string
+          format: date-time
+        endtime:
+          type: string
+          format: date-time
+        bookingstatus:
+          $ref: '#/components/schemas/BookingStatus'
+        totalPrice:
+          type: number
+          example: 6300
+        pets:
+          type: array
+          items:
+            type: object
+            properties:
+              petId:
+                type: integer
+              petName:
+                type: string
+              petNote:
+                type: string
+        review:
+          type: object
+          nullable: true
+          properties:
+            reviewId:
+              type: integer
+            rating:
+              type: integer
+            comment:
+              type: string
+
+    SitterBookingItem:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          example: 1
+        ownerName:
+          type: string
+          example: somying
+        serviceName:
+          type: string
+          example: รับฝากสุนัข
+        starttime:
+          type: string
+          format: date-time
+        endtime:
+          type: string
+          format: date-time
+        bookingstatus:
+          $ref: '#/components/schemas/BookingStatus'
+        totalPrice:
+          type: number
+        pets:
+          type: array
+          items:
+            type: object
+            properties:
+              petId:
+                type: integer
+              petName:
+                type: string
+
+    BookingWithTimeline:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          example: 1
+        bookingstatus:
+          $ref: '#/components/schemas/BookingStatus'
+        bookingdate:
+          type: string
+          format: date-time
+        starttime:
+          type: string
+          format: date-time
+        endtime:
+          type: string
+          format: date-time
+        totalPrice:
+          type: number
+          example: 6300
+        paymentplan:
+          $ref: '#/components/schemas/PaymentPlan'
+        note:
+          type: string
+          example: น้องแพ้อาหารทะเล
+        service:
+          type: object
+          properties:
+            serviceId:
+              type: integer
+            serviceName:
+              type: string
+            serviceType:
+              type: string
+        sitter:
+          type: object
+          properties:
+            sitterId:
+              type: integer
+            name:
+              type: string
+            tel:
+              type: string
+        owner:
+          type: object
+          properties:
+            ownerId:
+              type: integer
+            name:
+              type: string
+            tel:
+              type: string
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+                example: deposit_paid
+              time:
+                type: string
+                format: date-time
+              label:
+                type: string
+                example: ชำระเงินมัดจำ 30% เรียบร้อย
+        pets:
+          type: array
+          items:
+            type: object
+            properties:
+              petId:
+                type: integer
+              name:
+                type: string
+              species:
+                type: string
+              breed:
+                type: string
+
+    CareReport:
+      type: object
+      properties:
+        reportId:
+          type: integer
+          example: 1
+        bookingId:
+          type: integer
+          example: 1
+        reportDetail:
+          type: string
+          example: น้องทานอาหารเรียบร้อยครับ
+        photoUrl:
+          type: string
+          example: https://storage.supabase.co/.../care-reports/1/photo.jpg
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentSummary:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          example: 1
+        bookingstatus:
+          $ref: '#/components/schemas/BookingStatus'
+        totalPrice:
+          type: number
+          example: 6300
+        paymentplan:
+          $ref: '#/components/schemas/PaymentPlan'
+        depositAmount:
+          type: number
+          example: 1890
+        remainingAmount:
+          type: number
+          example: 4410
+        sitterPaymentInfo:
+          $ref: '#/components/schemas/SitterPaymentInfo'
+        payments:
+          type: array
+          items:
+            type: object
+            properties:
+              paymentId:
+                type: integer
+              amount:
+                type: number
+              payment_stage:
+                $ref: '#/components/schemas/PaymentStage'
+              payment_status:
+                $ref: '#/components/schemas/PaymentStatus'
+              paid_at:
+                type: string
+                format: date-time
+
+    ReviewItem:
+      type: object
+      properties:
+        reviewId:
+          type: integer
+          example: 1
+        bookingId:
+          type: integer
+          example: 1
+        rating:
+          type: integer
+          example: 5
+        comment:
+          type: string
+          example: พี่เลี้ยงดูแลดีมากครับ
+        reviewerName:
+          type: string
+          example: สมหญิง
+        createdAt:
+          type: string
+          format: date-time
+
+    SitterReviewStats:
+      type: object
+      properties:
+        sitterId:
+          type: integer
+          example: 12
+        averageRating:
+          type: number
+          example: 4.9
+        reviewCount:
+          type: integer
+          example: 18
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewItem'

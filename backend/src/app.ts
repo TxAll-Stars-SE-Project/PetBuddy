@@ -7,6 +7,7 @@ import ownerBookingRoutes from './routes/owner-booking.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import careReportRoutes from './routes/care-report.routes.js'
 import reviewRoutes from './routes/review.routes.js'
+import swaggerRoutes from './routes/swagger.routes.js'
 import cors from 'cors'
 import routes from './routes/routers.js'
 import { errorHandler } from './middleware/error.middleware.js'
@@ -27,6 +28,7 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/reviews', reviewRoutes)
 // US7-3 รายงานการดูแลสัตว์เลี้ยง: /api/bookings/:bookingId/reports
 app.use('/api/bookings', careReportRoutes)
+app.use('/api-docs', swaggerRoutes)
 
 // Must be registered after all routes
 app.use(errorHandler)
