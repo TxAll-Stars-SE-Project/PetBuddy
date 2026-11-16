@@ -6,7 +6,8 @@ services:
     container_name: petbuddy-backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     environment:
       NODE_ENV: production
       PORT: "5000"
