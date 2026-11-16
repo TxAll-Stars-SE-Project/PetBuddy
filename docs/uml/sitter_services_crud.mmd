@@ -1,0 +1,35 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Services {
+        <<Resource>>
+        +GET()
+        +POST()
+    }
+
+    class Service {
+        <<Resource>>
+        +PATCH()
+        +DELETE()
+    }
+
+    class ServiceRepresentation["Service"] {
+        <<Representation>>
+        - id : integer
+        - sitterId : integer
+        - serviceName : string
+        - serviceType : string
+        - price : number
+        - description : string
+        - status : string
+    }
+
+    PetBuddyAPI ..> Services : «Path» /api/sitter/services
+    Services ..> Service : «Path» /{serviceID}
+
+    Services ..> ServiceRepresentation : «use»
+    Service ..> ServiceRepresentation : «use»

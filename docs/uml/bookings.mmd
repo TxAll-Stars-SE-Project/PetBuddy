@@ -1,0 +1,94 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Bookings {
+        <<Resource>>
+        +POST()
+    }
+
+    class BookingInstance["Booking"] {
+        <<Resource>>
+        +GET()
+        +PATCH()
+    }
+
+    class BookingPayments["Payments"] {
+        <<Resource>>
+        +GET()
+    }
+
+    class BookingVerifyPayment["VerifyPayment"] {
+        <<Resource>>
+        +PATCH()
+    }
+
+    class BookingReports["Reports"] {
+        <<Resource>>
+        +POST()
+        +GET()
+    }
+
+    class OwnerBookings {
+        <<Resource>>
+        +GET()
+    }
+
+    class SitterBookings {
+        <<Resource>>
+        +GET()
+    }
+
+    class SitterBookingInstance["Booking"] {
+        <<Resource>>
+        +PATCH()
+    }
+
+    class Booking {
+        <<Representation>>
+        - bookingId : integer
+        - status : string
+        - totalPrice : number
+        - depositAmount : number
+        - startTime : string
+        - endTime : string
+    }
+
+    class BookingPaymentSummary {
+        <<Representation>>
+        - bookingId : integer
+        - totalPrice : number
+        - depositAmount : number
+        - qrCodeUrl : string
+    }
+
+    class CareReport {
+        <<Representation>>
+        - reportId : integer
+        - bookingId : integer
+        - reportDetail : string
+        - photoUrl : string
+        - createdAt : string
+    }
+
+    PetBuddyAPI ..> Bookings : «Path» /api/bookings
+    Bookings ..> BookingInstance : «Path» /{bookingId}
+    BookingInstance ..> BookingPayments : «Path» /payments
+    BookingInstance ..> BookingVerifyPayment : «Path» /verify-payment
+    BookingInstance ..> BookingReports : «Path» /reports
+
+    PetBuddyAPI ..> OwnerBookings : «Path» /api/owner/bookings
+    PetBuddyAPI ..> SitterBookings : «Path» /api/sitter/bookings
+    SitterBookings ..> SitterBookingInstance : «Path» /{id}
+
+    Bookings ..> Booking : «use»
+    BookingInstance ..> Booking : «use»
+    BookingPayments ..> BookingPaymentSummary : «use»
+    BookingVerifyPayment ..> Booking : «use»
+    BookingReports ..> CareReport : «use»
+    OwnerBookings ..> Booking : «use»
+    SitterBookings ..> Booking : «use»
+    SitterBookingInstance ..> Booking : «use»

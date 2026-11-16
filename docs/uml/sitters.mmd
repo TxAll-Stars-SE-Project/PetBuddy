@@ -1,0 +1,77 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Sitters {
+        <<Resource>>
+        +GET(category : QueryParam)
+        +GET(petType : QueryParam)
+        +GET(district : QueryParam)
+        +GET(minRating : QueryParam)
+        +GET(sort : QueryParam)
+    }
+
+    class Sitter {
+        <<Resource>>
+        +GET()
+    }
+
+    class SitterServices["Services"] {
+        <<Resource>>
+        +GET()
+    }
+
+    class SitterReviews["Reviews"] {
+        <<Resource>>
+        +GET()
+    }
+
+    class SitterSummary {
+        <<Representation>>
+        - sitterId : integer
+        - username : string
+        - province : string
+        - district : string
+        - minPrice : number
+        - rating : number
+        - reviewCount : integer
+    }
+
+    class SitterProfile {
+        <<Representation>>
+        - sitterId : integer
+        - username : string
+        - province : string
+        - district : string
+        - rating : number
+        - experience : string
+    }
+
+    class ServiceItem {
+        <<Representation>>
+        - serviceId : integer
+        - serviceName : string
+        - serviceType : string
+        - price : number
+    }
+
+    class ReviewItem {
+        <<Representation>>
+        - reviewId : integer
+        - rating : integer
+        - comment : string
+        - reviewerName : string
+    }
+
+    PetBuddyAPI ..> Sitters : «Path» /api/sitters
+    Sitters ..> Sitter : «Path» /{sitterID}
+    Sitter ..> SitterServices : «Path» /services
+    Sitter ..> SitterReviews : «Path» /reviews
+
+    Sitters ..> SitterSummary : «use»
+    Sitter ..> SitterProfile : «use»
+    SitterServices ..> ServiceItem : «use»
+    SitterReviews ..> ReviewItem : «use»

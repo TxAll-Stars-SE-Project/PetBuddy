@@ -1,0 +1,24 @@
+classDiagram
+    direction LR
+
+    class PetBuddyAPI {
+        <<Application>>
+    }
+
+    class Payments {
+        <<Resource>>
+        +POST()
+    }
+
+    class Payment {
+        <<Representation>>
+        - paymentId : integer
+        - bookingId : integer
+        - stage : string
+        - amount : number
+        - status : string
+        - slipUrl : string
+    }
+
+    PetBuddyAPI ..> Payments : «Path» /api/payments
+    Payments ..> Payment : «use»
