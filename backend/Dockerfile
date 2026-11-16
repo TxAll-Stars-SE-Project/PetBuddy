@@ -14,6 +14,8 @@ COPY backend ./backend
 WORKDIR /app/backend
 RUN npx prisma generate
 RUN npm run build
+WORKDIR /app
+RUN npm prune --omit=dev
 
 # Stage 2: Production runtime
 FROM node:22-slim AS runner
@@ -22,18 +24,13 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-COPY backend/package.json ./backend/
-COPY frontend/package.json ./frontend/
-
-RUN npm ci --omit=dev --workspace=backend
-
-# Includes compiled Prisma Client (dist/generated/prisma) generated & built in builder stage
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/src/data ./backend/dist/data
-COPY docs/openapi.yaml ./docs/openapi.yaml
-
-RUN chown -R node:node /app
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node backend/package.json ./backend/
+COPY --chown=node:node --from=builder /app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /app/backend/prisma ./backend/prisma
+COPY --chown=node:node --from=builder /app/backend/dist ./backend/dist
+COPY --chown=node:node --from=builder /app/backend/src/data ./backend/dist/data
+COPY --chown=node:node docs/openapi.yaml ./docs/openapi.yaml
 
 WORKDIR /app/backend
 ENV NODE_ENV=production
