@@ -6,10 +6,10 @@ info:
     Comprehensive API specification for PetBuddy Platform (Sprint 1, Sprint 2 & Sprint 3).
     Supports Authentication, User & Pet Profile Management, Sitter Discovery, Services, Bookings, Payments, Timeline Reports, and Customer Reviews.
 servers:
+  - url: http://34.143.180.144
+    description: Production / Deployed Server
   - url: http://localhost:5000
-    description: Local Development Server (Port 5000 from .env)
-  - url: http://localhost:5003
-    description: Alternate Dev Server (Port 5003)
+    description: Local Development Server (Port 5000)
 
 tags:
   - name: Auth
