@@ -20,10 +20,22 @@ const candidatePaths = [
 const resolvedPath = candidatePaths.find((p) => fs.existsSync(p))
 let openApiSpec: Record<string, unknown> = {}
 
+const resolveSwaggerServers = (): Array<{ url: string; description: string }> => {
+  const configuredUrl = process.env.SWAGGER_SERVER_URL?.trim()
+  if (configuredUrl) {
+    return [{ url: configuredUrl, description: 'Configured Server (SWAGGER_SERVER_URL)' }]
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return [{ url: '/', description: 'Current Origin (Production)' }]
+  }
+  const port = process.env.PORT || 5000
+  return [{ url: `http://localhost:${port}`, description: `Local Development Server (Port ${port})` }]
+}
+
 if (resolvedPath) {
   try {
     const fileContent = fs.readFileSync(resolvedPath, 'utf8')
-    openApiSpec = YAML.parse(fileContent)
+    openApiSpec = { ...YAML.parse(fileContent), servers: resolveSwaggerServers() }
   } catch (err) {
     console.error('[Swagger] Failed to parse openapi.yaml:', err)
   }
@@ -36,7 +48,7 @@ const getSpec = (): Record<string, unknown> => {
   if (resolvedPath && fs.existsSync(resolvedPath)) {
     try {
       const fileContent = fs.readFileSync(resolvedPath, 'utf8')
-      openApiSpec = YAML.parse(fileContent)
+      openApiSpec = { ...YAML.parse(fileContent), servers: resolveSwaggerServers() }
     } catch {
       // Return cached version if read/parse fails
     }

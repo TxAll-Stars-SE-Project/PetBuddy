@@ -5,11 +5,10 @@ info:
   description: |
     Comprehensive API specification for PetBuddy Platform (Sprint 1, Sprint 2 & Sprint 3).
     Supports Authentication, User & Pet Profile Management, Sitter Discovery, Services, Bookings, Payments, Timeline Reports, and Customer Reviews.
+# Note: swagger.routes.ts overrides `servers` at runtime using SWAGGER_SERVER_URL / NODE_ENV / PORT
 servers:
-  - url: http://34.143.180.144
-    description: Production / Deployed Server
   - url: http://localhost:5000
-    description: Local Development Server (Port 5000)
+    description: Local Development Server (Default)
 
 tags:
   - name: Auth
