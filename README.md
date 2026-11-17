@@ -4,38 +4,6 @@ A full-stack monorepo web application built with **React 19**, **Vite**, **Expre
 
 ---
 
-## 📁 Project Architecture
-
-This project is organized as an **npm Workspaces Monorepo**:
-
-```
-PetBuddy/
-├── backend/                       # Express + Prisma + TypeScript API Server
-│   ├── prisma/                    # Prisma schema & database configuration
-│   ├── src/
-│   │   ├── controllers/           # Route handler controllers
-│   │   ├── middleware/            # Auth & error handling middleware
-│   │   ├── routes/                # API & Swagger UI (/api-docs) routes
-│   │   ├── services/              # Business logic (mail, slip verification, etc.)
-│   │   ├── utils/                 # JWT, Prisma, and Supabase clients
-│   │   ├── app.ts                 # Express app & middleware setup
-│   │   └── server.ts              # Server bootstrap & port listener
-│   ├── .env.example               # Backend environment variable template
-│   ├── Dockerfile                 # Multi-stage backend container build
-│   └── package.json
-├── frontend/                      # Vite + React 19 + TypeScript Client
-│   ├── src/                       # Pages, components, hooks, services, utils
-│   ├── .env.example               # Frontend environment variable template
-│   ├── Dockerfile                 # Multi-stage Vite build + Nginx server
-│   ├── nginx.conf                 # Nginx reverse proxy (/api & /api-docs -> backend:5000)
-│   └── package.json
-├── docs/
-│   └── openapi.yaml               # OpenAPI 3.0.3 specification (served at /api-docs)
-├── docker-compose.yml             # Production container orchestration
-└── package.json                   # Root workspace configuration
-```
-
----
 
 ## 🔐 Environment Variables & Secrets Setup
 
